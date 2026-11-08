@@ -5,7 +5,8 @@
   "scripts": {
     "build": "node build.mjs",
     "serve": "npx --yes http-server dist -p 8080 -c-1",
-    "icons": "node scripts/make-icons.mjs"
+    "icons": "node scripts/make-icons.mjs",
+    "test": "node test/biblia.test.mjs && node test/e2e.mjs && node test/e2e-funciones.mjs"
   },
   "dependencies": {
     "docx": "^9.15.3",

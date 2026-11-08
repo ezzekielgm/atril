@@ -196,3 +196,61 @@ svg { display: block; }
 .small-print { font-size: 13px; color: var(--muted); }
 .spinner { width: 28px; height: 28px; border: 3px solid var(--surface-2); border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; margin: 6px auto; }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* Citas bíblicas */
+.doc-content a.bref { color: var(--accent); text-decoration: underline; text-decoration-style: dotted; text-underline-offset: .18em; }
+
+/* Ritmo y cronómetro */
+.timer.warn .timer-btn { background: #f2a51a; color: #241600; }
+.timer.warn .timer-btn svg { color: #241600; }
+.timer.over .timer-btn { background: var(--danger); color: #fff; }
+.timer.over .timer-btn svg { color: #fff; }
+.pace { font-size: 14px; font-weight: 700; padding: 6px 10px; border-radius: 16px; white-space: nowrap; font-variant-numeric: tabular-nums; background: var(--surface); }
+.pace.ok { color: var(--muted); }
+.pace.ahead { color: #1b7f3b; background: rgba(46,160,67,.14); }
+.pace.behind, .pace.over { color: var(--danger); background: rgba(198,40,40,.12); }
+[data-theme="oscuro"] .pace.ahead { color: #6fd38c; }
+.pace .short { display: none; }
+@media (max-width: 640px) { .pace .long { display: none; } .pace .short { display: inline; } }
+.float-timer {
+  position: fixed; right: max(14px, env(safe-area-inset-right)); bottom: max(14px, env(safe-area-inset-bottom)); z-index: 30;
+  display: none; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 22px;
+  background: rgba(0,0,0,.62); color: #fff; font: 700 20px var(--ui); font-variant-numeric: tabular-nums;
+}
+.float-timer:not([hidden]) { display: inline-flex; }
+.float-timer.paused { opacity: .55; }
+.float-timer.warn { background: rgba(214,138,0,.92); color: #1d1200; }
+.float-timer.over { background: rgba(198,40,40,.92); }
+.float-timer .fp { font-size: 15px; opacity: .9; }
+
+/* Esquema */
+#reader-outline-btn.active { background: var(--surface-2); }
+.outline { display: flex; flex-direction: column; gap: .35em; }
+.outline .o-item { display: block; width: 100%; text-align: left; font: inherit; color: inherit; background: none; border: 0; border-radius: 10px; padding: .25em .4em; cursor: pointer; }
+.outline .o-item:active { background: var(--surface-2); }
+.outline .o-h { font-weight: 700; margin-top: .6em; }
+.outline .o-h1 { font-size: 1.3em; }
+.outline .o-h2 { font-size: 1.12em; }
+.outline .o-h3, .outline .o-h4 { font-size: 1em; padding-left: .9em; }
+.outline .o-m { padding-left: 1.6em; position: relative; }
+.outline .o-m::before { content: ""; position: absolute; left: .6em; top: .75em; width: .45em; height: .45em; border-radius: 50%; background: var(--mark); }
+.outline .o-min { font-size: .62em; font-weight: 700; margin-left: .6em; padding: .15em .5em; border-radius: 1em; background: var(--surface); color: var(--muted); vertical-align: middle; }
+.outline .o-empty { color: var(--muted); font-family: var(--ui); font-size: 17px; text-align: center; padding: 30px 10px; }
+.outline .o-empty h2 { color: var(--text); font-size: 20px; }
+.doc-content .flash { animation: flash 1.6s ease; border-radius: 6px; }
+@keyframes flash { 0%, 30% { background: var(--mark); } 100% { background: transparent; } }
+
+/* Campo de minutos */
+.num-input { width: 74px; height: 44px; border-radius: 12px; border: 1px solid var(--border); background: var(--surface); text-align: center; font-size: 18px; font-weight: 700; }
+.size-row .unit { color: var(--muted); font-weight: 600; }
+
+/* Pantallas estrechas (móvil) */
+@media (max-width: 480px) {
+  .topbar { gap: 0; padding: 0 4px; }
+  .reader-bar .icon-btn { width: 38px; }
+  .reader-bar .icon-btn.small { width: 32px; }
+  .timer-btn { padding: 0 9px; gap: 4px; }
+  .timer-btn svg { display: none; }
+  .pace { padding: 5px 7px; font-size: 13px; }
+  .reader-bar .title { padding: 0 2px; }
+}

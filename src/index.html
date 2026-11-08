@@ -56,13 +56,17 @@
       <button class="timer-btn" id="timer-toggle" aria-label="Cronómetro"><span data-icon="timer"></span><span id="timer-text">00:00</span></button>
       <button class="icon-btn small" id="timer-reset" aria-label="Poner a cero" data-icon="reset" hidden></button>
     </div>
-    <button class="icon-btn" id="reader-aa" aria-label="Texto y tema" data-icon="aa"></button>
+    <span class="pace" id="pace" role="status" hidden></span>
+    <button class="icon-btn" id="reader-outline-btn" aria-label="Esquema" aria-pressed="false" data-icon="outline"></button>
+    <button class="icon-btn" id="reader-aa" aria-label="Texto, tema y tiempo" data-icon="aa"></button>
     <button class="icon-btn" id="reader-edit" aria-label="Editar" data-icon="edit"></button>
   </header>
   <div class="progress"><div id="progress-bar"></div></div>
   <div class="scroll reader-scroll" id="reader-scroll">
     <article class="doc-content" id="reader-content"></article>
+    <div class="doc-content outline" id="reader-outline" hidden></div>
   </div>
+  <button class="float-timer" id="float-timer" aria-label="Cronómetro" hidden></button>
 </section>
 
 <!-- Editor -->

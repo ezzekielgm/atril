@@ -25,6 +25,10 @@ La dirección es pública, pero solo contiene la app vacía: tus discursos y not
 - **T**: tamaño, tema (claro, sepia u oscuro), tipo de letra e interlineado.
 - **Cronómetro**: tócalo para empezar o pararlo. Con la flecha circular vuelve a cero.
 - La pantalla no se apaga mientras lees (se puede desactivar en Ajustes).
+- **Citas bíblicas**: las citas como «Sal 37:4» o «1 Cor. 13:4-7» salen subrayadas; tócalas para abrir el versículo en JW Library (en Ajustes puedes elegir jw.org o quitar los enlaces).
+- **Esquema** (botón de las tres rayas): muestra solo los títulos y lo que hayas resaltado. Toca un punto para ir a esa parte del texto.
+- **Duración del discurso** (en **T**): pon los minutos que tienes. Con el cronómetro en marcha verás «Adelantado», «En tiempo» o «Retrasado»; se pone naranja cuando queda poco y rojo si te pasas. Si un título termina en «(5 min)», calcula el ritmo por partes.
+- Con la barra oculta queda un cronómetro pequeño abajo a la derecha; tócalo para pausar.
 - **Lápiz**: editar. Se guarda solo mientras escribes.
 - **⋯ → Guardar como Word**, y luego **Guardar en Archivos** (o mandarlo por correo o WhatsApp).
 

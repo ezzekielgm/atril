@@ -1,6 +1,9 @@
 // Atril — lector y editor de discursos y notas (PWA)
 // Código sin frameworks. Los datos se guardan en IndexedDB, en el propio dispositivo.
 
+import { enlazarCitas } from "./biblia.js";
+import { crearPlan, tiempoPrevisto, palabraActual, mmss, contarPalabras, minutosEstimados, minutosDeTitulo, tituloSinMinutos, PALABRAS_POR_MINUTO } from "./tiempo.js";
+
 /* ============================================================
    Utilidades
    ============================================================ */
@@ -113,6 +116,7 @@ const P = {
   upload: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M17 8l-5-5-5 5"/><path d="M12 3v12"/>',
   note: '<path d="M15 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9z"/><path d="M15 3v6h6"/><path d="M7 13h10M7 17h6"/>',
   move: '<path d="M5 12h14"/><path d="M13 6l6 6-6 6"/>',
+  outline: '<path d="M4 6h16"/><path d="M9 12h11"/><path d="M9 18h11"/><path d="M4 12h.01M4 18h.01" stroke-width="3"/>',
 };
 const icon = (name) =>
   `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${P[name] || ""}</svg>`;
@@ -284,7 +288,7 @@ const store = {
 /* ============================================================
    Ajustes
    ============================================================ */
-const DEFAULTS = { fontSize: 26, theme: "claro", font: "serif", lineHeight: 1.6, wakeLock: true, tab: "docs" };
+const DEFAULTS = { fontSize: 26, theme: "claro", font: "serif", lineHeight: 1.6, wakeLock: true, tab: "docs", refLinks: "app" };
 const FS_MIN = 14, FS_MAX = 80;
 let settings = { ...DEFAULTS };
 try { settings = { ...DEFAULTS, ...JSON.parse(localStorage.getItem("atril.settings") || "{}") }; } catch {}
@@ -709,7 +713,7 @@ async function renderHome() {
       const words = text ? text.split(/\s+/).filter(Boolean).length : 0;
       const main = el("button", { class: "card-main", onclick: () => go(tab === "docs" ? `#/leer/docs/${it.id}` : `#/editar/notes/${it.id}`) },
         el("span", { class: "card-title", text: title }),
-        el("span", { class: "card-meta", text: `${fmtDate(it.updated || it.created)} · ${words.toLocaleString("es-ES")} palabras` }),
+        el("span", { class: "card-meta", text: `${fmtDate(it.updated || it.created)} · ${words.toLocaleString("es-ES")} palabras${words ? ` · ≈ ${minutosEstimados(words)} min` : ""}${it.target ? ` · objetivo ${it.target} min` : ""}` }),
         el("span", { class: "card-snippet", text: text.replace(/\s+/g, " ").slice(title === text.split("\n")[0] ? title.length : 0, 220).trim() })
       );
       const more = el("button", { class: "card-more", "aria-label": "Opciones", html: icon("more"), onclick: () => actionSheet(title, itemActions(tab, it)) });
@@ -743,6 +747,18 @@ function openSettings() {
   openSheet([
     el("h2", { text: "Ajustes" }),
     el("label", { class: "switch-row" }, el("span", { text: "Mantener la pantalla encendida al leer" }), wake),
+    el("div", { class: "group" },
+      el("span", { class: "label", text: "Citas bíblicas" }),
+      el("p", { class: "small-print", text: "Al leer, las citas como «Sal 37:4» se pueden tocar para abrir el versículo." }),
+      el("div", { class: "chips" }, [["app", "Abrir en JW Library"], ["web", "Abrir en jw.org"], ["off", "Sin enlaces"]].map(([val, label]) => {
+        const b = el("button", { class: "chip", "aria-pressed": String(settings.refLinks === val), text: label });
+        b.addEventListener("click", () => {
+          settings.refLinks = val; saveSettings();
+          $$(".chip", b.parentElement).forEach((c) => c.setAttribute("aria-pressed", String(c === b)));
+        });
+        return b;
+      }))
+    ),
     el("div", { class: "group" },
       el("span", { class: "label", text: "Copia de seguridad" }),
       el("p", { class: "small-print", text: "Tus discursos y notas se guardan solo en este dispositivo. Haz una copia de vez en cuando y guárdala en Archivos o iCloud." }),
@@ -871,6 +887,7 @@ const timer = {
     $("#timer-text").textContent = (h ? h + ":" + String(m).padStart(2, "0") : String(m).padStart(2, "0")) + ":" + String(sec).padStart(2, "0");
     $("#timer").classList.toggle("running", this.running);
     $("#timer-reset").hidden = this.running || this.elapsed === 0;
+    if (currentView === "reader") reader.paintPace();
   },
 };
 
@@ -908,7 +925,7 @@ function openAaSheet() {
     }));
   aaSheetOpen = true;
   openSheet([
-    el("h2", { text: "Texto" }),
+    el("h2", { text: currentView === "reader" ? "Texto y tiempo" : "Texto" }),
     el("div", { class: "group" },
       el("span", { class: "label", html: `Tamaño · <span id="aa-value">${settings.fontSize}</span>` }),
       el("div", { class: "size-row" },
@@ -924,13 +941,14 @@ function openAaSheet() {
       chipGroup([["serif", "Clásica"], ["sans", "Moderna"]], "font")),
     el("div", { class: "group" }, el("span", { class: "label", text: "Interlineado" }),
       chipGroup([[1.35, "Junto"], [1.6, "Normal"], [1.9, "Amplio"]], "lineHeight")),
+    currentView === "reader" ? reader.timeGroup() : null,
     el("div", { class: "actions" }, el("button", { class: "action plain", text: "Cerrar", onclick: () => closeSheet() })),
-  ], { onClose: () => { aaSheetOpen = false; } });
+  ].filter(Boolean), { onClose: () => { aaSheetOpen = false; } });
 }
 
 const reader = {
-  kind: null, id: null, item: null,
-  scrollEl: $("#reader-scroll"), contentEl: $("#reader-content"),
+  kind: null, id: null, item: null, plan: null, mode: "texto", lastPace: null,
+  scrollEl: $("#reader-scroll"), contentEl: $("#reader-content"), outlineEl: $("#reader-outline"),
   posKey() { return `atril.pos.${this.kind}.${this.id}`; },
 
   async open(kind, id, stale = () => false) {
@@ -942,6 +960,9 @@ const reader = {
     $("#reader-title").textContent = title;
     document.title = title + " · Atril";
     this.contentEl.innerHTML = item.html || "";
+    enlazarCitas(this.contentEl, settings.refLinks);
+    this.setMode("texto", { keepScroll: true });
+    this.buildPlan();
     views.reader.classList.remove("immersive");
     showView("reader");
     timer.paint();
@@ -953,13 +974,146 @@ const reader = {
 
   leave() {
     keepAwake(false);
-    this.savePos();
+    if (this.mode === "texto") this.savePos();
+    else if (this.savedScroll != null && this.scrollEl.scrollHeight) lsSet(this.posKey(), String(this.savedScroll / this.scrollEl.scrollHeight));
+    views.reader.classList.remove("immersive");
+    $("#float-timer").hidden = true;
   },
 
   savePos() {
-    if (!this.id) return;
+    if (!this.id || this.mode !== "texto") return;
     const r = this.scrollEl.scrollHeight ? this.scrollEl.scrollTop / this.scrollEl.scrollHeight : 0;
     lsSet(this.posKey(), String(Math.round(r * 10000) / 10000));
+  },
+
+  buildPlan() {
+    this.plan = crearPlan([...this.contentEl.children], Number(this.item && this.item.target) || 0);
+    this.paintPace();
+  },
+
+  /** Ritmo: colores del cronómetro y «adelantado / retrasado». */
+  paintPace() {
+    const chip = $("#pace"), flot = $("#float-timer"), tEl = $("#timer");
+    const seg = timer.ms() / 1000;
+    const started = timer.running || timer.elapsed > 0;
+    const plan = this.plan;
+    tEl.classList.remove("warn", "over");
+    let estado = "", largo = "", corto = "";
+    if (plan && started) {
+      const objetivo = plan.objetivoSeg;
+      const resta = objetivo - seg;
+      if (resta <= 0) { tEl.classList.add("over"); estado = "over"; largo = `Te pasas ${mmss(-resta)}`; corto = `+${mmss(-resta)}`; }
+      else {
+        if (resta <= Math.max(60, objetivo * 0.1)) tEl.classList.add("warn");
+        if (this.mode === "texto") this.lastPace = tiempoPrevisto(plan, palabraActual(plan, this.scrollEl, this.contentEl)) - seg;
+        const d = this.lastPace == null ? 0 : this.lastPace;
+        if (Math.abs(d) < 20) { estado = "ok"; largo = "En tiempo"; corto = "✓"; }
+        else if (d > 0) { estado = "ahead"; largo = `Adelantado ${mmss(d)}`; corto = `−${mmss(d)}`; }
+        else { estado = "behind"; largo = `Retrasado ${mmss(-d)}`; corto = `+${mmss(-d)}`; }
+      }
+    }
+    chip.hidden = !estado;
+    chip.className = "pace " + estado;
+    chip.innerHTML = estado ? `<span class="long">${escapeHtml(largo)}</span><span class="short">${escapeHtml(corto)}</span>` : "";
+    $("#timer-toggle").title = plan ? `Objetivo ${mmss(plan.objetivoSeg)}` : "Cronómetro";
+    // Cronómetro flotante en modo atril
+    const showFloat = views.reader.classList.contains("immersive") && started;
+    flot.hidden = !showFloat;
+    if (showFloat) {
+      flot.className = "float-timer" + (tEl.classList.contains("over") ? " over" : tEl.classList.contains("warn") ? " warn" : "") + (timer.running ? "" : " paused");
+      flot.innerHTML = `<span>${mmss(seg)}</span>${estado ? `<span class="fp ${estado}">${escapeHtml(corto)}</span>` : ""}`;
+    }
+  },
+
+  /** Bloque de «Duración del discurso» del panel Texto y tiempo. */
+  timeGroup() {
+    const palabras = contarPalabras(this.contentEl.textContent || "");
+    const est = minutosEstimados(palabras);
+    const partes = this.plan && this.plan.porPartes ? this.plan.secciones : [];
+    const valor = el("input", { type: "number", inputmode: "numeric", min: 0, max: 240, step: 1, class: "num-input", "aria-label": "Minutos de objetivo", value: Number(this.item.target) || "" , placeholder: "—" });
+    const guardar = debounce(async () => { try { await store.put(this.kind, this.item); } catch (e) { console.error(e); } }, 500);
+    const fijar = (n) => {
+      n = Math.max(0, Math.min(240, Math.round(Number(n) || 0)));
+      this.item.target = n || undefined;
+      valor.value = n || "";
+      guardar();
+      this.buildPlan();
+      timer.paint();
+    };
+    valor.addEventListener("input", () => fijar(valor.value));
+    return el("div", { class: "group" },
+      el("span", { class: "label", text: "Duración del discurso" }),
+      el("div", { class: "size-row" },
+        el("button", { class: "chip", text: "−", "aria-label": "Un minuto menos", onclick: () => fijar((Number(valor.value) || est) - 1) }),
+        valor,
+        el("span", { class: "unit", text: "min" }),
+        el("button", { class: "chip", text: "+", "aria-label": "Un minuto más", onclick: () => fijar((Number(valor.value) || est) + 1) }),
+        el("button", { class: "chip", text: "Quitar", onclick: () => fijar(0) })
+      ),
+      el("p", { class: "small-print", text: `Lectura estimada: ≈ ${est} min (${palabras.toLocaleString("es-ES")} palabras a ${PALABRAS_POR_MINUTO} por minuto).` }),
+      partes.length
+        ? el("p", { class: "small-print", text: `Hay ${partes.length} partes con minutos en el título (suman ${mmss(this.plan.sumaPartesSeg)}). El ritmo se calcula por partes.` })
+        : el("p", { class: "small-print", text: "Con el cronómetro en marcha verás si vas adelantado o retrasado. Truco: si pones «(5 min)» al final de un título, se calcula por partes." })
+    );
+  },
+
+  setMode(mode, { keepScroll = false } = {}) {
+    this.mode = mode;
+    const esquema = mode === "esquema";
+    if (esquema) this.renderOutline();
+    this.outlineEl.hidden = !esquema;
+    this.contentEl.hidden = esquema;
+    const b = $("#reader-outline-btn");
+    b.classList.toggle("active", esquema);
+    b.setAttribute("aria-pressed", String(esquema));
+    if (esquema) this.scrollEl.scrollTop = 0;
+    else if (!keepScroll && this.savedScroll != null) this.scrollEl.scrollTop = this.savedScroll;
+    this.paintProgress();
+  },
+
+  toggleOutline() {
+    if (this.mode === "texto") { this.savedScroll = this.scrollEl.scrollTop; this.setMode("esquema"); }
+    else this.setMode("texto");
+  },
+
+  /** Esquema: títulos y frases resaltadas. Tocar un punto lleva a su sitio en el texto. */
+  renderOutline() {
+    const out = this.outlineEl;
+    out.replaceChildren();
+    const bloques = [...this.contentEl.children];
+    let n = 0;
+    bloques.forEach((b, i) => {
+      const tag = b.tagName;
+      if (/^H[1-4]$/.test(tag)) {
+        const min = minutosDeTitulo(b.textContent);
+        const h = el("button", { class: `o-item o-h o-${tag.toLowerCase()}`, "data-i": i });
+        h.textContent = min ? tituloSinMinutos(b.textContent) : b.textContent.trim();
+        if (min) h.append(el("span", { class: "o-min", text: `${String(min).replace(".", ",")} min` }));
+        out.append(h); n++;
+        return;
+      }
+      b.querySelectorAll("mark").forEach((m) => {
+        const item = el("div", { class: "o-item o-m", "data-i": i, role: "button", tabindex: "0" });
+        item.innerHTML = m.innerHTML;
+        out.append(item); n++;
+      });
+    });
+    if (!n) {
+      out.append(el("div", { class: "o-empty" },
+        el("h2", { text: "El esquema está vacío" }),
+        el("p", { text: "Aquí salen los títulos y las frases resaltadas. En el editor, usa «Título» o «Subtítulo» para las partes y el marcador para las ideas clave." })
+      ));
+    }
+  },
+
+  goToBlock(i) {
+    this.setMode("texto", { keepScroll: true });
+    const b = this.contentEl.children[i];
+    if (!b) return;
+    const top = b.getBoundingClientRect().top - this.scrollEl.getBoundingClientRect().top;
+    this.scrollEl.scrollTop += top - Math.min(80, this.scrollEl.clientHeight * 0.15);
+    b.classList.remove("flash"); void b.offsetWidth; b.classList.add("flash");
+    this.paintProgress();
   },
 
   paintProgress() {
@@ -971,13 +1125,26 @@ const reader = {
   init() {
     attachPinch(this.scrollEl, this.contentEl);
     const saveLater = debounce(() => this.savePos(), 400);
-    this.scrollEl.addEventListener("scroll", () => { this.paintProgress(); saveLater(); }, { passive: true });
+    let paceRaf = 0;
+    this.scrollEl.addEventListener("scroll", () => {
+      this.paintProgress();
+      if (this.mode === "texto") saveLater();
+      if (!paceRaf && (timer.running || timer.elapsed)) paceRaf = requestAnimationFrame(() => { paceRaf = 0; this.paintPace(); });
+    }, { passive: true });
     // Un toque sobre el texto oculta o muestra la barra (modo atril)
     this.contentEl.addEventListener("click", (e) => {
       if (e.target.closest("a")) return;
       if (window.getSelection && String(window.getSelection()).length) return;
       views.reader.classList.toggle("immersive");
+      this.paintPace();
     });
+    this.outlineEl.addEventListener("click", (e) => {
+      if (e.target.closest("a")) return;
+      const it = e.target.closest(".o-item");
+      if (it) this.goToBlock(Number(it.dataset.i));
+    });
+    $("#reader-outline-btn").addEventListener("click", () => this.toggleOutline());
+    $("#float-timer").addEventListener("click", () => timer.toggle());
     $("#reader-back").addEventListener("click", () => go("#/"));
     $("#reader-edit").addEventListener("click", () => go(`#/editar/${this.kind}/${this.id}`));
     $("#reader-aa").addEventListener("click", openAaSheet);
@@ -1207,4 +1374,4 @@ function registerSW() {
 init();
 
 // Exportado para las pruebas automáticas
-window.__atril = { sanitize, htmlToText, textToHtml, store, settings: () => settings, setFontSize, importFiles, exportWord };
+window.__atril = { sanitize, htmlToText, textToHtml, store, settings: () => settings, setFontSize, importFiles, exportWord, timer, reader };
