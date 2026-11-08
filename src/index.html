@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="claro" data-font="serif">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Atril</title>
+<meta name="description" content="Lee, edita y toma notas de tus discursos.">
+<meta name="theme-color" content="#ffffff">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Atril">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- Inicio -->
+<section id="view-home" class="view" hidden>
+  <header class="topbar">
+    <h1 class="brand">Atril</h1>
+    <div class="spacer"></div>
+    <button class="icon-btn" id="btn-settings" aria-label="Ajustes" data-icon="settings"></button>
+  </header>
+  <div class="home-tools">
+    <div class="segmented" role="tablist">
+      <button role="tab" data-tab="docs">Discursos</button>
+      <button role="tab" data-tab="notes">Notas</button>
+    </div>
+    <label class="search">
+      <span data-icon="search"></span>
+      <input id="search" type="search" placeholder="Buscar" autocomplete="off">
+    </label>
+  </div>
+  <div class="scroll" id="home-scroll">
+    <div class="install-hint" id="install-hint" hidden>
+      <p><strong>Instálala en el iPad:</strong> toca <span data-icon="share" class="inline-icon"></span> Compartir y luego <em>Añadir a pantalla de inicio</em>. Así se abre como una app y funciona sin internet.</p>
+      <button class="text-btn" id="hide-install-hint">Entendido</button>
+    </div>
+    <div class="home-actions" id="home-actions"></div>
+    <ul class="list" id="list"></ul>
+    <div class="empty" id="empty" hidden></div>
+  </div>
+  <input type="file" id="file-input" accept=".docx,.txt,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain" multiple hidden>
+  <input type="file" id="backup-input" accept=".json,application/json" hidden>
+</section>
+
+<!-- Lector -->
+<section id="view-reader" class="view" hidden>
+  <header class="topbar reader-bar">
+    <button class="icon-btn" id="reader-back" aria-label="Volver" data-icon="back"></button>
+    <div class="title" id="reader-title"></div>
+    <div class="timer" id="timer">
+      <button class="timer-btn" id="timer-toggle" aria-label="Cronómetro"><span data-icon="timer"></span><span id="timer-text">00:00</span></button>
+      <button class="icon-btn small" id="timer-reset" aria-label="Poner a cero" data-icon="reset" hidden></button>
+    </div>
+    <button class="icon-btn" id="reader-aa" aria-label="Texto y tema" data-icon="aa"></button>
+    <button class="icon-btn" id="reader-edit" aria-label="Editar" data-icon="edit"></button>
+  </header>
+  <div class="progress"><div id="progress-bar"></div></div>
+  <div class="scroll reader-scroll" id="reader-scroll">
+    <article class="doc-content" id="reader-content"></article>
+  </div>
+</section>
+
+<!-- Editor -->
+<section id="view-editor" class="view" hidden>
+  <header class="topbar">
+    <button class="icon-btn" id="editor-back" aria-label="Volver" data-icon="back"></button>
+    <input class="title-input" id="editor-title" placeholder="Título" autocomplete="off">
+    <span class="save-state" id="save-state"></span>
+    <button class="icon-btn" id="editor-read" aria-label="Leer en grande" data-icon="book"></button>
+    <button class="icon-btn" id="editor-more" aria-label="Más opciones" data-icon="more"></button>
+  </header>
+  <div class="toolbar" id="toolbar">
+    <button data-cmd="undo" aria-label="Deshacer" data-icon="undo"></button>
+    <button data-cmd="redo" aria-label="Rehacer" data-icon="redo"></button>
+    <span class="sep"></span>
+    <button data-cmd="bold" aria-label="Negrita"><b>N</b></button>
+    <button data-cmd="italic" aria-label="Cursiva"><i>K</i></button>
+    <button data-cmd="underline" aria-label="Subrayado"><u>S</u></button>
+    <button data-cmd="highlight" aria-label="Resaltar" data-icon="marker"></button>
+    <span class="sep"></span>
+    <button data-cmd="h1" aria-label="Título" class="txt">Título</button>
+    <button data-cmd="h2" aria-label="Subtítulo" class="txt">Subtítulo</button>
+    <button data-cmd="p" aria-label="Texto normal" class="txt">Normal</button>
+    <span class="sep"></span>
+    <button data-cmd="ul" aria-label="Viñetas" data-icon="list"></button>
+    <button data-cmd="ol" aria-label="Lista numerada" data-icon="olist"></button>
+    <button data-cmd="clear" aria-label="Quitar formato" data-icon="clear"></button>
+  </div>
+  <div class="scroll editor-scroll" id="editor-scroll">
+    <div class="doc-content editor" id="editor" contenteditable="true" spellcheck="true" autocapitalize="sentences"></div>
+  </div>
+</section>
+
+<div class="zoom-toast" id="zoom-toast" hidden></div>
+<div class="toast" id="toast" hidden></div>
+<div class="overlay" id="overlay" hidden></div>
+
+<script type="module" src="js/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,16 @@
+{
+  "name": "atril",
+  "version": "1.0.0",
+  "description": "Lector y editor de discursos y notas (PWA)",
+  "scripts": {
+    "build": "node build.mjs",
+    "serve": "npx --yes http-server dist -p 8080 -c-1",
+    "icons": "node scripts/make-icons.mjs"
+  },
+  "dependencies": {
+    "docx": "^9.15.3",
+    "esbuild": "^0.28.2",
+    "mammoth": "^1.13.0"
+  },
+  "private": true
+}
