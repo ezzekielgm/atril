@@ -39,6 +39,13 @@
       <p><strong>Instálala en el iPad:</strong> toca <span data-icon="share" class="inline-icon"></span> Compartir y luego <em>Añadir a pantalla de inicio</em>. Así se abre como una app y funciona sin internet.</p>
       <button class="text-btn" id="hide-install-hint">Entendido</button>
     </div>
+    <div class="install-hint backup-hint" id="backup-hint" role="status" hidden>
+      <p id="backup-hint-text"></p>
+      <div class="backup-btns">
+        <button class="btn primary" id="backup-now"><span>Hacer copia</span></button>
+        <button class="text-btn" id="backup-later">Más tarde</button>
+      </div>
+    </div>
     <div class="home-actions" id="home-actions"></div>
     <ul class="list" id="list"></ul>
     <div class="empty" id="empty" hidden></div>
@@ -112,6 +119,7 @@
     <button class="icon-btn" id="editor-back" aria-label="Volver" data-icon="back"></button>
     <input class="title-input" id="editor-title" placeholder="Título" autocomplete="off">
     <span class="save-state" id="save-state"></span>
+    <button class="time-chip" id="editor-time" aria-label="Tiempo estimado" hidden></button>
     <button class="icon-btn" id="editor-read" aria-label="Leer en grande" data-icon="book"></button>
     <button class="icon-btn" id="editor-more" aria-label="Más opciones" data-icon="more"></button>
   </header>

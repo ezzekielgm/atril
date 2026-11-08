@@ -1,8 +1,8 @@
 // Pruebas sin navegador: plantilla, tarjetas, partes de los ensayos y colores. Uso: node test/unidad.test.mjs
 import { repartirMinutos, crearPlantilla } from "../src/plantilla.js";
-import { dividirEnTarjetas, partesDelDiscurso, parteDeBloque } from "../src/tarjetas.js";
+import { dividirEnTarjetas, partesDelDiscurso, parteDeBloque, estimarPartes } from "../src/tarjetas.js";
 import { claseDeFondo, claseValida } from "../src/colores.js";
-import { crearPlan, minutosDeTitulo } from "../src/tiempo.js";
+import { crearPlan, minutosDeTitulo, ritmoDeEnsayos, minutosEstimados } from "../src/tiempo.js";
 
 let fallos = 0, total = 0;
 const ok = (nombre, cond, extra = "") => { total++; if (!cond) fallos++; console.log(`${cond ? "✔" : "✘"} ${nombre}${extra ? " — " + extra : ""}`); };
@@ -43,6 +43,22 @@ ok("Partes con minutos del plan", igual(partes, [{ bloque: 0, titulo: "Introducc
 ok("Parte de cada bloque", parteDeBloque(partes, 0) === 0 && parteDeBloque(partes, 2) === 0 && parteDeBloque(partes, 4) === 1);
 const sinPlan = partesDelDiscurso([{ tag: "P", texto: "hola" }], null);
 ok("Sin títulos: una sola parte", sinPlan.length === 1 && sinPlan[0].titulo === "Todo el discurso");
+
+// --- Tiempo estimado por partes
+const palabras = (n) => Array.from({ length: n }, () => "palabra").join(" ");
+const doc = [
+  { tagName: "H1", textContent: "Título" },
+  { tagName: "H2", textContent: "Introducción (1 min)" },
+  { tagName: "P", textContent: palabras(129) },
+  { tagName: "H2", textContent: "Punto (4 min)" },
+  { tagName: "P", textContent: palabras(649) },
+];
+const est = estimarPartes(doc, 0, 130);
+ok("Estimación total y objetivo por los títulos", est.palabras === 785 && est.seg === Math.round(785 / 130 * 60) && est.objetivoSeg === 300, `${est.seg} s de ${est.objetivoSeg} s`);
+ok("Estimación por parte (con el título del discurso en la primera)", est.partes.length === 2 && est.partes[0].palabras === 133 && est.partes[1].palabras === 652 && est.partes[1].objetivoSeg === 240,
+  est.partes.map((p) => `${p.titulo}: ${p.palabras} pal, ${p.seg} s`).join(" | "));
+ok("Con otro ritmo cambia la estimación", estimarPartes(doc, 0, 110).seg > est.seg && minutosEstimados(1100, 110) === 10);
+ok("Ritmo real según los ensayos", ritmoDeEnsayos([{ seg: 300 }, { seg: 330 }, { seg: 20 }], 600) === 114 && ritmoDeEnsayos([{ seg: 20 }], 600) === null && ritmoDeEnsayos([], 600) === null);
 
 // --- Colores
 ok("Fondos del editor y de Word a su color", [

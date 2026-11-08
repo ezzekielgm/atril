@@ -9,6 +9,9 @@ function plegar(c) {
   return f.length ? f[0] : c;
 }
 
+/** Texto sin acentos y en minúsculas, para comparar («Congregación» = «congregacion»). */
+export const plegarTexto = (s) => String(s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
+
 /**
  * Envuelve cada coincidencia en <span class="hit">. Devuelve una lista con los spans de cada coincidencia
  * (una coincidencia puede tener varios si cruza etiquetas).

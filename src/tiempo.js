@@ -4,7 +4,19 @@ export const PALABRAS_POR_MINUTO = 130; // ritmo habitual hablando en público e
 
 export const contarPalabras = (texto) => (texto.match(/[\p{L}\p{N}]+(?:['’][\p{L}]+)?/gu) || []).length;
 
-export const minutosEstimados = (palabras) => (palabras ? Math.max(1, Math.round(palabras / PALABRAS_POR_MINUTO)) : 0);
+export const minutosEstimados = (palabras, ppm = PALABRAS_POR_MINUTO) => (palabras ? Math.max(1, Math.round(palabras / ppm)) : 0);
+
+/**
+ * Ritmo real al hablar (palabras por minuto) según los últimos ensayos de un discurso de `palabras` palabras.
+ * Solo cuenta ensayos de al menos un minuto. Devuelve null si no hay datos razonables.
+ */
+export function ritmoDeEnsayos(ensayos, palabras) {
+  const validos = (ensayos || []).filter((e) => e && e.seg >= 60).slice(0, 5);
+  if (!validos.length || !palabras) return null;
+  const media = validos.reduce((a, e) => a + e.seg, 0) / validos.length;
+  const ppm = Math.round(palabras / (media / 60));
+  return ppm >= 70 && ppm <= 220 ? ppm : null;
+}
 
 /** Minutos indicados en un título: «Introducción (3 min)», «Punto 1 — 5 minutos», «(2,5 min.)» */
 export function minutosDeTitulo(texto) {

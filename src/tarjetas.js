@@ -1,4 +1,5 @@
-// División del discurso en tarjetas (modo tarjetas) y en partes (ensayos).
+// División del discurso en tarjetas (modo tarjetas) y en partes (ensayos), y tiempo estimado por parte.
+import { crearPlan, contarPalabras, tituloSinMinutos } from "./tiempo.js";
 
 const NIVEL = { H1: 1, H2: 2, H3: 3, H4: 4 };
 
@@ -51,6 +52,29 @@ export function partesDelDiscurso(bloques, plan, limpiarTitulo = (t) => t) {
   }
   if (!partes.length) partes.push({ bloque: 0, titulo: "Todo el discurso", objetivoSeg: plan ? Math.round(plan.objetivoSeg) : null });
   return partes;
+}
+
+/**
+ * Tiempo estimado de lectura, total y por parte, a `ppm` palabras por minuto.
+ * bloques: elementos (o {tagName, textContent}). Devuelve {palabras, seg, objetivoSeg, partes[{titulo, palabras, seg, objetivoSeg}]}.
+ */
+export function estimarPartes(bloques, objetivoMin, ppm) {
+  const lista = [...bloques];
+  const palabrasBloque = lista.map((b) => contarPalabras(b.textContent || ""));
+  const total = palabrasBloque.reduce((a, b) => a + b, 0);
+  const plan = crearPlan(lista, Number(objetivoMin) || 0);
+  const partes = partesDelDiscurso(lista.map((b) => ({ tag: b.tagName, texto: b.textContent || "" })), plan, tituloSinMinutos);
+  const seg = (p) => Math.round((p / ppm) * 60);
+  return {
+    palabras: total,
+    seg: seg(total),
+    objetivoSeg: plan ? Math.round(plan.objetivoSeg) : null,
+    partes: partes.map((p, k) => {
+      const fin = k + 1 < partes.length ? partes[k + 1].bloque : lista.length;
+      const palabras = palabrasBloque.slice(p.bloque, fin).reduce((a, b) => a + b, 0);
+      return { titulo: p.titulo, palabras, seg: seg(palabras), objetivoSeg: p.objetivoSeg };
+    }),
+  };
 }
 
 /** Índice de la parte en la que está un bloque. */

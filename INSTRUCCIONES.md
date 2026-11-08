@@ -30,13 +30,14 @@ La dirección es pública, pero solo contiene la app vacía: tus discursos y not
 - **Esquema** (botón de las tres rayas): muestra solo los títulos y lo que hayas resaltado. Toca un punto para ir a esa parte del texto. Arriba puedes filtrar: solo títulos o solo un color.
 - **Duración del discurso** (en **T**): pon los minutos que tienes. Con el cronómetro en marcha verás «Adelantado», «En tiempo» o «Retrasado»; se pone naranja cuando queda poco y rojo si te pasas. Si un título termina en «(5 min)», calcula el ritmo por partes.
 - Con la barra oculta queda un cronómetro pequeño abajo a la derecha; tócalo para pausar.
-- **Lápiz**: editar. Se guarda solo mientras escribes. El **marcador** abre los colores (amarillo, verde, azul y rosa): selecciona el texto y toca un color. Con el cursor dentro de un resaltado, otro color lo cambia y «Quitar» lo borra. Los colores se respetan al abrir y al guardar en Word.
+- **Lápiz**: editar. Se guarda solo mientras escribes. Arriba verás **≈ 7 / 10 min**: lo que durará al ritmo al que hablas y tu objetivo. Se pone naranja si una parte se pasa de sus minutos y rojo si te pasas en total. Tócalo para ver cada parte, cambiar el objetivo o ajustar tu ritmo (incluso el real, sacado de tus ensayos). El **marcador** abre los colores (amarillo, verde, azul y rosa): selecciona el texto y toca un color. Con el cursor dentro de un resaltado, otro color lo cambia y «Quitar» lo borra. Los colores se respetan al abrir y al guardar en Word.
 
 **El botón ⋯ del lector**
 - **Buscar en el texto**: da igual mayúsculas o acentos («pasion» encuentra «pasión»). Las flechas van de una a otra.
 - **Tarjetas**: una parte del discurso por pantalla, con letra grande. Desliza el dedo o toca a la derecha o a la izquierda para pasar. Funciona también con un teclado o un pedal de pasar páginas.
 - **Desplazamiento automático**: el texto sube solo, al ritmo de tu objetivo de tiempo (o a 130 palabras por minuto). Abajo tienes pausa, más despacio, más deprisa y terminar. Un toque en el texto también pausa.
 - **Ensayos**: cada vez que pones el cronómetro a cero después de al menos 30 segundos se guarda el ensayo, con el tiempo total y el de cada parte, comparado con tu objetivo. Si activas **Grabar audio al ensayar**, se graba tu voz mientras corre el cronómetro; luego puedes escucharla, saltar a cada parte y guardarla en Archivos. Se guardan las 5 últimas grabaciones de cada discurso, solo en el iPad.
+- **Apuntar que lo he dado**: fecha, lugar y notas. Si pones un lugar donde ya lo diste, te avisa. En la lista de discursos verás «Dado 2 veces · último…», y en el buscador del inicio puedes escribir un lugar para saber qué discursos has dado allí.
 - **Guardar como Word** o **como PDF** (para imprimir; puedes elegir letra normal, grande o muy grande). Después, **Guardar en Archivos** o mandarlo por correo o WhatsApp.
 
 **Discurso nuevo con plantilla**
@@ -48,7 +49,7 @@ En **Nuevo discurso → Con plantilla** pones el título, los minutos y cuántos
 - También puedes guardarla como Word directamente.
 
 **Copia de seguridad** (rueda dentada → Hacer copia de seguridad)
-Haz una de vez en cuando y guárdala en Archivos o iCloud. **Si borras el icono de la app, se borran sus datos**, y con la copia los recuperas (Restaurar una copia). La copia lleva los discursos, las notas, los objetivos de tiempo y el historial de ensayos; las grabaciones de audio no (guárdalas aparte si quieres conservarlas).
+Haz una de vez en cuando y guárdala en Archivos o iCloud. **Si borras el icono de la app, se borran sus datos**, y con la copia los recuperas (Restaurar una copia). Si pasan más de 14 días sin copia y has cambiado algo, Atril te lo recuerda al abrirla. La copia lleva los discursos, las notas, los objetivos de tiempo, el historial de ensayos y dónde los has dado; las grabaciones de audio no (guárdalas aparte si quieres conservarlas).
 
 ## 4. Cuando haya una versión nueva
 

@@ -2,11 +2,11 @@
 // Código sin frameworks. Los datos se guardan en IndexedDB, en el propio dispositivo.
 
 import { enlazarCitas } from "./biblia.js";
-import { crearPlan, tiempoPrevisto, palabraActual, mmss, contarPalabras, minutosEstimados, minutosDeTitulo, tituloSinMinutos, PALABRAS_POR_MINUTO } from "./tiempo.js";
+import { crearPlan, tiempoPrevisto, palabraActual, mmss, contarPalabras, minutosEstimados, minutosDeTitulo, tituloSinMinutos, ritmoDeEnsayos, PALABRAS_POR_MINUTO } from "./tiempo.js";
 import { COLORES, claseValida, claseDeFondo, colorDeMark } from "./colores.js";
 import { crearPlantilla, repartirMinutos } from "./plantilla.js";
-import { dividirEnTarjetas, nivelDeCorte, partesDelDiscurso, parteDeBloque } from "./tarjetas.js";
-import { marcarCoincidencias, limpiarCoincidencias } from "./buscar.js";
+import { dividirEnTarjetas, nivelDeCorte, partesDelDiscurso, parteDeBloque, estimarPartes } from "./tarjetas.js";
+import { marcarCoincidencias, limpiarCoincidencias, plegarTexto } from "./buscar.js";
 import { puedeGrabar, crearGrabadora, extensionDe } from "./grabadora.js";
 
 /* ============================================================
@@ -136,6 +136,8 @@ const P = {
   bookmark: '<path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>',
   scroll: '<path d="M12 3v13"/><path d="M7 11l5 5 5-5"/><path d="M5 21h14"/>',
   template: '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/>',
+  calendar: '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="M8 15l2.5 2.5L16 13"/>',
+  clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
 };
 const icon = (name) =>
   `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${P[name] || ""}</svg>`;
@@ -333,11 +335,13 @@ async function tx(storeName, mode, fn) {
     t.onabort = () => reject(t.error);
   });
 }
+/** Apunta cuándo cambió algo (para el aviso de copia de seguridad). */
+const marcarCambio = (s) => { if (s === "docs" || s === "notes") lsSet("atril.cambio", String(Date.now())); };
 const store = {
   all: (s) => tx(s, "readonly", (o) => o.getAll()),
   get: (s, id) => tx(s, "readonly", (o) => o.get(id)),
-  put: (s, obj) => tx(s, "readwrite", (o) => o.put(obj)),
-  del: (s, id) => tx(s, "readwrite", (o) => o.delete(id)),
+  put: (s, obj) => { marcarCambio(s); return tx(s, "readwrite", (o) => o.put(obj)); },
+  del: (s, id) => { marcarCambio(s); return tx(s, "readwrite", (o) => o.delete(id)); },
 };
 
 /* ============================================================
@@ -345,11 +349,13 @@ const store = {
    ============================================================ */
 const DEFAULTS = {
   fontSize: 26, theme: "claro", font: "serif", lineHeight: 1.6, wakeLock: true, tab: "docs", refLinks: "app",
-  grabar: false, tpWpm: 130, pdfSize: 16, pdfMarks: true, markColor: "amarillo",
+  grabar: false, tpWpm: 130, pdfSize: 16, pdfMarks: true, markColor: "amarillo", ppm: PALABRAS_POR_MINUTO,
 };
 const FS_MIN = 14, FS_MAX = 80;
 let settings = { ...DEFAULTS };
 try { settings = { ...DEFAULTS, ...JSON.parse(localStorage.getItem("atril.settings") || "{}") }; } catch {}
+/** Palabras por minuto al hablar (para las estimaciones). */
+const ppm = () => clamp(Math.round(Number(settings.ppm) || PALABRAS_POR_MINUTO), 70, 220);
 function saveSettings() { try { localStorage.setItem("atril.settings", JSON.stringify(settings)); } catch {} }
 function lsGet(k, def = null) { try { const v = localStorage.getItem(k); return v == null ? def : v; } catch { return def; } }
 function lsSet(k, v) { try { localStorage.setItem(k, v); } catch {} }
@@ -452,7 +458,8 @@ function busy(message) {
 }
 
 /** Ofrece un archivo ya generado. El toque en el botón lanza "Compartir" (Guardar en Archivos, correo, etc.). */
-function offerFile(file, { title } = {}) {
+function offerFile(file, { title, onDone } = {}) {
+  const hecho = () => { try { onDone && onDone(); } catch (e) { console.error(e); } };
   const canShare = !!(navigator.canShare && navigator.canShare({ files: [file] }));
   const { close } = openSheet([
     el("h2", { text: title || "Archivo listo" }),
@@ -463,9 +470,9 @@ function offerFile(file, { title } = {}) {
         html: icon(canShare ? "share" : "download") + `<span>${canShare ? "Guardar en Archivos o compartir" : "Descargar"}</span>`,
         onclick: async () => {
           if (canShare) {
-            try { await navigator.share({ files: [file], title: file.name }); close(); }
-            catch (e) { if (e && e.name !== "AbortError") { downloadFile(file); close(); } }
-          } else { downloadFile(file); close(); }
+            try { await navigator.share({ files: [file], title: file.name }); close(); hecho(); }
+            catch (e) { if (e && e.name !== "AbortError") { downloadFile(file); close(); hecho(); } }
+          } else { downloadFile(file); close(); hecho(); }
         },
       }),
       el("button", { class: "action plain", text: "Cerrar", onclick: () => close() })
@@ -663,7 +670,19 @@ async function exportBackup() {
   const d = new Date();
   const stamp = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   const file = new File([JSON.stringify(data)], `atril-copia-${stamp}.json`, { type: "application/json" });
-  offerFile(file, { title: "Copia de seguridad lista" });
+  offerFile(file, {
+    title: "Copia de seguridad lista",
+    onDone: () => { lsSet("atril.copia", String(Date.now())); lsSet("atril.copiaLuego", ""); if (currentView === "home") pintarAvisoCopia(); },
+  });
+}
+
+/** Registro de «dónde lo he dado» de una copia de seguridad. */
+function limpiarDado(lista) {
+  if (!Array.isArray(lista)) return undefined;
+  const res = lista.slice(0, 300).filter((d) => d && /^\d{4}-\d{2}-\d{2}$/.test(String(d.fecha))).map((d) => ({
+    id: String(d.id || uid()).slice(0, 40), fecha: String(d.fecha), lugar: String(d.lugar || "").slice(0, 120), notas: String(d.notas || "").slice(0, 500),
+  }));
+  return res.length ? ordenarDado(res) : undefined;
 }
 
 /** Ensayos de una copia de seguridad (las grabaciones no van en la copia). */
@@ -694,6 +713,7 @@ async function importBackup(file) {
         created: Number(it.created) || Date.now(), updated: Number(it.updated) || Date.now(), source: it.source ? String(it.source) : undefined,
         target: target > 0 && target <= 240 ? target : undefined,
         ensayos: limpiarEnsayos(it.ensayos),
+        dado: limpiarDado(it.dado),
       };
       await store.put(kind, clean);
       kind === "docs" ? nDocs++ : nNotes++;
@@ -761,9 +781,11 @@ function itemActions(kind, item) {
   const del = { label: "Eliminar", icon: "trash", danger: true, run: () => deleteItem(kind, item) };
   common.splice(1, 0, { label: "Guardar como PDF", icon: "pdf", run: () => exportPdf(kind, item) });
   if (kind === "docs") {
+    const n = (item.dado || []).length;
     return [
       { label: "Leer", icon: "book", run: () => go(`#/leer/docs/${item.id}`) },
       { label: "Editar", icon: "edit", run: () => go(`#/editar/docs/${item.id}`) },
+      { label: n ? `Dónde lo he dado (${n})` : "Apuntar que lo he dado", icon: "calendar", run: () => abrirDado("docs", item.id) },
       ...common, move, del,
     ];
   }
@@ -886,10 +908,12 @@ async function renderHome() {
   let items = [];
   try { items = await store.all(tab); } catch (e) { console.error(e); toast("No se pudo leer el almacenamiento del dispositivo."); }
   items.sort((a, b) => (b.updated || 0) - (a.updated || 0));
-  const q = home.query.trim().toLowerCase();
+  const q = plegarTexto(home.query);
   const textCache = new Map();
   const textOf = (it) => { if (!textCache.has(it.id)) textCache.set(it.id, htmlToText(it.html || "")); return textCache.get(it.id); };
-  if (q) items = items.filter((it) => (it.title || "").toLowerCase().includes(q) || textOf(it).toLowerCase().includes(q));
+  // Busca en el título, el texto y los lugares donde se ha dado («¿lo he dado ya aquí?»)
+  if (q) items = items.filter((it) => plegarTexto(it.title).includes(q) || plegarTexto(textOf(it)).includes(q) ||
+    (it.dado || []).some((d) => plegarTexto(`${d.lugar} ${d.notas}`).includes(q)));
 
   const list = $("#list");
   list.replaceChildren(
@@ -899,7 +923,8 @@ async function renderHome() {
       const words = text ? text.split(/\s+/).filter(Boolean).length : 0;
       const main = el("button", { class: "card-main", onclick: () => go(tab === "docs" ? `#/leer/docs/${it.id}` : `#/editar/notes/${it.id}`) },
         el("span", { class: "card-title", text: title }),
-        el("span", { class: "card-meta", text: `${fmtDate(it.updated || it.created)} · ${words.toLocaleString("es-ES")} palabras${words ? ` · ≈ ${minutosEstimados(words)} min` : ""}${it.target ? ` · objetivo ${it.target} min` : ""}` }),
+        el("span", { class: "card-meta", text: `${fmtDate(it.updated || it.created)} · ${words.toLocaleString("es-ES")} palabras${words ? ` · ≈ ${minutosEstimados(words, ppm())} min` : ""}${it.target ? ` · objetivo ${it.target} min` : ""}` }),
+        resumenDado(it),
         el("span", { class: "card-snippet", text: text.replace(/\s+/g, " ").slice(title === text.split("\n")[0] ? title.length : 0, 220).trim() })
       );
       const more = el("button", { class: "card-more", "aria-label": "Opciones", html: icon("more"), onclick: () => actionSheet(title, itemActions(tab, it)) });
@@ -922,8 +947,127 @@ async function renderHome() {
     );
   }
 
+  pintarAvisoCopia();
   const standalone = window.matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
   $("#install-hint").hidden = standalone || lsGet("atril.hideInstall") === "1";
+}
+
+/* ============================================================
+   Dónde y cuándo se ha dado cada discurso
+   ============================================================ */
+const fechaHoy = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
+function fechaBonita(iso) {
+  const m = String(iso || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  return m ? `${Number(m[3])} ${MESES[Number(m[2]) - 1]} ${m[1]}` : String(iso || "");
+}
+function ordenarDado(lista) { return (lista || []).slice().sort((a, b) => String(b.fecha).localeCompare(String(a.fecha))); }
+
+function resumenDado(it) {
+  const lista = ordenarDado(it.dado);
+  if (!lista.length) return null;
+  const u = lista[0], n = lista.length;
+  return el("span", { class: "card-dado", html: icon("calendar") + `<span>${escapeHtml(`Dado ${n} ${n === 1 ? "vez" : "veces"} · último ${fechaBonita(u.fecha)}${u.lugar ? ", " + u.lugar : ""}`)}</span>` });
+}
+
+async function lugaresUsados() {
+  const vistos = new Map();
+  for (const it of await store.all("docs")) for (const d of it.dado || []) if (d.lugar) vistos.set(plegarTexto(d.lugar), d.lugar);
+  return [...vistos.values()].sort((a, b) => a.localeCompare(b, "es"));
+}
+
+async function abrirDado(kind, id) {
+  const item = await store.get(kind, id);
+  if (!item) return;
+  const lista = ordenarDado(item.dado);
+  const fecha = el("input", { type: "date", value: fechaHoy(), class: "campo", "aria-label": "Fecha" });
+  const lugar = el("input", { type: "text", class: "campo", placeholder: "Lugar (congregación, asamblea…)", list: "dado-lugares", autocomplete: "off", "aria-label": "Lugar" });
+  const lugares = el("datalist", { id: "dado-lugares" }, (await lugaresUsados()).map((l) => el("option", { value: l })));
+  const notas = el("input", { type: "text", class: "campo", placeholder: "Notas (opcional)", autocomplete: "off", "aria-label": "Notas" });
+  const aviso = el("p", { class: "dado-aviso", hidden: true });
+  lugar.addEventListener("input", () => {
+    const q = plegarTexto(lugar.value);
+    const antes = q && lista.find((d) => plegarTexto(d.lugar) === q);
+    aviso.hidden = !antes;
+    if (antes) aviso.textContent = `Ya lo diste aquí el ${fechaBonita(antes.fecha)}.`;
+  });
+  const recargar = (fresco) => {
+    if (reader.id === id && reader.kind === kind && reader.item) reader.item.dado = fresco.dado;
+    if (currentView === "home") renderHome();
+    abrirDado(kind, id);
+  };
+  const apuntar = async () => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha.value)) { toast("Pon la fecha."); return; }
+    const fresco = await store.get(kind, id);
+    if (!fresco) return;
+    fresco.dado = ordenarDado([{ id: uid(), fecha: fecha.value, lugar: lugar.value.trim().slice(0, 120), notas: notas.value.trim().slice(0, 500) }, ...(fresco.dado || [])]);
+    await store.put(kind, fresco);
+    toast("Apuntado.");
+    recargar(fresco);
+  };
+  const fila = (d) => {
+    const borrar = el("button", { class: "icon-btn small dado-borrar", "aria-label": "Borrar", html: icon("trash") });
+    let armado = 0;
+    borrar.addEventListener("click", async () => {
+      if (!armado) {
+        borrar.classList.add("armado");
+        toast("Toca otra vez la papelera para borrarlo.");
+        armado = setTimeout(() => { armado = 0; borrar.classList.remove("armado"); }, 3000);
+        return;
+      }
+      clearTimeout(armado);
+      const fresco = await store.get(kind, id);
+      fresco.dado = (fresco.dado || []).filter((x) => x.id !== d.id);
+      if (!fresco.dado.length) delete fresco.dado;
+      await store.put(kind, fresco);
+      recargar(fresco);
+    });
+    return el("div", { class: "dado-item" },
+      el("div", { class: "dado-txt" },
+        el("span", { class: "dado-fecha", text: fechaBonita(d.fecha) }),
+        d.lugar ? el("span", { class: "dado-lugar", text: d.lugar }) : null,
+        d.notas ? el("span", { class: "dado-notas", text: d.notas }) : null),
+      borrar);
+  };
+  openSheet([
+    el("h2", { text: "Dónde lo he dado" }),
+    el("p", { class: "small-print", text: item.title || "Sin título" }),
+    el("div", { class: "dado-form" }, fecha, lugar, lugares, notas, aviso,
+      el("button", { class: "action primary", html: icon("calendar") + "<span>Apuntar</span>", onclick: apuntar })),
+    lista.length
+      ? el("div", { class: "dado-lista" }, lista.map(fila))
+      : el("p", { text: "Aún no has apuntado ninguna vez. Desde el inicio puedes buscar por lugar para saber si ya lo diste allí." }),
+    el("div", { class: "actions" }, el("button", { class: "action plain", text: "Cerrar", onclick: () => closeSheet() })),
+  ]);
+}
+
+/* ============================================================
+   Aviso de copia de seguridad
+   ============================================================ */
+const DIA = 86400000;
+async function pintarAvisoCopia() {
+  const hint = $("#backup-hint");
+  const copia = Number(lsGet("atril.copia", "0")) || 0;
+  const cambio = Number(lsGet("atril.cambio", "0")) || 0;
+  const luego = Number(lsGet("atril.copiaLuego", "0")) || 0;
+  const ahora = Date.now();
+  let texto = "";
+  if (ahora >= luego) {
+    try {
+      const todos = [...(await store.all("docs")), ...(await store.all("notes"))];
+      if (todos.length) {
+        if (copia) {
+          const dias = Math.floor((ahora - copia) / DIA);
+          const hayCambios = cambio > copia || todos.some((i) => (i.updated || 0) > copia);
+          if (dias >= 14 && hayCambios) texto = `Hace ${dias} días que no haces una copia de seguridad.`;
+        } else {
+          const desde = Math.min(...todos.map((i) => i.created || ahora));
+          if (ahora - desde >= 7 * DIA) texto = "Aún no has hecho ninguna copia de seguridad.";
+        }
+      }
+    } catch (e) { console.warn(e); }
+  }
+  hint.hidden = !texto;
+  if (texto) $("#backup-hint-text").replaceChildren(el("strong", { text: texto }), " Tus discursos y notas solo están en este dispositivo: guárdala en Archivos o en iCloud.");
 }
 
 function openSettings() {
@@ -952,6 +1096,7 @@ function openSettings() {
     el("div", { class: "group" },
       el("span", { class: "label", text: "Copia de seguridad" }),
       el("p", { class: "small-print", text: "Tus discursos y notas se guardan solo en este dispositivo. Haz una copia de vez en cuando y guárdala en Archivos o iCloud." }),
+      el("p", { class: "small-print", text: Number(lsGet("atril.copia", "0")) ? `Última copia: ${fmtDate(Number(lsGet("atril.copia", "0")))}.` : "Aún no has hecho ninguna copia." }),
       el("div", { class: "actions" },
         el("button", { class: "action", html: icon("download") + "<span>Hacer copia de seguridad</span>", onclick: () => { closeSheet(); exportBackup(); } }),
         el("button", { class: "action", html: icon("upload") + "<span>Restaurar una copia</span>", onclick: () => { closeSheet(); $("#backup-input").click(); } })
@@ -1430,7 +1575,7 @@ const reader = {
   /** Bloque de «Duración del discurso» del panel Texto y tiempo. */
   timeGroup() {
     const palabras = contarPalabras(this.contentEl.textContent || "");
-    const est = minutosEstimados(palabras);
+    const est = minutosEstimados(palabras, ppm());
     const partes = this.plan && this.plan.porPartes ? this.plan.secciones : [];
     const valor = el("input", { type: "number", inputmode: "numeric", min: 0, max: 240, step: 1, class: "num-input", "aria-label": "Minutos de objetivo", value: Number(this.item.target) || "", placeholder: "—" });
     const guardar = debounce(async () => {
@@ -1460,7 +1605,7 @@ const reader = {
         el("button", { class: "chip", text: "+", "aria-label": "Un minuto más", onclick: () => fijar((Number(valor.value) || est) + 1) }),
         el("button", { class: "chip", text: "Quitar", onclick: () => fijar(0) })
       ),
-      el("p", { class: "small-print", text: `Lectura estimada: ≈ ${est} min (${palabras.toLocaleString("es-ES")} palabras a ${PALABRAS_POR_MINUTO} por minuto).` }),
+      el("p", { class: "small-print", text: `Lectura estimada: ≈ ${est} min (${palabras.toLocaleString("es-ES")} palabras a ${ppm()} por minuto).` }),
       partes.length
         ? el("p", { class: "small-print", text: `Hay ${partes.length} partes con minutos en el título (suman ${mmss(this.plan.sumaPartesSeg)}). El ritmo se calcula por partes.` })
         : el("p", { class: "small-print", text: "Con el cronómetro en marcha verás si vas adelantado o retrasado. Truco: si pones «(5 min)» al final de un título, se calcula por partes." })
@@ -1597,6 +1742,10 @@ const reader = {
       { label: n ? `Ensayos (${n})` : "Ensayos", icon: "history", run: () => this.openEnsayos() },
     ];
     if (this.aqui != null) acciones.push({ label: "Ir a «voy por aquí»", icon: "bookmark", run: () => this.irAqui() });
+    if (this.kind === "docs") {
+      const d = (this.item.dado || []).length;
+      acciones.push({ label: d ? `Dónde lo he dado (${d})` : "Apuntar que lo he dado", icon: "calendar", run: () => abrirDado(this.kind, this.id) });
+    }
     acciones.push(
       { label: "Guardar como Word", icon: "word", run: () => exportWord(this.kind, this.item) },
       { label: "Guardar como PDF", icon: "pdf", run: () => exportPdf(this.kind, this.item) },
@@ -2034,6 +2183,7 @@ const editor = {
     $("#save-state").textContent = "";
     document.title = (item.title || "Editar") + " · Atril";
     this.togglePalette(false);
+    this.pintarTiempo();
     showView("editor");
     this.scrollEl.scrollTop = 0;
     this.paintToolbar();
@@ -2045,6 +2195,73 @@ const editor = {
     this.dirty = true;
     $("#save-state").textContent = "";
     this.saveLater();
+    this.tiempoLater();
+  },
+
+  /** Tiempo estimado en la barra (solo discursos). */
+  pintarTiempo() {
+    const chip = $("#editor-time");
+    if (this.kind !== "docs" || !this.item) { chip.hidden = true; this.estimacion = null; return; }
+    const e = (this.estimacion = estimarPartes(this.area.children, this.item.target, ppm()));
+    chip.hidden = !e.palabras;
+    if (!e.palabras) return;
+    const min = Math.max(1, Math.round(e.seg / 60));
+    chip.textContent = e.objetivoSeg ? `≈ ${min} / ${Math.round(e.objetivoSeg / 60)} min` : `≈ ${min} min`;
+    let estado = "";
+    if (e.objetivoSeg) {
+      estado = e.seg > e.objetivoSeg + 30 ? "over" : e.partes.some((p) => p.objetivoSeg && p.seg > p.objetivoSeg + 20) ? "warn" : "ok";
+    }
+    chip.className = "time-chip" + (estado ? " " + estado : "");
+  },
+
+  /** Hoja con el tiempo estimado por partes, la duración objetivo y el ritmo al hablar. */
+  abrirTiempo() {
+    this.pintarTiempo();
+    const e = this.estimacion;
+    if (!e) return;
+    const tono = (seg, obj) => (!obj ? "" : seg > obj + 20 ? "over" : seg < obj - 30 ? "ahead" : "ok");
+    const contenido = [el("h2", { text: "Tiempo estimado" })];
+    contenido.push(el("p", { class: "est-total", text: `≈ ${mmss(e.seg)} hablando a ${ppm()} palabras por minuto (${e.palabras.toLocaleString("es-ES")} palabras).` }));
+    if (e.objetivoSeg) {
+      const dif = e.objetivoSeg - e.seg;
+      contenido.push(el("p", { class: "est-estado " + (dif < -30 ? "over" : "ok"),
+        text: dif >= 0 ? `Te sobran ${mmss(dif)} para llegar a ${mmss(e.objetivoSeg)}.` : `Te pasas ${mmss(-dif)} de ${mmss(e.objetivoSeg)}.` }));
+    }
+    if (e.partes.length > 1) {
+      contenido.push(el("div", { class: "est-partes" }, e.partes.map((p) => el("div", { class: "ens-parte" },
+        el("span", { class: "ens-pt", text: p.titulo || "Parte" }),
+        el("span", { class: "ens-ps " + tono(p.seg, p.objetivoSeg), text: `≈ ${mmss(p.seg)}${p.objetivoSeg ? ` de ${mmss(p.objetivoSeg)}` : ""}` })))));
+    }
+    // Duración objetivo
+    const objetivo = el("input", { type: "number", inputmode: "numeric", min: 0, max: 240, step: 1, class: "num-input", "aria-label": "Minutos de objetivo", value: Number(this.item.target) || "", placeholder: "—" });
+    const fijar = (n) => {
+      n = clamp(Math.round(Number(n) || 0), 0, 240);
+      this.item.target = n || undefined;
+      if (!n) delete this.item.target;
+      this.markDirty();
+      this.abrirTiempo();
+    };
+    objetivo.addEventListener("change", () => fijar(objetivo.value));
+    objetivo.addEventListener("keydown", (ev) => { if (ev.key === "Enter") objetivo.blur(); });
+    const actual = () => Number(objetivo.value) || Math.max(1, Math.round(e.seg / 60));
+    contenido.push(el("div", { class: "group" }, el("span", { class: "label", text: "Duración objetivo" }),
+      el("div", { class: "size-row" },
+        el("button", { class: "chip", text: "−", "aria-label": "Un minuto menos", onclick: () => fijar(actual() - 1) }),
+        objetivo, el("span", { class: "unit", text: "min" }),
+        el("button", { class: "chip", text: "+", "aria-label": "Un minuto más", onclick: () => fijar(actual() + 1) }),
+        el("button", { class: "chip", text: "Quitar", onclick: () => fijar(0) }))));
+    // Ritmo al hablar
+    const real = ritmoDeEnsayos(this.item.ensayos, e.palabras);
+    const opciones = [[110, "Despacio · 110"], [130, "Normal · 130"], [150, "Rápido · 150"]];
+    if (real) opciones.push([real, `Según tus ensayos · ${real}`]);
+    contenido.push(el("div", { class: "group" }, el("span", { class: "label", text: "Tu ritmo al hablar (palabras por minuto)" }),
+      el("div", { class: "chips" }, opciones.map(([val, label]) => el("button", {
+        class: "chip" + (val === real ? " ritmo-real" : ""), "aria-pressed": String(ppm() === val), text: label,
+        onclick: () => { settings.ppm = val; saveSettings(); this.abrirTiempo(); },
+      }))),
+      el("p", { class: "small-print", text: "Hablando en público lo normal son 120–140 palabras por minuto. El ritmo cambia las estimaciones en toda la app." })));
+    contenido.push(el("div", { class: "actions" }, el("button", { class: "action plain", text: "Cerrar", onclick: () => closeSheet() })));
+    openSheet(contenido, { onClose: () => this.pintarTiempo() });
   },
 
   async save() {
@@ -2192,6 +2409,8 @@ const editor = {
 
   init() {
     this.saveLater = debounce(() => this.save(), 700);
+    this.tiempoLater = debounce(() => this.pintarTiempo(), 400);
+    $("#editor-time").addEventListener("click", () => this.abrirTiempo());
     attachPinch(this.scrollEl, this.area);
     this.area.addEventListener("input", () => this.markDirty());
     this.titleInput.addEventListener("input", () => this.markDirty());
@@ -2253,6 +2472,8 @@ function init() {
   $("#search").addEventListener("input", debounce((e) => { home.query = e.target.value; renderHome(); }, 150));
   $("#btn-settings").addEventListener("click", openSettings);
   $("#hide-install-hint").addEventListener("click", () => { lsSet("atril.hideInstall", "1"); $("#install-hint").hidden = true; });
+  $("#backup-now").addEventListener("click", () => exportBackup());
+  $("#backup-later").addEventListener("click", () => { lsSet("atril.copiaLuego", String(Date.now() + 3 * DIA)); $("#backup-hint").hidden = true; });
   $("#file-input").addEventListener("change", (e) => { const f = e.target.files; importFiles(f).finally(() => { e.target.value = ""; }); });
   $("#backup-input").addEventListener("change", (e) => { const f = e.target.files && e.target.files[0]; if (f) importBackup(f).finally(() => { e.target.value = ""; }); });
 
@@ -2304,5 +2525,5 @@ init();
 // Exportado para las pruebas automáticas
 window.__atril = {
   sanitize, htmlToText, textToHtml, store, settings: () => settings, setFontSize, importFiles, exportWord, crearPdf,
-  timer, reader, editor, ensayo, buscador, tarjetas, prompter, crearPlantilla,
+  timer, reader, editor, ensayo, buscador, tarjetas, prompter, crearPlantilla, abrirDado, pintarAvisoCopia,
 };
