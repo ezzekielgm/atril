@@ -16,7 +16,7 @@ Responde en español. Interfaz y textos de la app, en español de España.
 src/
   index.html          vistas: inicio, lector, editor (se muestran/ocultan)
   styles.css          temas (claro, sepia, oscuro), tipografía y diseño táctil (ver «Diseño»)
-  fonts/              Literata y Atkinson Hyperlegible Next (woff2 variables, solo latín, licencia OFL)
+  fonts/              Carlito (como Calibri) y Literata (woff2, solo latín, licencia OFL)
   main.js             la app (sin frameworks): vistas, almacenamiento, lector, editor, notas
   biblia.js           detecta citas bíblicas en español y las enlaza a JW Library (jwlibrary:///finder) o jw.org
   tiempo.js           duración estimada, plan por partes (títulos con «(N min)») y ritmo adelantado/retrasado
@@ -33,6 +33,7 @@ src/
 build.mjs             construye dist/ con esbuild
 test/e2e.mjs          prueba de punta a punta con Playwright (Chromium emulando iPad táctil)
 test/e2e-funciones.mjs  pruebas de citas, esquema, tiempo objetivo y vista de móvil
+test/e2e-word.mjs     pruebas del editor al estilo Word: cinta, estilos, tachado, buscar y reemplazar, zoom
 test/e2e-mejoras2.mjs pruebas del tiempo en el editor, «dónde lo he dado» y el aviso de copia de seguridad
 test/e2e-mejoras.mjs  pruebas de colores, búsqueda, «voy por aquí», tarjetas, teleprompter, ensayos, grabación, PDF y plantilla
 test/biblia.test.mjs  pruebas del detector de citas (sin navegador)
@@ -66,21 +67,21 @@ dist/                 lo que se sube a internet (se genera; no editar a mano)
 - **Toques en el lector**: uno oculta la barra (con 300 ms de espera), dos seguidos marcan «voy por aquí». Con el desplazamiento automático, un toque pausa.
 - **Ensayos**: `ensayo` se engancha al cronómetro. Al arrancar desde cero apunta las partes (`partesDelDiscurso`); en cada tic suma el tiempo a la parte que se lee (`reader.parteActual()`). Al poner a cero (o al abrir otro discurso) se guarda si dura ≥ 30 s. Con `settings.grabar`, graba audio (`grabadora.js`), pausa con el cronómetro y apunta dónde empieza cada parte. `limpiarGrabaciones()` borra al arrancar las grabaciones huérfanas.
 - **Plantilla**: «Nuevo discurso → Con plantilla» usa `crearPlantilla()`; el objetivo (`target`) es la duración elegida.
-- **Tiempo en el editor** (solo discursos): chip `#editor-time` con `estimarPartes()` (tarjetas.js) al ritmo `ppm()`; naranja si alguna parte se pasa de sus minutos, rojo si el total se pasa. Al tocarlo: desglose por partes, duración objetivo y ritmo (110/130/150 o el real según los ensayos, `ritmoDeEnsayos()`).
+- **Tiempo en el editor** (solo discursos): chip `#editor-time` (en la barra de estado) con `estimarPartes()` (tarjetas.js) al ritmo `ppm()`; naranja si alguna parte se pasa de sus minutos, rojo si el total se pasa. Al tocarlo: desglose por partes, duración objetivo y ritmo (110/130/150 o el real según los ensayos, `ritmoDeEnsayos()`).
 - **Dónde lo he dado**: `abrirDado()` (menú ⋯ del lector o de la tarjeta). Avisa si ya se dio en ese lugar (comparando sin acentos con `plegarTexto`). La búsqueda del inicio también mira lugares y notas.
 - **Aviso de copia**: `pintarAvisoCopia()` en el inicio si hay cambios y la última copia tiene ≥ 14 días (o nunca se hizo y hay datos de hace ≥ 7 días). «Más tarde» lo aplaza 3 días. `offerFile(..., {onDone})` marca la copia como hecha.
 - **Navegación**: rutas en el hash (`#/`, `#/leer/docs/<id>`, `#/editar/notes/<id>`). `route()` ignora navegaciones viejas (`routeSeq`) para que siempre gane la última.
 - **Sin conexión**: `sw.js` precachea todos los archivos de `dist/` y sirve `index.html` en cualquier navegación. `_headers` (Netlify) evita que `sw.js` e `index.html` se queden en la caché del navegador.
 
-## Diseño
+## Diseño (como Word, a petición de Ezequiel)
 
-- Idea: el discurso es papel (`--bg`) y lo demás es la mesa del atril (`--desk`, fondo del inicio y de las barras de herramientas). Azul tinta del icono como color de acción (`--accent`).
-- Un solo gesto propio: el trazo de rotulador amarillo (`--marker`) en el nombre «Atril» y en la pestaña activa. No lo uses en más sitios.
-- Letras incluidas (funcionan sin conexión): Literata para leer, títulos y tiempos grandes (cronómetro, duraciones); Atkinson Hyperlegible Next para la interfaz. Las cifras de la interfaz salen de la letra del sistema porque el cero de Atkinson va tachado (su `unicode-range` excluye U+0030-0039).
-- Columna de lectura centrada de `--col` (32em) en pantallas anchas. «(N min)» de los títulos se muestra como etiqueta al margen con `decorarMinutos()` (solo en pantalla; el texto no cambia).
-- Tarjetas del inicio: la duración en grande (objetivo, o estimada con «min aprox.»), «Dado el… en…», y la primera línea del texto si es distinta del título (cuando el título es el nombre del archivo).
-- Hojas: en el móvil salen desde abajo; en el iPad, centradas. Los menús (`actionSheet`) son una lista agrupada (`.menu`). Etiquetas en minúscula normal, nunca en mayúsculas.
-- En móvil (≤ 480 px) el lector oculta el título de la barra.
+- Barra azul (`--bar`, #185abd en el tema claro) en el inicio y en el editor; el lector conserva una barra blanca (modo lectura). No uses el logo ni el nombre de Word: la app es Atril.
+- Editor: cinta con pestañas **Inicio** (deshacer, galería de estilos Normal / Título 1 / Título 2 / Título 3, N K S abc, resaltador, listas, borrar formato, buscar), **Revisar** (buscar y reemplazar, palabras y tiempo) y **Vista** (modo lectura, letra más grande o pequeña, letra y tema). El texto se edita como una hoja blanca sobre fondo gris (`--canvas`). Abajo, barra de estado con palabras, tiempo estimado y zoom.
+- Buscar y reemplazar (`reemplazo`): no toca el documento para resaltar; usa la CSS Custom Highlight API (`::highlight(rep)` y `rep-actual`) y rangos de `rangosCoincidencias()`. Reemplazar cambia el DOM directamente y ofrece «Deshacer» en el aviso (restaura el HTML anterior).
+- Títulos de los documentos en azul (`--heading`), como los estilos de Word. «(N min)» de los títulos se ve como etiqueta al margen en el lector (`decorarMinutos()`, solo en pantalla).
+- Letras incluidas (sin conexión): Carlito, con las mismas medidas que Calibri («Como Word», la de por defecto) y Literata («Clásica»). La interfaz usa la letra del sistema, como las apps de Office. `settings.estiloWord` marca que ya se cambió la letra a «Como Word» una vez.
+- Inicio: lista como los recientes de Office (icono de documento, título, duración a la derecha, «Dado el… en…», primera línea si el título es el nombre del archivo). Pestañas con subrayado azul.
+- Hojas: en el móvil salen desde abajo; en el iPad, centradas. Menús (`actionSheet`) en lista agrupada (`.menu`). Esquinas pequeñas (4–8 px), como Office.
 
 ## Reglas
 

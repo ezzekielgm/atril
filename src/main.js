@@ -6,7 +6,7 @@ import { crearPlan, tiempoPrevisto, palabraActual, mmss, contarPalabras, minutos
 import { COLORES, claseValida, claseDeFondo, colorDeMark } from "./colores.js";
 import { crearPlantilla, repartirMinutos } from "./plantilla.js";
 import { dividirEnTarjetas, nivelDeCorte, partesDelDiscurso, parteDeBloque, estimarPartes } from "./tarjetas.js";
-import { marcarCoincidencias, limpiarCoincidencias, plegarTexto } from "./buscar.js";
+import { marcarCoincidencias, limpiarCoincidencias, plegarTexto, rangosCoincidencias } from "./buscar.js";
 import { puedeGrabar, crearGrabadora, extensionDe } from "./grabadora.js";
 
 /* ============================================================
@@ -138,6 +138,9 @@ const P = {
   template: '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/>',
   calendar: '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="M8 15l2.5 2.5L16 13"/>',
   clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  doc: '<path d="M6 1.5h8.5l5.5 5.5v14a1.5 1.5 0 0 1-1.5 1.5h-12.5a1.5 1.5 0 0 1-1.5-1.5v-18a1.5 1.5 0 0 1 1.5-1.5z" fill="currentColor" stroke="none"/><path d="M14.5 1.5v5.5h5.5" stroke="#fff" stroke-opacity=".55" fill="none"/><path d="M8 12h8M8 15.5h8M8 19h5" stroke="#fff" stroke-width="1.6"/>',
+  nota: '<rect x="3.5" y="2" width="17" height="20" rx="2" fill="currentColor" stroke="none"/><path d="M7.5 8h9M7.5 12h9M7.5 16h5" stroke="#fff" stroke-width="1.6"/>',
+  replace: '<path d="M4 7h11l-3-3"/><path d="M20 17H9l3 3"/>',
 };
 const icon = (name) =>
   `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${P[name] || ""}</svg>`;
@@ -348,24 +351,30 @@ const store = {
    Ajustes
    ============================================================ */
 const DEFAULTS = {
-  fontSize: 26, theme: "claro", font: "serif", lineHeight: 1.6, wakeLock: true, tab: "docs", refLinks: "app",
+  fontSize: 26, theme: "claro", font: "sans", lineHeight: 1.6, wakeLock: true, tab: "docs", refLinks: "app",
   grabar: false, tpWpm: 130, pdfSize: 16, pdfMarks: true, markColor: "amarillo", ppm: PALABRAS_POR_MINUTO,
 };
 const FS_MIN = 14, FS_MAX = 80;
 let settings = { ...DEFAULTS };
 try { settings = { ...DEFAULTS, ...JSON.parse(localStorage.getItem("atril.settings") || "{}") }; } catch {}
+// Diseño como Word: la letra pasa a ser la de Word una sola vez (luego se puede cambiar en «Letra»)
+if (!settings.estiloWord) {
+  settings.font = "sans";
+  settings.estiloWord = 1;
+  try { localStorage.setItem("atril.settings", JSON.stringify(settings)); } catch {}
+}
 /** Palabras por minuto al hablar (para las estimaciones). */
 const ppm = () => clamp(Math.round(Number(settings.ppm) || PALABRAS_POR_MINUTO), 70, 220);
 function saveSettings() { try { localStorage.setItem("atril.settings", JSON.stringify(settings)); } catch {} }
 function lsGet(k, def = null) { try { const v = localStorage.getItem(k); return v == null ? def : v; } catch { return def; } }
 function lsSet(k, v) { try { localStorage.setItem(k, v); } catch {} }
 
-// Color de la barra del sistema: [papel, mesa] de cada tema
-const THEME_COLORS = { claro: ["#ffffff", "#eceff3"], sepia: ["#f7efdd", "#eadfc4"], oscuro: ["#16181d", "#0d0f12"] };
+// Color de la barra del sistema: [papel, barra azul] de cada tema
+const THEME_COLORS = { claro: ["#ffffff", "#185abd"], sepia: ["#f7efdd", "#6b4520"], oscuro: ["#1b1b1d", "#1f2a3d"] };
 function pintarColorBarra() {
   const c = THEME_COLORS[settings.theme] || THEME_COLORS.claro;
   const meta = $('meta[name="theme-color"]');
-  if (meta) meta.setAttribute("content", currentView === "home" ? c[1] : c[0]);
+  if (meta) meta.setAttribute("content", currentView === "reader" ? c[0] : c[1]);
 }
 function applySettings() {
   const root = document.documentElement;
@@ -751,7 +760,7 @@ async function route() {
   // Si llega otra navegación mientras esta espera, gana siempre la última
   const seq = ++routeSeq;
   const stale = () => seq !== routeSeq;
-  if (currentView === "editor") await editor.flush();
+  if (currentView === "editor") { reemplazo.cerrar(); await editor.flush(); }
   if (stale()) return;
   if (currentView === "reader") reader.leave();
   const parts = (location.hash || "#/").replace(/^#\/?/, "").split("/");
@@ -943,6 +952,7 @@ async function renderHome() {
             el("b", { text: String(it.target || est) }), el("small", { text: it.target ? "min" : "min aprox." }))
         : null;
       const main = el("button", { class: "card-main", onclick: () => go(esDoc ? `#/leer/docs/${it.id}` : `#/editar/notes/${it.id}`) },
+        el("span", { class: "card-icon " + (esDoc ? "es-doc" : "es-nota"), html: icon(esDoc ? "doc" : "nota") }),
         el("span", { class: "card-title", text: title }),
         dur,
         resumenDado(it),
@@ -1463,7 +1473,7 @@ function openAaSheet() {
     el("div", { class: "group" }, el("span", { class: "label", text: "Tema" }),
       chipGroup([["claro", "Claro"], ["sepia", "Sepia"], ["oscuro", "Oscuro"]], "theme", "t-")),
     el("div", { class: "group" }, el("span", { class: "label", text: "Letra" }),
-      chipGroup([["serif", "Clásica"], ["sans", "Moderna"]], "font")),
+      chipGroup([["sans", "Como Word"], ["serif", "Clásica"]], "font")),
     el("div", { class: "group" }, el("span", { class: "label", text: "Interlineado" }),
       chipGroup([[1.35, "Junto"], [1.6, "Normal"], [1.9, "Amplio"]], "lineHeight")),
     currentView === "reader" ? reader.timeGroup() : null,
@@ -2225,6 +2235,8 @@ const editor = {
     $("#save-state").textContent = "";
     document.title = (item.title || "Editar") + " · Atril";
     this.togglePalette(false);
+    reemplazo.cerrar();
+    this.cinta("inicio");
     this.pintarTiempo();
     showView("editor");
     this.scrollEl.scrollTop = 0;
@@ -2241,8 +2253,18 @@ const editor = {
   },
 
   /** Tiempo estimado en la barra (solo discursos). */
+  zoom(d) {
+    setFontSize(settings.fontSize + d, { scrollEl: this.scrollEl, contentEl: this.area });
+    saveSettings();
+    this.pintarZoom();
+  },
+  pintarZoom() { $("#ed-zoom").textContent = `${Math.round((settings.fontSize / DEFAULTS.fontSize) * 100)} %`; },
+
   pintarTiempo() {
     const chip = $("#editor-time");
+    const n = contarPalabras(this.area.textContent || "");
+    $("#ed-palabras").textContent = `${n.toLocaleString("es-ES")} ${n === 1 ? "palabra" : "palabras"}`;
+    this.pintarZoom();
     if (this.kind !== "docs" || !this.item) { chip.hidden = true; this.estimacion = null; return; }
     const e = (this.estimacion = estimarPartes(this.area.children, this.item.target, ppm()));
     chip.hidden = !e.palabras;
@@ -2329,9 +2351,21 @@ const editor = {
   },
 
   exec(cmd) {
+    // Órdenes que no cambian el texto
+    const otras = {
+      buscar: () => reemplazo.abrir(),
+      tiempo: () => (this.kind === "docs" ? this.abrirTiempo() : toast(`${contarPalabras(this.area.textContent || "").toLocaleString("es-ES")} palabras.`)),
+      leer: async () => { await this.flush(); go(`#/leer/${this.kind}/${this.id}`); },
+      menos: () => this.zoom(-2),
+      mas: () => this.zoom(2),
+      aspecto: () => openAaSheet(),
+    };
+    if (otras[cmd]) { otras[cmd](); return; }
     this.area.focus();
     const d = document;
     switch (cmd) {
+      case "strike": d.execCommand("strikeThrough"); break;
+      case "h3": d.execCommand("formatBlock", false, "<h3>"); break;
       case "undo": d.execCommand("undo"); break;
       case "redo": d.execCommand("redo"); break;
       case "bold": d.execCommand("bold"); break;
@@ -2371,6 +2405,13 @@ const editor = {
     if (!sel || !sel.rangeCount) return;
     const range = sel.getRangeAt(0);
     $$("mark", this.area).forEach((m) => { if (range.intersectsNode(m)) m.replaceWith(...m.childNodes); });
+  },
+
+  /** Pestañas de la cinta: Inicio, Revisar y Vista. */
+  cinta(nombre) {
+    $$(".ribbon-tabs [data-rtab]").forEach((t) => t.setAttribute("aria-selected", String(t.dataset.rtab === nombre)));
+    $$("#view-editor [data-rpanel]").forEach((p) => { p.hidden = p.dataset.rpanel !== nombre; });
+    if (nombre !== "inicio") this.togglePalette(false);
   },
 
   /** Paleta del resaltador (debajo de la barra). */
@@ -2443,7 +2484,8 @@ const editor = {
     const map = {
       bold: state("bold"), italic: state("italic"), underline: state("underline"),
       ul: state("insertUnorderedList"), ol: state("insertOrderedList"),
-      h1: block === "h1", h2: block === "h2", highlight: !!this.selectionMark(),
+      strike: state("strikeThrough"),
+      h1: block === "h1", h2: block === "h2", h3: block === "h3", p: block === "p" || block === "div", highlight: !!this.selectionMark(),
     };
     $$("#toolbar button[data-cmd]").forEach((b) => b.classList.toggle("active", !!map[b.dataset.cmd]));
     if (!$("#palette").hidden) this.paintPalette();
@@ -2453,8 +2495,12 @@ const editor = {
     this.saveLater = debounce(() => this.save(), 700);
     this.tiempoLater = debounce(() => this.pintarTiempo(), 400);
     $("#editor-time").addEventListener("click", () => this.abrirTiempo());
+    $$(".ribbon-tabs [data-rtab]").forEach((t) => t.addEventListener("click", () => this.cinta(t.dataset.rtab)));
+    $("#ed-menos").addEventListener("click", () => this.zoom(-2));
+    $("#ed-mas").addEventListener("click", () => this.zoom(2));
+    reemplazo.init();
     attachPinch(this.scrollEl, this.area);
-    this.area.addEventListener("input", () => this.markDirty());
+    this.area.addEventListener("input", () => { this.markDirty(); if (reemplazo.abierto) reemplazo.despues(); });
     this.titleInput.addEventListener("input", () => this.markDirty());
     this.titleInput.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); this.area.focus(); } });
     this.area.addEventListener("paste", (e) => {
@@ -2466,7 +2512,7 @@ const editor = {
     });
     document.addEventListener("selectionchange", () => { if (currentView === "editor") this.paintToolbar(); });
     // Mantener la selección al tocar la barra de herramientas
-    $$("#toolbar button").forEach((b) => {
+    $$("#view-editor .ribbon button[data-cmd]").forEach((b) => {
       b.tabIndex = -1;
       b.addEventListener("pointerdown", (e) => e.preventDefault());
       b.addEventListener("mousedown", (e) => e.preventDefault());
@@ -2495,6 +2541,115 @@ const editor = {
         { label: "Eliminar", icon: "trash", danger: true, run: async () => { await deleteItem(this.kind, item); } },
       ]);
     });
+  },
+};
+
+/* ============================================================
+   Buscar y reemplazar (editor)
+   ============================================================ */
+const reemplazo = {
+  abierto: false, rangos: [], i: 0,
+  hayResaltado: () => !!(window.CSS && CSS.highlights && window.Highlight),
+  abrir() {
+    const sel = window.getSelection();
+    const elegido = sel && sel.rangeCount && editor.area.contains(sel.anchorNode) ? String(sel).trim() : "";
+    $("#replacebar").hidden = false;
+    this.abierto = true;
+    const q = $("#rep-buscar");
+    if (elegido && elegido.length <= 80 && !elegido.includes("\n")) q.value = elegido;
+    q.focus();
+    q.select();
+    this.buscar();
+  },
+  cerrar() {
+    if (!this.abierto) return;
+    this.abierto = false;
+    $("#replacebar").hidden = true;
+    this.limpiar();
+    $("#rep-count").textContent = "";
+  },
+  limpiar() {
+    if (this.hayResaltado()) { CSS.highlights.delete("rep"); CSS.highlights.delete("rep-actual"); }
+    this.rangos = [];
+  },
+  buscar(mantener = false) {
+    this.limpiar();
+    const q = $("#rep-buscar").value;
+    this.rangos = rangosCoincidencias(editor.area, q);
+    const n = this.rangos.length;
+    if (!n) { $("#rep-count").textContent = q.trim().length >= 2 ? "Sin resultados" : ""; return; }
+    this.i = mantener ? Math.min(this.i, n - 1) : 0;
+    if (!mantener) {
+      // La primera coincidencia a la vista
+      const top = editor.scrollEl.getBoundingClientRect().top;
+      const k = this.rangos.findIndex((r) => r.getBoundingClientRect().top >= top);
+      this.i = k < 0 ? 0 : k;
+    }
+    this.pintar();
+  },
+  pintar() {
+    const n = this.rangos.length;
+    if (!n) return;
+    const r = this.rangos[this.i];
+    if (this.hayResaltado()) {
+      CSS.highlights.set("rep", new Highlight(...this.rangos));
+      CSS.highlights.set("rep-actual", new Highlight(r));
+    }
+    const sr = editor.scrollEl.getBoundingClientRect();
+    const rr = r.getBoundingClientRect();
+    if (rr.top < sr.top + 20 || rr.bottom > sr.bottom - 20) editor.scrollEl.scrollTop += rr.top - sr.top - sr.height * 0.35;
+    $("#rep-count").textContent = `${this.i + 1} de ${n}`;
+  },
+  ir(d) {
+    const n = this.rangos.length;
+    if (!n) { this.buscar(); return; }
+    this.i = (this.i + d + n) % n;
+    this.pintar();
+  },
+  /** Cambia un trozo por el texto nuevo, conservando el formato de donde empieza. */
+  cambiar(r, texto) {
+    r.deleteContents();
+    if (texto) r.insertNode(document.createTextNode(texto));
+  },
+  uno() {
+    if (!this.rangos.length) { this.buscar(); return; }
+    const antes = editor.area.innerHTML;
+    this.cambiar(this.rangos[this.i], $("#rep-por").value);
+    editor.area.normalize();
+    editor.markDirty();
+    this.buscar(true);
+    this.ofrecerDeshacer(antes, "Reemplazado.");
+  },
+  todo() {
+    if (!this.rangos.length) this.buscar();
+    const n = this.rangos.length;
+    if (!n) return;
+    const antes = editor.area.innerHTML;
+    const texto = $("#rep-por").value;
+    for (const r of [...this.rangos].reverse()) this.cambiar(r, texto);
+    editor.area.normalize();
+    editor.markDirty();
+    this.buscar();
+    this.ofrecerDeshacer(antes, n === 1 ? "Se ha reemplazado 1 vez." : `Se ha reemplazado ${n} veces.`);
+  },
+  ofrecerDeshacer(antes, texto) {
+    toast(texto, { action: "Deshacer", ms: 6000, onAction: () => { editor.area.innerHTML = antes; editor.markDirty(); if (this.abierto) this.buscar(true); } });
+  },
+  despues: debounce(() => { if (reemplazo.abierto) reemplazo.buscar(true); }, 300),
+  init() {
+    const q = $("#rep-buscar");
+    const later = debounce(() => this.buscar(), 220);
+    q.addEventListener("input", later);
+    q.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") { e.preventDefault(); later.cancel(); if (!this.rangos.length) this.buscar(); else this.ir(e.shiftKey ? -1 : 1); }
+      else if (e.key === "Escape") this.cerrar();
+    });
+    $("#rep-por").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); this.uno(); } else if (e.key === "Escape") this.cerrar(); });
+    $("#rep-next").addEventListener("click", () => this.ir(1));
+    $("#rep-prev").addEventListener("click", () => this.ir(-1));
+    $("#rep-uno").addEventListener("click", () => this.uno());
+    $("#rep-todo").addEventListener("click", () => this.todo());
+    $("#rep-close").addEventListener("click", () => this.cerrar());
   },
 };
 
@@ -2567,5 +2722,5 @@ init();
 // Exportado para las pruebas automáticas
 window.__atril = {
   sanitize, htmlToText, textToHtml, store, settings: () => settings, setFontSize, importFiles, exportWord, crearPdf,
-  timer, reader, editor, ensayo, buscador, tarjetas, prompter, crearPlantilla, abrirDado, pintarAvisoCopia,
+  timer, reader, editor, ensayo, buscador, tarjetas, prompter, crearPlantilla, abrirDado, pintarAvisoCopia, reemplazo,
 };

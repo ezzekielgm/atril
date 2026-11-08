@@ -17,6 +17,22 @@ export const plegarTexto = (s) => String(s || "").normalize("NFD").replace(/[\u0
  * (una coincidencia puede tener varios si cruza etiquetas).
  */
 export function marcarCoincidencias(root, consulta, clase = "hit") {
+  const coincidencias = buscarTrozos(root, consulta);
+  return envolver(coincidencias, clase);
+}
+
+/** Rangos (Range) de cada coincidencia, sin tocar el documento (para el editor). */
+export function rangosCoincidencias(root, consulta) {
+  return buscarTrozos(root, consulta).map((t) => {
+    const r = document.createRange();
+    r.setStart(t[0].nodo, t[0].ini);
+    r.setEnd(t[t.length - 1].nodo, t[t.length - 1].fin);
+    return r;
+  });
+}
+
+/** Cada coincidencia como lista de trozos {nodo, ini, fin} (puede cruzar etiquetas). */
+function buscarTrozos(root, consulta) {
   const q = [...String(consulta || "").trim().replace(/\s+/g, " ")].map(plegar).join("");
   if (q.length < 2) return [];
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
@@ -44,7 +60,10 @@ export function marcarCoincidencias(root, consulta, clase = "hit") {
     }
     coincidencias.push(trozos);
   }
+  return coincidencias;
+}
 
+function envolver(coincidencias, clase) {
   // Envolver: por nodo y de atrás hacia delante, para que las posiciones sigan valiendo
   const porNodo = new Map();
   coincidencias.forEach((trozos, idx) => trozos.forEach((t, pos) => {
