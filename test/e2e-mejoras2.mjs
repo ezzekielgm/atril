@@ -115,7 +115,7 @@ await page.click(".sheet >> text=Cerrar");
 await page.goto(URL + "#/");
 await page.waitForSelector("#view-home:not([hidden])");
 const tarjeta = await page.textContent(".card:has-text('La paciencia') .card-dado");
-ok("La lista muestra cuántas veces y la última", tarjeta === "Dado 2 veces · último 20 oct 2026, Asamblea de circuito", tarjeta);
+ok("La lista muestra cuántas veces y la última", tarjeta === "Dado 2 veces; la última, el 20 oct 2026 en Asamblea de circuito", tarjeta);
 await page.fill("#search", "norte");
 await page.waitForTimeout(400);
 ok("Buscar por lugar encuentra el discurso", (await page.$$(".card")).length === 1 && (await page.isVisible("text=La paciencia")));

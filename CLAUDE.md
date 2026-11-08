@@ -15,7 +15,8 @@ Responde en español. Interfaz y textos de la app, en español de España.
 ```
 src/
   index.html          vistas: inicio, lector, editor (se muestran/ocultan)
-  styles.css          temas (claro, sepia, oscuro), tipografía y diseño táctil
+  styles.css          temas (claro, sepia, oscuro), tipografía y diseño táctil (ver «Diseño»)
+  fonts/              Literata y Atkinson Hyperlegible Next (woff2 variables, solo latín, licencia OFL)
   main.js             la app (sin frameworks): vistas, almacenamiento, lector, editor, notas
   biblia.js           detecta citas bíblicas en español y las enlaza a JW Library (jwlibrary:///finder) o jw.org
   tiempo.js           duración estimada, plan por partes (títulos con «(N min)») y ritmo adelantado/retrasado
@@ -70,6 +71,16 @@ dist/                 lo que se sube a internet (se genera; no editar a mano)
 - **Aviso de copia**: `pintarAvisoCopia()` en el inicio si hay cambios y la última copia tiene ≥ 14 días (o nunca se hizo y hay datos de hace ≥ 7 días). «Más tarde» lo aplaza 3 días. `offerFile(..., {onDone})` marca la copia como hecha.
 - **Navegación**: rutas en el hash (`#/`, `#/leer/docs/<id>`, `#/editar/notes/<id>`). `route()` ignora navegaciones viejas (`routeSeq`) para que siempre gane la última.
 - **Sin conexión**: `sw.js` precachea todos los archivos de `dist/` y sirve `index.html` en cualquier navegación. `_headers` (Netlify) evita que `sw.js` e `index.html` se queden en la caché del navegador.
+
+## Diseño
+
+- Idea: el discurso es papel (`--bg`) y lo demás es la mesa del atril (`--desk`, fondo del inicio y de las barras de herramientas). Azul tinta del icono como color de acción (`--accent`).
+- Un solo gesto propio: el trazo de rotulador amarillo (`--marker`) en el nombre «Atril» y en la pestaña activa. No lo uses en más sitios.
+- Letras incluidas (funcionan sin conexión): Literata para leer, títulos y tiempos grandes (cronómetro, duraciones); Atkinson Hyperlegible Next para la interfaz. Las cifras de la interfaz salen de la letra del sistema porque el cero de Atkinson va tachado (su `unicode-range` excluye U+0030-0039).
+- Columna de lectura centrada de `--col` (32em) en pantallas anchas. «(N min)» de los títulos se muestra como etiqueta al margen con `decorarMinutos()` (solo en pantalla; el texto no cambia).
+- Tarjetas del inicio: la duración en grande (objetivo, o estimada con «min aprox.»), «Dado el… en…», y la primera línea del texto si es distinta del título (cuando el título es el nombre del archivo).
+- Hojas: en el móvil salen desde abajo; en el iPad, centradas. Los menús (`actionSheet`) son una lista agrupada (`.menu`). Etiquetas en minúscula normal, nunca en mayúsculas.
+- En móvil (≤ 480 px) el lector oculta el título de la barra.
 
 ## Reglas
 

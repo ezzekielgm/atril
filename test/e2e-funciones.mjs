@@ -108,7 +108,8 @@ ok("Tocarlo pausa el cronómetro", await page.evaluate(() => !window.__atril.tim
 await page.goto(URL + "#/");
 await page.waitForSelector(".card");
 const meta = await page.textContent(".card-meta");
-ok("La tarjeta muestra tiempo estimado y objetivo", /≈ \d+ min/.test(meta) && meta.includes("objetivo 5 min"), meta);
+const dur = await page.textContent(".card-dur");
+ok("La tarjeta muestra tiempo estimado y objetivo", /≈ \d+ min de lectura/.test(meta) && dur === "5min", `${dur} | ${meta}`);
 
 // --- Ajuste: citas en jw.org
 await page.click("#btn-settings");

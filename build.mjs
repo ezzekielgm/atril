@@ -28,6 +28,7 @@ await esbuild.build({
 // 2. Archivos estáticos
 for (const f of ["index.html", "styles.css", "manifest.webmanifest"]) fs.copyFileSync(path.join(SRC, f), path.join(OUT, f));
 fs.cpSync(path.join(SRC, "icons"), path.join(OUT, "icons"), { recursive: true });
+fs.cpSync(path.join(SRC, "fonts"), path.join(OUT, "fonts"), { recursive: true });
 fs.copyFileSync("node_modules/mammoth/mammoth.browser.min.js", path.join(OUT, "vendor", "mammoth.browser.min.js"));
 fs.writeFileSync(path.join(OUT, "_headers"), "/sw.js\n  Cache-Control: no-cache\n/index.html\n  Cache-Control: no-cache\n");
 

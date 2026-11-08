@@ -360,15 +360,20 @@ function saveSettings() { try { localStorage.setItem("atril.settings", JSON.stri
 function lsGet(k, def = null) { try { const v = localStorage.getItem(k); return v == null ? def : v; } catch { return def; } }
 function lsSet(k, v) { try { localStorage.setItem(k, v); } catch {} }
 
-const THEME_COLORS = { claro: "#ffffff", sepia: "#f5edda", oscuro: "#121212" };
+// Color de la barra del sistema: [papel, mesa] de cada tema
+const THEME_COLORS = { claro: ["#ffffff", "#eceff3"], sepia: ["#f7efdd", "#eadfc4"], oscuro: ["#16181d", "#0d0f12"] };
+function pintarColorBarra() {
+  const c = THEME_COLORS[settings.theme] || THEME_COLORS.claro;
+  const meta = $('meta[name="theme-color"]');
+  if (meta) meta.setAttribute("content", currentView === "home" ? c[1] : c[0]);
+}
 function applySettings() {
   const root = document.documentElement;
   root.dataset.theme = settings.theme;
   root.dataset.font = settings.font;
   root.style.setProperty("--fs", settings.fontSize + "px");
   root.style.setProperty("--lh", String(settings.lineHeight));
-  const meta = $('meta[name="theme-color"]');
-  if (meta) meta.setAttribute("content", THEME_COLORS[settings.theme] || "#ffffff");
+  pintarColorBarra();
 }
 
 /* ============================================================
@@ -409,14 +414,14 @@ function closeSheet() { if (sheetClose) sheetClose(); }
 function actionSheet(title, actions) {
   const { close } = openSheet([
     title ? el("h2", { text: title }) : null,
-    el("div", { class: "actions" },
+    el("div", { class: "actions menu" },
       actions.map((a) => {
         const b = el("button", { class: "action" + (a.danger ? " danger" : ""), html: (a.icon ? icon(a.icon) : "") + `<span>${escapeHtml(a.label)}</span>` });
         b.addEventListener("click", () => { close(); a.run(); });
         return b;
-      }),
-      el("button", { class: "action plain", text: "Cancelar", onclick: () => close() })
+      })
     ),
+    el("div", { class: "actions" }, el("button", { class: "action plain", text: "Cancelar", onclick: () => close() })),
   ].filter(Boolean));
 }
 
@@ -732,6 +737,7 @@ let currentView = null;
 function showView(name) {
   for (const [k, v] of Object.entries(views)) v.hidden = k !== name;
   currentView = name;
+  pintarColorBarra();
 }
 
 function go(hash, { replace = false } = {}) {
@@ -888,6 +894,13 @@ function plantillaDialog() {
   setTimeout(() => titulo.focus(), 60);
 }
 
+/** En los discursos, la primera línea del texto si dice algo distinto del título (p. ej. si el título es el nombre del archivo). */
+function primeraLinea(title, text) {
+  const l = (text.split("\n").find((x) => x.trim()) || "").trim();
+  if (!l || plegarTexto(l) === plegarTexto(title)) return null;
+  return el("span", { class: "card-snippet una", text: l.slice(0, 160) });
+}
+
 async function renderHome() {
   showView("home");
   document.title = "Atril";
@@ -921,11 +934,22 @@ async function renderHome() {
       const text = textOf(it);
       const title = it.title || text.split("\n")[0].slice(0, 60) || "Sin título";
       const words = text ? text.split(/\s+/).filter(Boolean).length : 0;
-      const main = el("button", { class: "card-main", onclick: () => go(tab === "docs" ? `#/leer/docs/${it.id}` : `#/editar/notes/${it.id}`) },
+      const esDoc = tab === "docs";
+      const est = words ? minutosEstimados(words, ppm()) : 0;
+      const editado = fmtDate(it.updated || it.created);
+      // La duración, en grande: el objetivo si lo hay; si no, lo que se tarda en leer
+      const dur = esDoc && (it.target || est)
+        ? el("span", { class: "card-dur", title: it.target ? "Duración objetivo" : "Lectura estimada" },
+            el("b", { text: String(it.target || est) }), el("small", { text: it.target ? "min" : "min aprox." }))
+        : null;
+      const main = el("button", { class: "card-main", onclick: () => go(esDoc ? `#/leer/docs/${it.id}` : `#/editar/notes/${it.id}`) },
         el("span", { class: "card-title", text: title }),
-        el("span", { class: "card-meta", text: `${fmtDate(it.updated || it.created)} · ${words.toLocaleString("es-ES")} palabras${words ? ` · ≈ ${minutosEstimados(words, ppm())} min` : ""}${it.target ? ` · objetivo ${it.target} min` : ""}` }),
+        dur,
         resumenDado(it),
-        el("span", { class: "card-snippet", text: text.replace(/\s+/g, " ").slice(title === text.split("\n")[0] ? title.length : 0, 220).trim() })
+        el("span", { class: "card-meta" },
+          esDoc && it.target && est ? el("span", { text: `≈ ${est} min de lectura` }) : null,
+          el("span", { text: `Editado ${editado.charAt(0).toLowerCase() + editado.slice(1)}` })),
+        esDoc ? primeraLinea(title, text) : el("span", { class: "card-snippet", text: text.replace(/\s+/g, " ").slice(title === text.split("\n")[0] ? title.length : 0, 220).trim() })
       );
       const more = el("button", { class: "card-more", "aria-label": "Opciones", html: icon("more"), onclick: () => actionSheet(title, itemActions(tab, it)) });
       return el("li", { class: "card" }, main, more);
@@ -966,7 +990,9 @@ function resumenDado(it) {
   const lista = ordenarDado(it.dado);
   if (!lista.length) return null;
   const u = lista[0], n = lista.length;
-  return el("span", { class: "card-dado", html: icon("calendar") + `<span>${escapeHtml(`Dado ${n} ${n === 1 ? "vez" : "veces"} · último ${fechaBonita(u.fecha)}${u.lugar ? ", " + u.lugar : ""}`)}</span>` });
+  const cuando = `el ${fechaBonita(u.fecha)}${u.lugar ? " en " + u.lugar : ""}`;
+  const texto = n === 1 ? `Dado ${cuando}` : `Dado ${n} veces; la última, ${cuando}`;
+  return el("span", { class: "card-dado", html: icon("calendar") + `<span>${escapeHtml(texto)}</span>` });
 }
 
 async function lugaresUsados() {
@@ -1445,6 +1471,20 @@ function openAaSheet() {
   ].filter(Boolean), { onClose: () => { aaSheetOpen = false; } });
 }
 
+/** «(2 min)» al final de un título se muestra como una etiqueta al margen (solo en pantalla; el texto no cambia). */
+function decorarMinutos(root) {
+  for (const h of root.querySelectorAll("h1, h2, h3, h4")) {
+    const w = document.createTreeWalker(h, NodeFilter.SHOW_TEXT);
+    let ultimo = null;
+    for (let n = w.nextNode(); n; n = w.nextNode()) if (n.textContent.trim()) ultimo = n;
+    if (!ultimo) continue;
+    const m = ultimo.textContent.match(/\s*\((\d+(?:[.,]\d+)?)\s*(min(?:utos?)?)\.?\)\s*$/i);
+    if (!m) continue;
+    ultimo.textContent = ultimo.textContent.slice(0, m.index);
+    ultimo.after(el("span", { class: "h-min" }, el("span", { class: "par", text: " (" }), `${m[1]} ${m[2]}`, el("span", { class: "par", text: ")" })));
+  }
+}
+
 const reader = {
   kind: null, id: null, item: null, plan: null, mode: "texto", lastPace: null, aqui: null, filtro: "todo", savedScroll: null,
   scrollEl: $("#reader-scroll"), contentEl: $("#reader-content"), outlineEl: $("#reader-outline"),
@@ -1463,6 +1503,7 @@ const reader = {
     document.title = title + " · Atril";
     this.contentEl.innerHTML = item.html || "";
     enlazarCitas(this.contentEl, settings.refLinks);
+    decorarMinutos(this.contentEl);
     this.cargarAqui();
     this.setMode("texto", { keepScroll: true });
     this.buildPlan();
@@ -2023,6 +2064,7 @@ const tarjetas = {
     const titulo = copias.find((c) => c.tagName === "H" + this.corte) || copias.find((c) => /^H[1-4]$/.test(c.tagName));
     $("#cards-title").textContent = titulo ? tituloSinMinutos(titulo.textContent) : `Parte ${this.i + 1}`;
     $("#cards-count").textContent = `${this.i + 1} / ${this.lista.length}`;
+    $("#cards-prog").replaceChildren(...this.lista.map((_, k) => el("i", { class: k < this.i ? "hecha" : k === this.i ? "actual" : "" })));
     $("#cards-prev").disabled = this.i === 0;
     $("#cards-next").disabled = this.i === this.lista.length - 1;
     $("#cards-stage").scrollTop = 0;
