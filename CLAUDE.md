@@ -19,6 +19,12 @@ src/
   main.js             la app (sin frameworks): vistas, almacenamiento, lector, editor, notas
   biblia.js           detecta citas bíblicas en español y las enlaza a JW Library (jwlibrary:///finder) o jw.org
   tiempo.js           duración estimada, plan por partes (títulos con «(N min)») y ritmo adelantado/retrasado
+  colores.js          colores del resaltador (<mark> amarillo o class c-verde/c-azul/c-rosa) y clasificación de fondos
+  tarjetas.js         división en tarjetas y en partes para los ensayos
+  buscar.js           buscar en el texto (sin acentos ni mayúsculas, aunque cruce etiquetas)
+  plantilla.js        plantilla de discurso nuevo y reparto de minutos
+  grabadora.js        grabación de audio de los ensayos (MediaRecorder)
+  pdf-export.js       HTML -> PDF con pdf-lib y letras estándar (se carga solo al exportar)
   docx-export.js      HTML -> .docx (se carga solo al exportar; usa docx + docx/html)
   sw.js               service worker (plantilla: el build mete versión y lista de archivos)
   manifest.webmanifest
@@ -26,13 +32,16 @@ src/
 build.mjs             construye dist/ con esbuild
 test/e2e.mjs          prueba de punta a punta con Playwright (Chromium emulando iPad táctil)
 test/e2e-funciones.mjs  pruebas de citas, esquema, tiempo objetivo y vista de móvil
+test/e2e-mejoras.mjs  pruebas de colores, búsqueda, «voy por aquí», tarjetas, teleprompter, ensayos, grabación, PDF y plantilla
 test/biblia.test.mjs  pruebas del detector de citas (sin navegador)
+test/unidad.test.mjs  plantilla, tarjetas, partes y colores (sin navegador)
+test/docx-colores.test.mjs  los colores del resaltado salen bien en el Word
 dist/                 lo que se sube a internet (se genera; no editar a mano)
 ```
 
 ## Comandos
 
-- `npm install` — dependencias (mammoth, docx, esbuild).
+- `npm install` — dependencias (mammoth, docx, pdf-lib, esbuild).
 - `npm run build` — genera `dist/`. La versión se calcula sola con la huella del contenido, así el service worker detecta cada cambio.
 - `npm run serve` — sirve `dist/` en http://localhost:8080 para probar.
 - `npm test` — todas las pruebas (con `dist/` servido en el puerto 8080).
@@ -41,15 +50,20 @@ dist/                 lo que se sube a internet (se genera; no editar a mano)
 
 ## Cómo funciona por dentro
 
-- **Datos**: IndexedDB `atril`, almacenes `docs` (discursos) y `notes` (notas). Cada elemento: `{id, title, html, created, updated, source?}`. Ajustes (tamaño de letra, tema, letra, interlineado, pestaña) en `localStorage` bajo `atril.settings`; posición de lectura en `atril.pos.<tipo>.<id>`.
-- **HTML siempre limpio**: todo lo que entra (Word importado, copia restaurada, lo que guarda el editor) pasa por `sanitize()`, una lista blanca de etiquetas. Convierte `<b>/<i>` en `<strong>/<em>`, los fondos de color en `<mark>` y los `<div>` en `<p>`. No metas HTML sin pasar por ahí.
-- **Importar .docx**: mammoth (`vendor/mammoth.browser.min.js`, cargado bajo demanda) con un `STYLE_MAP` para títulos, subrayado, tachado y resaltado.
-- **Exportar .docx**: `docx-export.js` usa `htmlToContent` de `docx/html`. `<mark>` sale como resaltado amarillo de Word.
+- **Datos**: IndexedDB `atril` (versión 2), almacenes `docs` (discursos), `notes` (notas) y `grabaciones` (audio de los ensayos: `{id = id del ensayo, kind, docId, fecha, mime, blob, marcas[{i, s}], partes[]}`). Cada documento: `{id, title, html, created, updated, source?, target?, ensayos?}`; `ensayos` = `[{id, fecha, seg, objetivoSeg, partes[{t, s, o}], audio}]`, máximo 30, y solo las 5 más recientes conservan audio. Ajustes en `localStorage` bajo `atril.settings`; posición de lectura en `atril.pos.<tipo>.<id>`; «voy por aquí» en `atril.aqui.<tipo>.<id>` (`{i, t}`: índice del bloque y su principio, para encontrarlo si se edita el texto).
+- **HTML siempre limpio**: todo lo que entra (Word importado, copia restaurada, lo que guarda el editor) pasa por `sanitize()`, una lista blanca de etiquetas. Convierte `<b>/<i>` en `<strong>/<em>`, los fondos de color en `<mark>` del color más parecido (clase `c-verde`, `c-azul` o `c-rosa`; sin clase = amarillo), parte los resaltados anidados y pasa los `<div>` a `<p>`. No metas HTML sin pasar por ahí.
+- **Importar .docx**: mammoth (`vendor/mammoth.browser.min.js`, cargado bajo demanda) con un `STYLE_MAP` para títulos, subrayado, tachado y resaltado (los colores de Word van a `mark.c-*`).
+- **Exportar .docx**: `docx-export.js` usa `htmlToContent` de `docx/html`. Los `<mark>` salen como resaltado de Word: amarillo, verde brillante, turquesa o rosa.
+- **Exportar PDF**: `pdf-export.js` maqueta el texto con pdf-lib (A4, Times o Helvetica según el ajuste de letra, solo caracteres WinAnsi: lo demás se cambia o se quita). Tamaño 12/16/20 pt y resaltados opcionales. Se entrega con `offerFile` (en una PWA de iOS `window.print()` no es fiable).
 - **Guardar archivos en iPad**: se genera el archivo y luego un botón llama a `navigator.share({files})`. Tiene que ir en dos pasos porque Safari solo permite compartir dentro de un toque del usuario. Si no se puede compartir, se descarga.
 - **Zoom de letra**: `attachPinch()`. En Safari usa los eventos `gesturestart/gesturechange/gestureend` (con `preventDefault` para que no se amplíe la página). En los demás navegadores usa dos toques con `touchmove`. Ctrl+rueda en ordenador. `captureAnchor/restoreAnchor` mantienen a la vista el párrafo que se estaba leyendo.
 - **Citas bíblicas**: `enlazarCitas()` envuelve las citas en `<a class="bref">` solo al mostrar el lector; nunca se guardan en el documento. Exige «capítulo:versículo», salvo en libros de un capítulo («Judas 9»). Código del enlace: libro+capítulo(3)+versículo(3), p. ej. `19037004`; los rangos van con guion. Ajuste `settings.refLinks`: `app` | `web` | `off`.
 - **Tiempo**: `item.target` = minutos de objetivo de cada discurso. Si algún título termina en «(N min)», el ritmo se calcula por partes; si no, se reparte el objetivo según las palabras. `palabraActual()` mira qué bloque cruza la línea a un tercio de la pantalla. Avisos: naranja cuando queda ≤ max(1 min, 10 %), rojo al pasarse. En modo atril (barra oculta) aparece un cronómetro flotante que pausa al tocarlo. Lectura estimada a 130 palabras/min.
-- **Esquema**: botón del lector; muestra títulos y frases con `<mark>`. Tocar un punto vuelve al texto y lo resalta un momento.
+- **Esquema**: botón del lector; muestra títulos y frases con `<mark>`, con filtro por color, y «Voy por aquí». Tocar un punto vuelve al texto y lo resalta un momento.
+- **Lector, menú ⋯**: buscar (`buscador`, envuelve coincidencias en `span.hit` solo en pantalla), tarjetas (`tarjetas`, capa `#cards`; una por parte según `nivelDeCorte`; deslizar, tocar los lados o teclado/pedal), desplazamiento automático (`prompter`: px/s = alto del texto / palabras × palabras por minuto / 60; el objetivo de tiempo marca la velocidad), ensayos y Word/PDF.
+- **Toques en el lector**: uno oculta la barra (con 300 ms de espera), dos seguidos marcan «voy por aquí». Con el desplazamiento automático, un toque pausa.
+- **Ensayos**: `ensayo` se engancha al cronómetro. Al arrancar desde cero apunta las partes (`partesDelDiscurso`); en cada tic suma el tiempo a la parte que se lee (`reader.parteActual()`). Al poner a cero (o al abrir otro discurso) se guarda si dura ≥ 30 s. Con `settings.grabar`, graba audio (`grabadora.js`), pausa con el cronómetro y apunta dónde empieza cada parte. `limpiarGrabaciones()` borra al arrancar las grabaciones huérfanas.
+- **Plantilla**: «Nuevo discurso → Con plantilla» usa `crearPlantilla()`; el objetivo (`target`) es la duración elegida.
 - **Navegación**: rutas en el hash (`#/`, `#/leer/docs/<id>`, `#/editar/notes/<id>`). `route()` ignora navegaciones viejas (`routeSeq`) para que siempre gane la última.
 - **Sin conexión**: `sw.js` precachea todos los archivos de `dist/` y sirve `index.html` en cualquier navegación. `_headers` (Netlify) evita que `sw.js` e `index.html` se queden en la caché del navegador.
 
@@ -63,7 +77,5 @@ dist/                 lo que se sube a internet (se genera; no editar a mano)
 
 ## Ideas pendientes (solo si las pide)
 
-- Modo teleprompter con desplazamiento automático.
-- Marcador de «voy por aquí» y resaltador de varios colores.
-- Sincronizar iPad y móvil (necesitaría un servicio en la nube).
+- Sincronizar iPad y móvil (necesitaría un servicio en la nube, p. ej. Firebase con la cuenta de Google de Ezequiel; no hecho).
 - Abrir .docx con "Abrir con…" desde Archivos (en iPad las PWA no lo permiten; requeriría app nativa).

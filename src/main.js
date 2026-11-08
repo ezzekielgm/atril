@@ -3,6 +3,11 @@
 
 import { enlazarCitas } from "./biblia.js";
 import { crearPlan, tiempoPrevisto, palabraActual, mmss, contarPalabras, minutosEstimados, minutosDeTitulo, tituloSinMinutos, PALABRAS_POR_MINUTO } from "./tiempo.js";
+import { COLORES, claseValida, claseDeFondo, colorDeMark } from "./colores.js";
+import { crearPlantilla, repartirMinutos } from "./plantilla.js";
+import { dividirEnTarjetas, nivelDeCorte, partesDelDiscurso, parteDeBloque } from "./tarjetas.js";
+import { marcarCoincidencias, limpiarCoincidencias } from "./buscar.js";
+import { puedeGrabar, crearGrabadora, extensionDe } from "./grabadora.js";
 
 /* ============================================================
    Utilidades
@@ -117,6 +122,20 @@ const P = {
   note: '<path d="M15 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9z"/><path d="M15 3v6h6"/><path d="M7 13h10M7 17h6"/>',
   move: '<path d="M5 12h14"/><path d="M13 6l6 6-6 6"/>',
   outline: '<path d="M4 6h16"/><path d="M9 12h11"/><path d="M9 18h11"/><path d="M4 12h.01M4 18h.01" stroke-width="3"/>',
+  close: '<path d="M18 6L6 18M6 6l12 12"/>',
+  up: '<path d="M18 15l-6-6-6 6"/>',
+  down: '<path d="M6 9l6 6 6-6"/>',
+  prev: '<path d="M15 18l-6-6 6-6"/>',
+  next: '<path d="M9 18l6-6-6-6"/>',
+  play: '<path d="M7 4.5v15l12-7.5z" fill="currentColor"/>',
+  pause: '<rect x="6" y="5" width="4" height="14" rx="1" fill="currentColor"/><rect x="14" y="5" width="4" height="14" rx="1" fill="currentColor"/>',
+  cards: '<rect x="3" y="7" width="14" height="14" rx="2"/><path d="M7 3h12a2 2 0 0 1 2 2v12"/>',
+  history: '<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 2"/>',
+  mic: '<rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><path d="M12 17v4M8 21h8"/>',
+  pdf: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 18v-5h1.6a1.5 1.5 0 0 1 0 3H8"/><path d="M13.5 13v5h1a2.5 2.5 0 0 0 0-5z"/>',
+  bookmark: '<path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>',
+  scroll: '<path d="M12 3v13"/><path d="M7 11l5 5 5-5"/><path d="M5 21h14"/>',
+  template: '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/>',
 };
 const icon = (name) =>
   `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${P[name] || ""}</svg>`;
@@ -135,9 +154,19 @@ const ALLOWED = {
 const DROP = new Set(["SCRIPT", "STYLE", "IFRAME", "OBJECT", "EMBED", "NOSCRIPT", "TEMPLATE", "SVG", "MATH", "LINK", "META", "TITLE", "HEAD", "FORM", "INPUT", "BUTTON", "SELECT", "TEXTAREA", "VIDEO", "AUDIO", "CANVAS"]);
 const BLOCKS = new Set(["P", "H1", "H2", "H3", "H4", "UL", "OL", "LI", "TABLE", "BLOCKQUOTE", "DIV", "TR", "TD", "TH", "THEAD", "TBODY"]);
 
+function fondoDe(node) {
+  return (node.style && (node.style.backgroundColor || node.style.background)) || "";
+}
 function hasBackground(node) {
-  const bg = node.style && (node.style.backgroundColor || node.style.background);
-  return bg && !/transparent|rgba\(0,\s*0,\s*0,\s*0\)|^initial|^inherit/.test(bg);
+  const bg = fondoDe(node);
+  return bg && !/transparent|rgba\(0,\s*0,\s*0,\s*0\)|^initial|^inherit|^unset|^none/.test(bg);
+}
+/** <mark> del color que corresponde al fondo de un nodo. */
+function markDe(node) {
+  const m = document.createElement("mark");
+  const c = claseDeFondo(fondoDe(node));
+  if (c) m.className = c;
+  return m;
 }
 
 function cleanNode(node) {
@@ -149,7 +178,7 @@ function cleanNode(node) {
 
     // Resaltado aplicado como estilo sobre otra etiqueta (p. ej. <b style="background-color:…">)
     if (tag !== "SPAN" && tag !== "FONT" && tag !== "MARK" && !BLOCKS.has(tag) && hasBackground(child)) {
-      const m = document.createElement("mark");
+      const m = markDe(child);
       while (child.firstChild) m.append(child.firstChild);
       child.append(m);
     }
@@ -169,7 +198,7 @@ function cleanNode(node) {
       const inner = document.createDocumentFragment();
       while (child.firstChild) inner.append(child.firstChild);
       let out = inner;
-      const wrap = (t) => { const w = document.createElement(t); w.append(out); out = w; };
+      const wrap = (t) => { const w = t === "mark" ? markDe(child) : document.createElement(t); w.append(out); out = w; };
       if (fw === "bold" || Number(fw) >= 600) wrap("strong");
       if (st.fontStyle === "italic") wrap("em");
       if ((st.textDecoration || st.textDecorationLine || "").includes("underline")) wrap("u");
@@ -214,7 +243,9 @@ function cleanNode(node) {
 
     // Atributos
     const keep = ALLOWED[tag];
+    const color = tag === "MARK" ? claseValida(child.getAttribute("class")) || (hasBackground(child) ? claseDeFondo(fondoDe(child)) : "") : "";
     for (const a of [...child.attributes]) if (!keep.includes(a.name.toLowerCase())) child.removeAttribute(a.name);
+    if (color) child.className = color;
     if (tag === "IMG") {
       const src = child.getAttribute("src") || "";
       if (!/^data:image\/(png|jpe?g|gif|webp|bmp);base64,/i.test(src)) { child.remove(); continue; }
@@ -225,6 +256,24 @@ function cleanNode(node) {
       else { child.setAttribute("target", "_blank"); child.setAttribute("rel", "noopener"); }
     }
     cleanNode(child);
+  }
+}
+
+/** Un <mark> dentro de otro: se parte el de fuera para que cada trozo tenga un solo color. */
+function partirMarks(root) {
+  let inner;
+  while ((inner = root.querySelector("mark mark"))) {
+    const outer = inner.parentElement.closest("mark");
+    if (claseValida(inner.getAttribute("class")) === claseValida(outer.getAttribute("class"))) { inner.replaceWith(...inner.childNodes); continue; }
+    const antes = document.createRange();
+    antes.setStart(outer, 0); antes.setEndBefore(inner);
+    const fa = antes.extractContents();
+    const despues = document.createRange();
+    despues.setStartAfter(inner); despues.setEnd(outer, outer.childNodes.length);
+    const fd = despues.extractContents();
+    const copia = (frag) => { if (!frag.textContent) return null; const m = outer.cloneNode(false); m.append(frag); return m; };
+    const a = copia(fa), d = copia(fd);
+    outer.replaceWith(...[a, ...outer.childNodes, d].filter(Boolean));
   }
 }
 
@@ -242,8 +291,8 @@ function sanitize(html) {
     if (!para) { para = document.createElement("p"); out.append(para); }
     para.append(n);
   }
-  // Quita <mark> vacíos o anidados
-  out.querySelectorAll("mark mark").forEach((m) => m.replaceWith(...m.childNodes));
+  // Resaltados dentro de otros: el de dentro manda en su trozo
+  partirMarks(out);
   out.querySelectorAll("mark,strong,em,u,s,b,i").forEach((m) => { if (!m.textContent && !m.querySelector("img")) m.remove(); });
   const res = out.innerHTML.trim();
   return res || "<p><br></p>";
@@ -256,13 +305,19 @@ const DB_NAME = "atril";
 let dbPromise;
 function openDb() {
   return (dbPromise ||= new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, 1);
+    const req = indexedDB.open(DB_NAME, 2);
     req.onupgradeneeded = () => {
       const d = req.result;
       if (!d.objectStoreNames.contains("docs")) d.createObjectStore("docs", { keyPath: "id" });
       if (!d.objectStoreNames.contains("notes")) d.createObjectStore("notes", { keyPath: "id" });
+      if (!d.objectStoreNames.contains("grabaciones")) d.createObjectStore("grabaciones", { keyPath: "id" });
     };
-    req.onsuccess = () => resolve(req.result);
+    req.onsuccess = () => {
+      const d = req.result;
+      d.onversionchange = () => { d.close(); dbPromise = null; };
+      resolve(d);
+    };
+    req.onblocked = () => toast("Cierra las otras ventanas de Atril para terminar de actualizar.");
     req.onerror = () => reject(req.error);
   }));
 }
@@ -288,7 +343,10 @@ const store = {
 /* ============================================================
    Ajustes
    ============================================================ */
-const DEFAULTS = { fontSize: 26, theme: "claro", font: "serif", lineHeight: 1.6, wakeLock: true, tab: "docs", refLinks: "app" };
+const DEFAULTS = {
+  fontSize: 26, theme: "claro", font: "serif", lineHeight: 1.6, wakeLock: true, tab: "docs", refLinks: "app",
+  grabar: false, tpWpm: 130, pdfSize: 16, pdfMarks: true, markColor: "amarillo",
+};
 const FS_MIN = 14, FS_MAX = 80;
 let settings = { ...DEFAULTS };
 try { settings = { ...DEFAULTS, ...JSON.parse(localStorage.getItem("atril.settings") || "{}") }; } catch {}
@@ -472,6 +530,17 @@ const STYLE_MAP = [
   "p[style-name='Intense Quote'] => blockquote:fresh",
   "u => u",
   "strike => s",
+  // Resaltados de Word por colores (los demás, amarillo)
+  "highlight[color='green'] => mark.c-verde",
+  "highlight[color='darkGreen'] => mark.c-verde",
+  "highlight[color='cyan'] => mark.c-azul",
+  "highlight[color='blue'] => mark.c-azul",
+  "highlight[color='darkCyan'] => mark.c-azul",
+  "highlight[color='darkBlue'] => mark.c-azul",
+  "highlight[color='magenta'] => mark.c-rosa",
+  "highlight[color='red'] => mark.c-rosa",
+  "highlight[color='darkMagenta'] => mark.c-rosa",
+  "highlight[color='darkRed'] => mark.c-rosa",
   "highlight => mark",
 ];
 
@@ -517,15 +586,19 @@ async function importFiles(files) {
 /* ============================================================
    Exportar a Word
    ============================================================ */
+/** HTML con el título delante si el texto no empieza ya por él. */
+function htmlConTitulo(item) {
+  const html = item.html || "<p></p>";
+  if (!item.title) return html;
+  const firstLine = htmlToText(html).split("\n")[0].trim();
+  return firstLine === item.title.trim() ? html : `<h1>${escapeHtml(item.title)}</h1>` + html;
+}
+
 async function exportWord(kind, item) {
   const close = busy("Preparando el Word…");
   try {
     const { buildDocx } = await import("./docx-export.js");
-    let html = item.html || "<p></p>";
-    if (kind === "notes" && item.title) {
-      const firstLine = htmlToText(html).split("\n")[0].trim();
-      if (firstLine !== item.title.trim()) html = `<h1>${escapeHtml(item.title)}</h1>` + html;
-    }
+    const html = kind === "notes" ? htmlConTitulo(item) : item.html || "<p></p>";
     const blob = await buildDocx(item.title || "Documento", html);
     close();
     const file = new File([blob], safeFileName(item.title) + ".docx", { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
@@ -534,6 +607,51 @@ async function exportWord(kind, item) {
     console.error(e);
     close();
     toast("No se pudo crear el Word. Inténtalo de nuevo.");
+  }
+}
+
+/* ============================================================
+   Guardar como PDF (para imprimir o mandar)
+   ============================================================ */
+function exportPdf(kind, item) {
+  const chips = (opts, key) => el("div", { class: "chips" }, opts.map(([val, label]) => {
+    const b = el("button", { class: "chip", "aria-pressed": String(settings[key] === val), text: label });
+    b.addEventListener("click", () => {
+      settings[key] = val; saveSettings();
+      $$(".chip", b.parentElement).forEach((c) => c.setAttribute("aria-pressed", String(c === b)));
+    });
+    return b;
+  }));
+  const marcas = el("input", { type: "checkbox", role: "switch" });
+  marcas.checked = settings.pdfMarks !== false;
+  marcas.addEventListener("change", () => { settings.pdfMarks = marcas.checked; saveSettings(); });
+  openSheet([
+    el("h2", { text: "Guardar como PDF" }),
+    el("p", { text: "Para imprimirlo o mandarlo. Se crea en el propio iPad." }),
+    el("div", { class: "group" }, el("span", { class: "label", text: "Tamaño de letra" }),
+      chips([[12, "Normal"], [16, "Grande"], [20, "Muy grande"]], "pdfSize")),
+    el("label", { class: "switch-row" }, el("span", { text: "Incluir los resaltados de colores" }), marcas),
+    el("div", { class: "actions" },
+      el("button", { class: "action primary", html: icon("pdf") + "<span>Crear el PDF</span>", onclick: () => crearPdf(kind, item) }),
+      el("button", { class: "action plain", text: "Cancelar", onclick: () => closeSheet() })
+    ),
+  ]);
+}
+
+async function crearPdf(kind, item) {
+  const close = busy("Preparando el PDF…");
+  try {
+    const { buildPdf } = await import("./pdf-export.js");
+    const blob = await buildPdf({
+      title: item.title || "Documento", html: htmlConTitulo(item),
+      size: Number(settings.pdfSize) || 12, family: settings.font, highlights: settings.pdfMarks !== false,
+    });
+    close();
+    offerFile(new File([blob], safeFileName(item.title) + ".pdf", { type: "application/pdf" }), { title: "PDF listo" });
+  } catch (e) {
+    console.error(e);
+    close();
+    toast("No se pudo crear el PDF. Inténtalo de nuevo.");
   }
 }
 
@@ -548,6 +666,18 @@ async function exportBackup() {
   offerFile(file, { title: "Copia de seguridad lista" });
 }
 
+/** Ensayos de una copia de seguridad (las grabaciones no van en la copia). */
+function limpiarEnsayos(lista) {
+  if (!Array.isArray(lista)) return undefined;
+  const num = (x) => (Number.isFinite(Number(x)) && Number(x) >= 0 ? Math.round(Number(x)) : null);
+  const res = lista.slice(0, 30).filter((e) => e && num(e.seg) != null).map((e) => ({
+    id: String(e.id || uid()).slice(0, 40), fecha: num(e.fecha) || Date.now(), seg: num(e.seg), objetivoSeg: num(e.objetivoSeg),
+    partes: (Array.isArray(e.partes) ? e.partes : []).slice(0, 60).map((p) => ({ t: String((p && p.t) || "").slice(0, 200), s: num(p && p.s) || 0, o: num(p && p.o) })),
+    audio: false,
+  }));
+  return res.length ? res : undefined;
+}
+
 async function importBackup(file) {
   let data;
   try { data = JSON.parse(await file.text()); } catch { toast("Ese archivo no es una copia de Atril."); return; }
@@ -558,9 +688,12 @@ async function importBackup(file) {
       if (!it || typeof it.id !== "string") continue;
       const existing = await store.get(kind, it.id);
       if (existing && existing.updated >= (it.updated || 0)) continue;
+      const target = Number(it.target);
       const clean = {
         id: it.id, title: String(it.title || "Sin título").slice(0, 300), html: sanitize(String(it.html || "")),
         created: Number(it.created) || Date.now(), updated: Number(it.updated) || Date.now(), source: it.source ? String(it.source) : undefined,
+        target: target > 0 && target <= 240 ? target : undefined,
+        ensayos: limpiarEnsayos(it.ensayos),
       };
       await store.put(kind, clean);
       kind === "docs" ? nDocs++ : nNotes++;
@@ -626,6 +759,7 @@ function itemActions(kind, item) {
     ? { label: "Pasar a Discursos", icon: "move", run: () => moveItem("notes", "docs", item) }
     : { label: "Pasar a Notas", icon: "move", run: () => moveItem("docs", "notes", item) };
   const del = { label: "Eliminar", icon: "trash", danger: true, run: () => deleteItem(kind, item) };
+  common.splice(1, 0, { label: "Guardar como PDF", icon: "pdf", run: () => exportPdf(kind, item) });
   if (kind === "docs") {
     return [
       { label: "Leer", icon: "book", run: () => go(`#/leer/docs/${item.id}`) },
@@ -673,11 +807,63 @@ async function deleteItem(kind, item) {
   renderHome();
 }
 
-async function newItem(kind) {
+async function newItem(kind, extra = {}) {
   const now = Date.now();
-  const item = { id: uid(), title: "", html: "<p><br></p>", created: now, updated: now };
+  const item = { id: uid(), title: "", html: "<p><br></p>", created: now, updated: now, ...extra };
   await store.put(kind, item);
   go(`#/editar/${kind}/${item.id}`);
+}
+
+function nuevoDiscurso() {
+  actionSheet("Nuevo discurso", [
+    { label: "Con plantilla: introducción, puntos y conclusión", icon: "template", run: plantillaDialog },
+    { label: "En blanco", icon: "note", run: () => newItem("docs") },
+  ]);
+}
+
+/** Plantilla: título, duración y número de puntos; reparte los minutos entre las partes. */
+function plantillaDialog() {
+  let minutos = 10, puntos = 3;
+  const titulo = el("input", { type: "text", placeholder: "Título del discurso", autocomplete: "off" });
+  const dur = el("input", { type: "number", inputmode: "numeric", min: 3, max: 120, step: 1, class: "num-input", value: minutos, "aria-label": "Minutos" });
+  const reparto = el("p", { class: "small-print reparto" });
+  const pintar = () => {
+    const r = repartirMinutos(minutos, puntos);
+    reparto.textContent = `Introducción ${r.intro} min · ${r.puntos.map((m, i) => `Punto ${i + 1}: ${m} min`).join(" · ")} · Conclusión ${r.conclusion} min`;
+  };
+  const fijar = (n) => { minutos = clamp(Math.round(Number(n) || 10), 3, 120); dur.value = minutos; pintar(); };
+  dur.addEventListener("change", () => fijar(dur.value));
+  dur.addEventListener("input", () => { const n = Number(dur.value); if (n >= 3 && n <= 120) { minutos = Math.round(n); pintar(); } });
+  const crear = async () => {
+    fijar(dur.value);
+    const t = titulo.value.trim();
+    const { html, reparto: r } = crearPlantilla({ titulo: t, minutos, puntos });
+    closeSheet();
+    await newItem("docs", { title: t, html, target: r.total });
+  };
+  titulo.addEventListener("keydown", (e) => { if (e.key === "Enter") dur.focus(); });
+  openSheet([
+    el("h2", { text: "Discurso con plantilla" }),
+    titulo,
+    el("div", { class: "group" }, el("span", { class: "label", text: "Duración" }),
+      el("div", { class: "size-row" },
+        el("button", { class: "chip", text: "−", "aria-label": "Un minuto menos", onclick: () => fijar(minutos - 1) }),
+        dur, el("span", { class: "unit", text: "min" }),
+        el("button", { class: "chip", text: "+", "aria-label": "Un minuto más", onclick: () => fijar(minutos + 1) }))),
+    el("div", { class: "group" }, el("span", { class: "label", text: "Puntos principales" }),
+      el("div", { class: "chips" }, [2, 3, 4, 5].map((n) => {
+        const b = el("button", { class: "chip", "aria-pressed": String(n === puntos), text: String(n) });
+        b.addEventListener("click", () => { puntos = n; $$(".chip", b.parentElement).forEach((c) => c.setAttribute("aria-pressed", String(c === b))); pintar(); });
+        return b;
+      }))),
+    reparto,
+    el("p", { class: "small-print", text: "Cada parte lleva sus minutos en el título, así el cronómetro te dirá si vas adelantado o retrasado." }),
+    el("div", { class: "actions" },
+      el("button", { class: "action primary", text: "Crear", onclick: crear }),
+      el("button", { class: "action plain", text: "Cancelar", onclick: () => closeSheet() })),
+  ]);
+  pintar();
+  setTimeout(() => titulo.focus(), 60);
 }
 
 async function renderHome() {
@@ -691,7 +877,7 @@ async function renderHome() {
   if (tab === "docs") {
     actions.append(
       el("button", { class: "btn primary", html: icon("open") + "<span>Abrir Word</span>", onclick: () => $("#file-input").click() }),
-      el("button", { class: "btn", html: icon("plus") + "<span>Nuevo discurso</span>", onclick: () => newItem("docs") })
+      el("button", { class: "btn", html: icon("plus") + "<span>Nuevo discurso</span>", onclick: nuevoDiscurso })
     );
   } else {
     actions.append(el("button", { class: "btn primary", html: icon("plus") + "<span>Nueva nota</span>", onclick: () => newItem("notes") }));
@@ -744,9 +930,13 @@ function openSettings() {
   const wake = el("input", { type: "checkbox", role: "switch" });
   wake.checked = !!settings.wakeLock;
   wake.addEventListener("change", () => { settings.wakeLock = wake.checked; saveSettings(); });
+  const grabar = el("input", { type: "checkbox", role: "switch" });
+  grabar.checked = !!settings.grabar;
+  grabar.addEventListener("change", () => { settings.grabar = grabar.checked; saveSettings(); });
   openSheet([
     el("h2", { text: "Ajustes" }),
     el("label", { class: "switch-row" }, el("span", { text: "Mantener la pantalla encendida al leer" }), wake),
+    puedeGrabar() ? el("label", { class: "switch-row" }, el("span", { text: "Grabar audio al ensayar con el cronómetro" }), grabar) : null,
     el("div", { class: "group" },
       el("span", { class: "label", text: "Citas bíblicas" }),
       el("p", { class: "small-print", text: "Al leer, las citas como «Sal 37:4» se pueden tocar para abrir el versículo." }),
@@ -769,7 +959,7 @@ function openSettings() {
     ),
     el("p", { class: "small-print", text: `Atril · versión ${APP_VERSION}` }),
     el("div", { class: "actions" }, el("button", { class: "action plain", text: "Cerrar", onclick: () => closeSheet() })),
-  ]);
+  ].filter(Boolean));
 }
 
 /* ============================================================
@@ -873,23 +1063,187 @@ async function keepAwake(on) {
    Cronómetro
    ============================================================ */
 const timer = {
-  running: false, startedAt: 0, elapsed: 0, int: 0,
+  running: false, startedAt: 0, elapsed: 0, int: 0, docKey: "",
   ms() { return this.elapsed + (this.running ? Date.now() - this.startedAt : 0); },
   toggle() {
-    if (this.running) { this.elapsed += Date.now() - this.startedAt; this.running = false; clearInterval(this.int); }
-    else { this.startedAt = Date.now(); this.running = true; this.int = setInterval(() => this.paint(), 500); }
+    if (this.running) {
+      this.elapsed += Date.now() - this.startedAt;
+      this.running = false;
+      clearInterval(this.int);
+      ensayo.pausa();
+    } else {
+      const desdeCero = this.elapsed === 0;
+      this.startedAt = Date.now();
+      this.running = true;
+      this.int = setInterval(() => this.paint(), 500);
+      if (desdeCero) { this.docKey = reader.kind + "/" + reader.id; ensayo.empezar(); }
+      else ensayo.seguir();
+    }
     this.paint();
   },
-  reset() { this.running = false; this.elapsed = 0; clearInterval(this.int); this.paint(); },
+  /** A cero. Si el ensayo ha durado al menos 30 s, se guarda en el historial. */
+  reset({ otroDoc = false } = {}) {
+    const ms = this.ms();
+    this.running = false;
+    this.elapsed = 0;
+    clearInterval(this.int);
+    ensayo.terminar(ms, { otroDoc });
+    this.paint();
+  },
   paint() {
+    ensayo.tic();
     const s = Math.floor(this.ms() / 1000);
     const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
-    $("#timer-text").textContent = (h ? h + ":" + String(m).padStart(2, "0") : String(m).padStart(2, "0")) + ":" + String(sec).padStart(2, "0");
-    $("#timer").classList.toggle("running", this.running);
+    const txt = (h ? h + ":" + String(m).padStart(2, "0") : String(m).padStart(2, "0")) + ":" + String(sec).padStart(2, "0");
+    $("#timer-text").textContent = txt;
+    $("#cards-timer-text").textContent = txt;
+    const rec = ensayo.grabando();
+    for (const n of [$("#timer"), $("#cards-timer")]) { n.classList.toggle("running", this.running); n.classList.toggle("rec", rec); }
     $("#timer-reset").hidden = this.running || this.elapsed === 0;
     if (currentView === "reader") reader.paintPace();
   },
 };
+
+/* ============================================================
+   Ensayos: tiempo total y por parte, con grabación opcional
+   ============================================================ */
+const MIN_ENSAYO = 30;       // segundos mínimos para guardar un ensayo
+const MAX_ENSAYOS = 30;      // por discurso
+const MAX_GRABACIONES = 5;   // por discurso
+
+const ensayo = {
+  activo: false, kind: null, id: null, titulo: "", partes: [], ms: [], parte: 0, ultimo: 0, objetivoSeg: null,
+  grab: null, grabListo: false, grabInicio: 0, marcas: [],
+
+  grabando() { return !!(this.grab && this.grabListo && this.grab.activa); },
+
+  empezar() {
+    if (!reader.item) { this.activo = false; return; }
+    this.activo = true;
+    this.kind = reader.kind; this.id = reader.id;
+    this.titulo = reader.item.title || "Sin título";
+    this.partes = reader.partesEnsayo();
+    this.ms = this.partes.map(() => 0);
+    this.objetivoSeg = reader.plan ? Math.round(reader.plan.objetivoSeg) : null;
+    this.parte = reader.parteActual() ?? 0;
+    this.ultimo = Date.now();
+    this.marcas = [];
+    if (settings.grabar && puedeGrabar()) this.empezarGrabacion();
+  },
+
+  async empezarGrabacion() {
+    const g = crearGrabadora();
+    this.grab = g; this.grabListo = false;
+    try {
+      await g.empezar();
+      if (this.grab !== g) { g.cancelar(); return; } // el ensayo terminó mientras se pedía el micrófono
+      this.grabListo = true;
+      this.grabInicio = timer.ms();
+      if (!timer.running) g.pausar();
+      this.marca(true);
+      timer.paint();
+    } catch (e) {
+      console.warn(e);
+      if (this.grab === g) this.grab = null;
+      toast("No se pudo usar el micrófono. El ensayo sigue, pero sin grabar audio.", { ms: 5000 });
+    }
+  },
+
+  /** Apunta en la grabación dónde empieza cada parte (para saltar a ella al escuchar). */
+  marca(forzar = false) {
+    if (!this.grabando()) return;
+    const s = Math.max(0, (timer.ms() - this.grabInicio) / 1000);
+    const ult = this.marcas[this.marcas.length - 1];
+    if (forzar || !ult || ult.i !== this.parte) this.marcas.push({ i: this.parte, s: Math.round(s * 10) / 10 });
+  },
+
+  /** Suma el tiempo transcurrido a la parte que se está leyendo. */
+  tic() {
+    if (!this.activo) return;
+    const now = Date.now();
+    if (timer.running) {
+      const k = currentView === "reader" && reader.id === this.id ? reader.parteActual() : null;
+      if (k != null && k !== this.parte) { this.parte = k; this.marca(); }
+      this.ms[this.parte] += now - this.ultimo;
+    }
+    this.ultimo = now;
+  },
+
+  pausa() { this.tic(); if (this.grab) this.grab.pausar(); },
+  seguir() {
+    if (!this.activo) { this.empezar(); return; }
+    this.ultimo = Date.now();
+    if (this.grab) this.grab.seguir();
+  },
+
+  async terminar(ms, { otroDoc = false } = {}) {
+    if (!this.activo) return null;
+    this.tic();
+    this.activo = false;
+    const g = this.grab;
+    this.grab = null; this.grabListo = false;
+    const seg = Math.round(ms / 1000);
+    if (seg < MIN_ENSAYO) { if (g) g.cancelar(); return null; }
+    const kind = this.kind, id = this.id;
+    const registro = {
+      id: uid(), fecha: Date.now(), seg, objetivoSeg: this.objetivoSeg,
+      partes: this.partes.map((p, k) => ({ t: p.titulo, s: Math.round(this.ms[k] / 1000), o: p.objetivoSeg })),
+      audio: false,
+    };
+    try {
+      const blob = g ? await g.terminar() : null;
+      if (blob && blob.size) {
+        await store.put("grabaciones", {
+          id: registro.id, kind, docId: id, fecha: registro.fecha, mime: blob.type, blob,
+          marcas: this.marcas, partes: registro.partes.map((p) => p.t),
+        });
+        registro.audio = true;
+      }
+      const item = await store.get(kind, id);
+      if (!item) return null;
+      const todos = [registro, ...(item.ensayos || [])];
+      item.ensayos = todos.slice(0, MAX_ENSAYOS);
+      // Solo se guardan las últimas grabaciones (el audio ocupa mucho)
+      let n = 0;
+      for (const e of item.ensayos) if (e.audio && ++n > MAX_GRABACIONES) { e.audio = false; await store.del("grabaciones", e.id); }
+      for (const e of todos.slice(MAX_ENSAYOS)) if (e.audio) await store.del("grabaciones", e.id);
+      await store.put(kind, item);
+      if (reader.id === id && reader.kind === kind && reader.item) reader.item.ensayos = item.ensayos;
+    } catch (e) {
+      console.error(e);
+      toast("No se pudo guardar el ensayo.");
+      return null;
+    }
+    const dif = registro.objetivoSeg ? seg - registro.objetivoSeg : null;
+    const extra = dif == null ? "" : Math.abs(dif) < 15 ? " (en tiempo)" : dif > 0 ? ` (+${mmss(dif)})` : ` (−${mmss(-dif)})`;
+    if (otroDoc) toast(`Ensayo de «${this.titulo}» guardado: ${mmss(seg)}${extra}.`, { ms: 5000 });
+    else toast(`Ensayo guardado: ${mmss(seg)}${extra}`, { action: "Ver", onAction: () => reader.openEnsayos(), ms: 6000 });
+    return registro;
+  },
+};
+
+async function borrarEnsayo(kind, id, eid) {
+  const item = await store.get(kind, id);
+  if (!item) return;
+  const e = (item.ensayos || []).find((x) => x.id === eid);
+  item.ensayos = (item.ensayos || []).filter((x) => x.id !== eid);
+  if (!item.ensayos.length) delete item.ensayos;
+  if (e && e.audio) await store.del("grabaciones", eid);
+  await store.put(kind, item);
+  if (reader.id === id && reader.item) reader.item.ensayos = item.ensayos;
+}
+
+/** Borra grabaciones que ya no pertenecen a ningún ensayo (p. ej. de discursos eliminados). */
+async function limpiarGrabaciones() {
+  try {
+    const todas = await store.all("grabaciones");
+    for (const g of todas) {
+      const item = await store.get(g.kind === "notes" ? "notes" : "docs", g.docId);
+      const sigue = item && (item.ensayos || []).some((e) => e.id === g.id && e.audio);
+      if (!sigue) await store.del("grabaciones", g.id);
+    }
+  } catch (e) { console.warn(e); }
+}
 
 /* ============================================================
    Lector
@@ -947,20 +1301,24 @@ function openAaSheet() {
 }
 
 const reader = {
-  kind: null, id: null, item: null, plan: null, mode: "texto", lastPace: null,
+  kind: null, id: null, item: null, plan: null, mode: "texto", lastPace: null, aqui: null, filtro: "todo", savedScroll: null,
   scrollEl: $("#reader-scroll"), contentEl: $("#reader-content"), outlineEl: $("#reader-outline"),
   posKey() { return `atril.pos.${this.kind}.${this.id}`; },
+  aquiKey() { return `atril.aqui.${this.kind}.${this.id}`; },
 
   async open(kind, id, stale = () => false) {
     const item = await store.get(kind, id);
     if (stale()) return;
     if (!item) { toast("Ese documento ya no existe."); throw new Error("no existe"); }
-    this.kind = kind; this.id = id; this.item = item;
+    // El cronómetro era de otro discurso: se guarda ese ensayo y se empieza de cero
+    if ((timer.running || timer.elapsed) && timer.docKey !== kind + "/" + id) timer.reset({ otroDoc: true });
+    this.kind = kind; this.id = id; this.item = item; this.filtro = "todo"; this.savedScroll = null;
     const title = item.title || htmlToText(item.html).split("\n")[0].slice(0, 60) || "Sin título";
     $("#reader-title").textContent = title;
     document.title = title + " · Atril";
     this.contentEl.innerHTML = item.html || "";
     enlazarCitas(this.contentEl, settings.refLinks);
+    this.cargarAqui();
     this.setMode("texto", { keepScroll: true });
     this.buildPlan();
     views.reader.classList.remove("immersive");
@@ -974,6 +1332,9 @@ const reader = {
 
   leave() {
     keepAwake(false);
+    buscador.cerrar();
+    prompter.cerrar();
+    if (tarjetas.activo) tarjetas.cerrar();
     if (this.mode === "texto") this.savePos();
     else if (this.savedScroll != null && this.scrollEl.scrollHeight) lsSet(this.posKey(), String(this.savedScroll / this.scrollEl.scrollHeight));
     views.reader.classList.remove("immersive");
@@ -991,36 +1352,77 @@ const reader = {
     this.paintPace();
   },
 
-  /** Ritmo: colores del cronómetro y «adelantado / retrasado». */
+  /** Partes del discurso para los ensayos (según los minutos de los títulos o los títulos). */
+  partesEnsayo() {
+    const bloques = [...this.contentEl.children].map((b) => ({ tag: b.tagName, texto: b.textContent || "" }));
+    return partesDelDiscurso(bloques, this.plan, tituloSinMinutos);
+  },
+
+  /** Bloque que se está leyendo (el que cruza la línea a un tercio de la pantalla) o null. */
+  bloqueActual() {
+    if (tarjetas.activo) { const t = tarjetas.lista[tarjetas.i]; return t ? t.inicio : null; }
+    if (this.mode !== "texto") return null;
+    const r = this.scrollEl.getBoundingClientRect();
+    const y = r.top + r.height * 0.33;
+    const hijos = this.contentEl.children;
+    let elegido = 0;
+    for (let i = 0; i < hijos.length; i++) {
+      if (hijos[i].getBoundingClientRect().top <= y) elegido = i; else break;
+    }
+    return elegido;
+  },
+
+  parteActual() {
+    const b = this.bloqueActual();
+    return b == null ? null : parteDeBloque(ensayo.partes, b);
+  },
+
+  /** Palabra por la que se va (para el ritmo) o null si no se puede saber. */
+  palabraLeida() {
+    const plan = this.plan;
+    if (!plan) return null;
+    if (tarjetas.activo) {
+      const t = tarjetas.lista[tarjetas.i];
+      if (!t) return null;
+      const st = $("#cards-stage");
+      const max = st.scrollHeight - st.clientHeight;
+      const frac = max > 20 ? st.scrollTop / max : 0.5;
+      return (plan.inicioBloque[t.inicio] || 0) + t.palabras * frac;
+    }
+    if (this.mode !== "texto") return null;
+    return palabraActual(plan, this.scrollEl, this.contentEl);
+  },
+
+  /** Ritmo: colores del cronómetro y «adelantado / retrasado» (barra, tarjetas y cronómetro flotante). */
   paintPace() {
-    const chip = $("#pace"), flot = $("#float-timer"), tEl = $("#timer");
     const seg = timer.ms() / 1000;
     const started = timer.running || timer.elapsed > 0;
     const plan = this.plan;
-    tEl.classList.remove("warn", "over");
-    let estado = "", largo = "", corto = "";
+    let estado = "", largo = "", corto = "", aviso = "";
     if (plan && started) {
       const objetivo = plan.objetivoSeg;
       const resta = objetivo - seg;
-      if (resta <= 0) { tEl.classList.add("over"); estado = "over"; largo = `Te pasas ${mmss(-resta)}`; corto = `+${mmss(-resta)}`; }
+      if (resta <= 0) { aviso = "over"; estado = "over"; largo = `Te pasas ${mmss(-resta)}`; corto = `+${mmss(-resta)}`; }
       else {
-        if (resta <= Math.max(60, objetivo * 0.1)) tEl.classList.add("warn");
-        if (this.mode === "texto") this.lastPace = tiempoPrevisto(plan, palabraActual(plan, this.scrollEl, this.contentEl)) - seg;
+        if (resta <= Math.max(60, objetivo * 0.1)) aviso = "warn";
+        const w = this.palabraLeida();
+        if (w != null) this.lastPace = tiempoPrevisto(plan, w) - seg;
         const d = this.lastPace == null ? 0 : this.lastPace;
         if (Math.abs(d) < 20) { estado = "ok"; largo = "En tiempo"; corto = "✓"; }
         else if (d > 0) { estado = "ahead"; largo = `Adelantado ${mmss(d)}`; corto = `−${mmss(d)}`; }
         else { estado = "behind"; largo = `Retrasado ${mmss(-d)}`; corto = `+${mmss(-d)}`; }
       }
     }
-    chip.hidden = !estado;
-    chip.className = "pace " + estado;
-    chip.innerHTML = estado ? `<span class="long">${escapeHtml(largo)}</span><span class="short">${escapeHtml(corto)}</span>` : "";
+    for (const n of [$("#timer"), $("#cards-timer")]) { n.classList.remove("warn", "over"); if (aviso) n.classList.add(aviso); }
+    const html = estado ? `<span class="long">${escapeHtml(largo)}</span><span class="short">${escapeHtml(corto)}</span>` : "";
+    for (const chip of [$("#pace"), $("#cards-pace")]) { chip.hidden = !estado; chip.className = "pace " + estado; chip.innerHTML = html; }
     $("#timer-toggle").title = plan ? `Objetivo ${mmss(plan.objetivoSeg)}` : "Cronómetro";
     // Cronómetro flotante en modo atril
-    const showFloat = views.reader.classList.contains("immersive") && started;
+    const flot = $("#float-timer");
+    const showFloat = views.reader.classList.contains("immersive") && started && !tarjetas.activo;
     flot.hidden = !showFloat;
     if (showFloat) {
-      flot.className = "float-timer" + (tEl.classList.contains("over") ? " over" : tEl.classList.contains("warn") ? " warn" : "") + (timer.running ? "" : " paused");
+      flot.className = "float-timer" + (aviso ? " " + aviso : "") + (timer.running ? "" : " paused") + (ensayo.grabando() ? " rec" : "");
       flot.innerHTML = `<span>${mmss(seg)}</span>${estado ? `<span class="fp ${estado}">${escapeHtml(corto)}</span>` : ""}`;
     }
   },
@@ -1030,8 +1432,16 @@ const reader = {
     const palabras = contarPalabras(this.contentEl.textContent || "");
     const est = minutosEstimados(palabras);
     const partes = this.plan && this.plan.porPartes ? this.plan.secciones : [];
-    const valor = el("input", { type: "number", inputmode: "numeric", min: 0, max: 240, step: 1, class: "num-input", "aria-label": "Minutos de objetivo", value: Number(this.item.target) || "" , placeholder: "—" });
-    const guardar = debounce(async () => { try { await store.put(this.kind, this.item); } catch (e) { console.error(e); } }, 500);
+    const valor = el("input", { type: "number", inputmode: "numeric", min: 0, max: 240, step: 1, class: "num-input", "aria-label": "Minutos de objetivo", value: Number(this.item.target) || "", placeholder: "—" });
+    const guardar = debounce(async () => {
+      try {
+        // Se relee para no pisar los ensayos guardados mientras tanto
+        const fresco = await store.get(this.kind, this.id);
+        const it = { ...(fresco || this.item), target: this.item.target };
+        if (!it.target) delete it.target;
+        await store.put(this.kind, it);
+      } catch (e) { console.error(e); }
+    }, 500);
     const fijar = (n) => {
       n = Math.max(0, Math.min(240, Math.round(Number(n) || 0)));
       this.item.target = n || undefined;
@@ -1072,32 +1482,53 @@ const reader = {
   },
 
   toggleOutline() {
-    if (this.mode === "texto") { this.savedScroll = this.scrollEl.scrollTop; this.setMode("esquema"); }
+    if (this.mode === "texto") { buscador.cerrar(); prompter.cerrar(); this.savedScroll = this.scrollEl.scrollTop; this.setMode("esquema"); }
     else this.setMode("texto");
   },
 
-  /** Esquema: títulos y frases resaltadas. Tocar un punto lleva a su sitio en el texto. */
+  /** Esquema: títulos y frases resaltadas (con filtro por color). Tocar un punto lleva a su sitio en el texto. */
   renderOutline() {
     const out = this.outlineEl;
     out.replaceChildren();
     const bloques = [...this.contentEl.children];
-    let n = 0;
+    const items = [];
+    const colores = new Set();
     bloques.forEach((b, i) => {
+      if (i === this.aqui) items.push({ tipo: "aqui", i });
       const tag = b.tagName;
-      if (/^H[1-4]$/.test(tag)) {
-        const min = minutosDeTitulo(b.textContent);
-        const h = el("button", { class: `o-item o-h o-${tag.toLowerCase()}`, "data-i": i });
-        h.textContent = min ? tituloSinMinutos(b.textContent) : b.textContent.trim();
+      if (/^H[1-4]$/.test(tag)) { items.push({ tipo: "h", i, b }); return; }
+      b.querySelectorAll("mark").forEach((m) => { const c = colorDeMark(m); colores.add(c); items.push({ tipo: "m", i, m, c }); });
+    });
+    // Filtro: todo, solo títulos o un color
+    if (colores.size) {
+      if (this.filtro !== "todo" && this.filtro !== "titulos" && !colores.has(this.filtro)) this.filtro = "todo";
+      const opciones = [["todo", "Todo"], ["titulos", "Títulos"], ...COLORES.filter((c) => colores.has(c.id)).map((c) => [c.id, c.nombre])];
+      const fila = el("div", { class: "o-filtro", role: "toolbar", "aria-label": "Filtrar el esquema" },
+        opciones.map(([val, label]) => el("button", {
+          class: "chip" + (COLORES.some((c) => c.id === val) ? ` sw-${val}` : ""), "data-filtro": val,
+          "aria-pressed": String(this.filtro === val), text: label,
+        })));
+      out.append(fila);
+    } else this.filtro = "todo";
+    let n = 0;
+    for (const it of items) {
+      if (it.tipo === "aqui") {
+        out.append(el("button", { class: "o-item o-aqui", "data-i": it.i, html: icon("bookmark") + "<span>Voy por aquí</span>" }));
+        continue;
+      }
+      if (it.tipo === "h") {
+        const min = minutosDeTitulo(it.b.textContent);
+        const h = el("button", { class: `o-item o-h o-${it.b.tagName.toLowerCase()}`, "data-i": it.i });
+        h.textContent = min ? tituloSinMinutos(it.b.textContent) : it.b.textContent.trim();
         if (min) h.append(el("span", { class: "o-min", text: `${String(min).replace(".", ",")} min` }));
         out.append(h); n++;
-        return;
+        continue;
       }
-      b.querySelectorAll("mark").forEach((m) => {
-        const item = el("div", { class: "o-item o-m", "data-i": i, role: "button", tabindex: "0" });
-        item.innerHTML = m.innerHTML;
-        out.append(item); n++;
-      });
-    });
+      if (this.filtro === "titulos" || (this.filtro !== "todo" && this.filtro !== it.c)) continue;
+      const item = el("div", { class: `o-item o-m o-${it.c}`, "data-i": it.i, role: "button", tabindex: "0" });
+      item.innerHTML = it.m.innerHTML;
+      out.append(item); n++;
+    }
     if (!n) {
       out.append(el("div", { class: "o-empty" },
         el("h2", { text: "El esquema está vacío" }),
@@ -1106,13 +1537,13 @@ const reader = {
     }
   },
 
-  goToBlock(i) {
+  goToBlock(i, { flash = true } = {}) {
     this.setMode("texto", { keepScroll: true });
     const b = this.contentEl.children[i];
     if (!b) return;
     const top = b.getBoundingClientRect().top - this.scrollEl.getBoundingClientRect().top;
     this.scrollEl.scrollTop += top - Math.min(80, this.scrollEl.clientHeight * 0.15);
-    b.classList.remove("flash"); void b.offsetWidth; b.classList.add("flash");
+    if (flash) { b.classList.remove("flash"); void b.offsetWidth; b.classList.add("flash"); }
     this.paintProgress();
   },
 
@@ -1120,6 +1551,153 @@ const reader = {
     const el2 = this.scrollEl;
     const max = el2.scrollHeight - el2.clientHeight;
     $("#progress-bar").style.width = (max > 0 ? (el2.scrollTop / max) * 100 : 0) + "%";
+  },
+
+  /* ---- Marcador «voy por aquí» (doble toque en un párrafo) ---- */
+  cargarAqui() {
+    this.aqui = null;
+    let dato = null;
+    try { dato = JSON.parse(lsGet(this.aquiKey(), "null")); } catch {}
+    if (!dato || typeof dato.i !== "number") return;
+    const hijos = this.contentEl.children;
+    const empieza = (k) => hijos[k] && hijos[k].textContent.trim().startsWith(dato.t || "");
+    let i = dato.i;
+    // Si el texto se ha editado y el párrafo se ha movido, se busca por su principio
+    if (!empieza(i)) i = [...hijos].findIndex((h, k) => empieza(k));
+    if (i >= 0 && hijos[i]) { this.aqui = i; hijos[i].classList.add("aqui"); }
+  },
+
+  toggleAqui(target) {
+    let b = target;
+    while (b && b.parentElement !== this.contentEl) b = b.parentElement;
+    if (!b) return;
+    const i = [...this.contentEl.children].indexOf(b);
+    $$(".aqui", this.contentEl).forEach((x) => x.classList.remove("aqui"));
+    if (this.aqui === i) {
+      this.aqui = null;
+      lsSet(this.aquiKey(), "");
+      toast("Marca quitada.");
+    } else {
+      this.aqui = i;
+      b.classList.add("aqui");
+      lsSet(this.aquiKey(), JSON.stringify({ i, t: b.textContent.trim().slice(0, 40) }));
+      toast("Marcado: voy por aquí. Toca dos veces otra vez para quitarlo.");
+    }
+  },
+
+  irAqui() { if (this.aqui != null) this.goToBlock(this.aqui); },
+
+  /* ---- Menú ⋯ ---- */
+  openMenu() {
+    const n = (this.item.ensayos || []).length;
+    const acciones = [
+      { label: "Buscar en el texto", icon: "search", run: () => buscador.abrir() },
+      { label: "Tarjetas: una parte por pantalla", icon: "cards", run: () => tarjetas.abrir() },
+      { label: "Desplazamiento automático", icon: "scroll", run: () => prompter.abrir() },
+      { label: n ? `Ensayos (${n})` : "Ensayos", icon: "history", run: () => this.openEnsayos() },
+    ];
+    if (this.aqui != null) acciones.push({ label: "Ir a «voy por aquí»", icon: "bookmark", run: () => this.irAqui() });
+    acciones.push(
+      { label: "Guardar como Word", icon: "word", run: () => exportWord(this.kind, this.item) },
+      { label: "Guardar como PDF", icon: "pdf", run: () => exportPdf(this.kind, this.item) },
+    );
+    actionSheet(null, acciones);
+  },
+
+  /* ---- Ensayos ---- */
+  async openEnsayos() {
+    if (!this.id) return;
+    const kind = this.kind, id = this.id;
+    const item = (await store.get(kind, id)) || this.item;
+    const lista = item.ensayos || [];
+    const objetivo = Number(item.target) ? item.target * 60 : this.plan ? Math.round(this.plan.objetivoSeg) : null;
+    const contenido = [el("h2", { text: lista.length ? `Ensayos · ${lista.length}` : "Ensayos" })];
+    if (puedeGrabar()) {
+      const sw = el("input", { type: "checkbox", role: "switch", id: "grabar-switch" });
+      sw.checked = !!settings.grabar;
+      sw.addEventListener("change", () => { settings.grabar = sw.checked; saveSettings(); });
+      contenido.push(
+        el("label", { class: "switch-row" }, el("span", { class: "with-icon", html: icon("mic") + "<span>Grabar audio al ensayar</span>" }), sw),
+        el("p", { class: "small-print", text: `Graba mientras corre el cronómetro. Se guardan las ${MAX_GRABACIONES} últimas grabaciones de cada discurso, solo en este dispositivo.` })
+      );
+    }
+    if (!lista.length) {
+      contenido.push(el("p", { text: "Aún no hay ensayos. Pon en marcha el cronómetro y lee el discurso. Al ponerlo a cero (↺) se guarda el ensayo con el tiempo de cada parte." }));
+    } else {
+      const media = Math.round(lista.reduce((a, e) => a + e.seg, 0) / lista.length);
+      contenido.push(el("p", { class: "ens-resumen", text: [`Último ${mmss(lista[0].seg)}`, `media ${mmss(media)}`, objetivo ? `objetivo ${mmss(objetivo)}` : ""].filter(Boolean).join(" · ") }));
+      // Barras de los últimos ensayos, del más antiguo al más reciente
+      const ult = lista.slice(0, 12).reverse();
+      const tope = Math.max(...ult.map((e) => e.seg), objetivo || 0) * 1.08;
+      const barras = el("div", { class: "ens-barras", role: "img", "aria-label": "Duración de los últimos ensayos" });
+      ult.forEach((e) => {
+        const o = e.objetivoSeg || objetivo;
+        const cls = o && e.seg > o + 15 ? " over" : "";
+        barras.append(el("span", { class: "ens-barra" + cls, style: `height:${Math.max(6, Math.round((e.seg / tope) * 100))}%`, title: mmss(e.seg) }));
+      });
+      if (objetivo) barras.append(el("i", { class: "ens-objetivo", style: `bottom:${Math.round((objetivo / tope) * 100)}%` }));
+      contenido.push(barras);
+      contenido.push(el("div", { class: "ens-lista" }, lista.map((e) => this.filaEnsayo(e, item))));
+    }
+    contenido.push(el("div", { class: "actions" }, el("button", { class: "action plain", text: "Cerrar", onclick: () => closeSheet() })));
+    openSheet(contenido);
+  },
+
+  filaEnsayo(e, item) {
+    const dif = e.objetivoSeg ? e.seg - e.objetivoSeg : null;
+    const tono = (d) => (d == null ? "" : d > 15 ? "over" : d < -15 ? "ahead" : "ok");
+    const difTxt = dif == null ? "" : Math.abs(dif) < 15 ? "en tiempo" : dif > 0 ? `+${mmss(dif)}` : `−${mmss(-dif)}`;
+    const det = el("div", { class: "ens-detalle", hidden: true });
+    const cab = el("button", { class: "ens-fila", "aria-expanded": "false" },
+      el("span", { class: "ens-fecha", text: fmtDate(e.fecha) }),
+      e.audio ? el("span", { class: "ens-mic", html: icon("mic"), title: "Con grabación" }) : null,
+      el("span", { class: "ens-total", text: mmss(e.seg) }),
+      difTxt ? el("span", { class: "ens-dif " + tono(dif), text: difTxt }) : null);
+    cab.addEventListener("click", () => { det.hidden = !det.hidden; cab.setAttribute("aria-expanded", String(!det.hidden)); });
+    for (const p of e.partes || []) {
+      det.append(el("div", { class: "ens-parte" },
+        el("span", { class: "ens-pt", text: p.t || "Parte" }),
+        el("span", { class: "ens-ps " + tono(p.o ? p.s - p.o : null), text: mmss(p.s) + (p.o ? ` de ${mmss(p.o)}` : "") })));
+    }
+    const acciones = el("div", { class: "ens-acciones" });
+    if (e.audio) acciones.append(el("button", { class: "chip", html: icon("play") + "<span>Escuchar</span>", onclick: () => this.abrirGrabacion(e, item) }));
+    const borrar = el("button", { class: "chip danger", text: "Borrar" });
+    let armado = false;
+    borrar.addEventListener("click", async () => {
+      if (!armado) {
+        armado = true; borrar.textContent = "¿Seguro? Toca otra vez";
+        setTimeout(() => { armado = false; borrar.textContent = "Borrar"; }, 3000);
+        return;
+      }
+      await borrarEnsayo(this.kind, this.id, e.id);
+      this.openEnsayos();
+    });
+    acciones.append(borrar);
+    det.append(acciones);
+    return el("div", { class: "ens-item" }, cab, det);
+  },
+
+  async abrirGrabacion(e, item) {
+    const g = await store.get("grabaciones", e.id);
+    if (!g || !g.blob) { toast("Esa grabación ya no está en el dispositivo."); return; }
+    const url = URL.createObjectURL(g.blob);
+    const audio = el("audio", { controls: true, src: url, preload: "metadata", class: "ens-audio" });
+    const vistas = new Set();
+    const marcas = (g.marcas || []).filter((m) => (vistas.has(m.i) ? false : vistas.add(m.i))).sort((a, b) => a.s - b.s);
+    const fecha = new Date(g.fecha);
+    const nombre = `Ensayo ${safeFileName(item.title || "discurso")} ${fecha.getDate()}-${fecha.getMonth() + 1}-${fecha.getFullYear()}.${extensionDe(g.mime || g.blob.type)}`;
+    openSheet([
+      el("h2", { text: `Ensayo · ${fmtDate(g.fecha)} · ${mmss(e.seg)}` }),
+      audio,
+      marcas.length > 1 ? el("div", { class: "group" }, el("span", { class: "label", text: "Ir a" }),
+        el("div", { class: "chips" }, marcas.map((m) => el("button", {
+          class: "chip", text: `${(g.partes && g.partes[m.i]) || "Parte " + (m.i + 1)} · ${mmss(m.s)}`,
+          onclick: () => { audio.currentTime = m.s; audio.play().catch(() => {}); },
+        })))) : null,
+      el("div", { class: "actions" },
+        el("button", { class: "action", html: icon("share") + "<span>Guardar el audio</span>", onclick: () => offerFile(new File([g.blob], nombre, { type: g.mime || g.blob.type }), { title: "Audio listo" }) }),
+        el("button", { class: "action plain", text: "Volver a los ensayos", onclick: () => this.openEnsayos() })),
+    ].filter(Boolean), { onClose: () => { audio.pause(); setTimeout(() => URL.revokeObjectURL(url), 1000); } });
   },
 
   init() {
@@ -1131,25 +1709,310 @@ const reader = {
       if (this.mode === "texto") saveLater();
       if (!paceRaf && (timer.running || timer.elapsed)) paceRaf = requestAnimationFrame(() => { paceRaf = 0; this.paintPace(); });
     }, { passive: true });
-    // Un toque sobre el texto oculta o muestra la barra (modo atril)
+    // Un toque sobre el texto oculta o muestra la barra (modo atril); dos toques marcan «voy por aquí»
+    let ultimoToque = { t: 0, x: 0, y: 0 }, esperaToque = 0;
     this.contentEl.addEventListener("click", (e) => {
       if (e.target.closest("a")) return;
+      if (prompter.activo) { prompter.alternar(); return; }
+      const now = Date.now();
+      if (now - ultimoToque.t < 300 && Math.hypot(e.clientX - ultimoToque.x, e.clientY - ultimoToque.y) < 40) {
+        clearTimeout(esperaToque);
+        ultimoToque.t = 0;
+        try { window.getSelection().removeAllRanges(); } catch {} // el doble toque no debe seleccionar una palabra
+        this.toggleAqui(e.target);
+        return;
+      }
       if (window.getSelection && String(window.getSelection()).length) return;
-      views.reader.classList.toggle("immersive");
-      this.paintPace();
+      ultimoToque = { t: now, x: e.clientX, y: e.clientY };
+      clearTimeout(esperaToque);
+      esperaToque = setTimeout(() => {
+        ultimoToque.t = 0;
+        views.reader.classList.toggle("immersive");
+        this.paintPace();
+      }, 300);
     });
     this.outlineEl.addEventListener("click", (e) => {
       if (e.target.closest("a")) return;
+      const f = e.target.closest("[data-filtro]");
+      if (f) { this.filtro = f.dataset.filtro; this.renderOutline(); return; }
       const it = e.target.closest(".o-item");
       if (it) this.goToBlock(Number(it.dataset.i));
     });
     $("#reader-outline-btn").addEventListener("click", () => this.toggleOutline());
+    $("#reader-more").addEventListener("click", () => this.openMenu());
     $("#float-timer").addEventListener("click", () => timer.toggle());
     $("#reader-back").addEventListener("click", () => go("#/"));
     $("#reader-edit").addEventListener("click", () => go(`#/editar/${this.kind}/${this.id}`));
     $("#reader-aa").addEventListener("click", openAaSheet);
     $("#timer-toggle").addEventListener("click", () => timer.toggle());
     $("#timer-reset").addEventListener("click", () => timer.reset());
+
+    // Teclado, mando o pedal de pasar páginas
+    document.addEventListener("keydown", (e) => {
+      if (currentView !== "reader" || !$("#overlay").hidden) return;
+      if (e.target.closest && e.target.closest("input, textarea, [contenteditable]")) return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      const k = e.key;
+      const adelante = k === "ArrowRight" || k === "PageDown" || (k === " " && !e.shiftKey);
+      const atras = k === "ArrowLeft" || k === "PageUp" || (k === " " && e.shiftKey);
+      if (k === " " && e.target.closest && e.target.closest("button")) return;
+      if (tarjetas.activo) {
+        if (adelante || k === "ArrowDown") { e.preventDefault(); tarjetas.ir(1); }
+        else if (atras || k === "ArrowUp") { e.preventDefault(); tarjetas.ir(-1); }
+        else if (k === "Escape") tarjetas.cerrar();
+        return;
+      }
+      if (k === "Escape") { if (buscador.abierto) buscador.cerrar(); else if (prompter.activo) prompter.cerrar(); return; }
+      if (this.mode === "texto" && (adelante || atras)) {
+        e.preventDefault();
+        this.scrollEl.scrollBy({ top: (adelante ? 1 : -1) * this.scrollEl.clientHeight * 0.85, behavior: "smooth" });
+      }
+    });
+  },
+};
+
+/* ============================================================
+   Buscar en el texto
+   ============================================================ */
+const buscador = {
+  abierto: false, hits: [], i: -1,
+  abrir() {
+    prompter.cerrar();
+    if (tarjetas.activo) tarjetas.cerrar();
+    if (reader.mode !== "texto") reader.setMode("texto");
+    views.reader.classList.remove("immersive");
+    $("#findbar").hidden = false;
+    this.abierto = true;
+    const inp = $("#find-input");
+    inp.focus();
+    inp.select();
+    if (inp.value.trim()) this.buscar();
+    reader.paintPace();
+  },
+  cerrar() {
+    if (!this.abierto) return;
+    this.abierto = false;
+    this.limpiar();
+    $("#findbar").hidden = true;
+    $("#find-input").blur();
+    $("#find-count").textContent = "";
+  },
+  limpiar() { limpiarCoincidencias(reader.contentEl); this.hits = []; this.i = -1; },
+  buscar() {
+    this.limpiar();
+    const q = $("#find-input").value;
+    this.hits = marcarCoincidencias(reader.contentEl, q);
+    if (!this.hits.length) { $("#find-count").textContent = q.trim().length >= 2 ? "Sin resultados" : ""; return; }
+    // La primera coincidencia a partir de lo que se está leyendo
+    const top = reader.scrollEl.getBoundingClientRect().top;
+    const k = this.hits.findIndex((h) => h[0].getBoundingClientRect().top >= top + 10);
+    this.ir(k < 0 ? 0 : k);
+  },
+  ir(k) {
+    const n = this.hits.length;
+    if (!n) return;
+    k = ((k % n) + n) % n;
+    if (this.hits[this.i]) this.hits[this.i].forEach((s) => s.classList.remove("cur"));
+    this.i = k;
+    this.hits[k].forEach((s) => s.classList.add("cur"));
+    const sr = reader.scrollEl.getBoundingClientRect();
+    const r = this.hits[k][0].getBoundingClientRect();
+    reader.scrollEl.scrollTop += r.top - sr.top - sr.height * 0.35;
+    $("#find-count").textContent = `${k + 1} de ${n}`;
+  },
+  init() {
+    const inp = $("#find-input");
+    const later = debounce(() => this.buscar(), 220);
+    inp.addEventListener("input", later);
+    inp.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") { e.preventDefault(); later.cancel(); if (!this.hits.length) this.buscar(); else this.ir(this.i + (e.shiftKey ? -1 : 1)); }
+      else if (e.key === "Escape") this.cerrar();
+    });
+    $("#find-next").addEventListener("click", () => { if (!this.hits.length) this.buscar(); else this.ir(this.i + 1); });
+    $("#find-prev").addEventListener("click", () => this.ir(this.i - 1));
+    $("#find-close").addEventListener("click", () => this.cerrar());
+  },
+};
+
+/* ============================================================
+   Tarjetas: una parte del discurso por pantalla
+   ============================================================ */
+const tarjetas = {
+  activo: false, lista: [], i: 0, corte: 0,
+  abrir(desdeBloque) {
+    buscador.cerrar();
+    prompter.cerrar();
+    if (reader.mode !== "texto") reader.setMode("texto");
+    const bloques = [...reader.contentEl.children].map((b) => ({ tag: b.tagName, palabras: contarPalabras(b.textContent || "") }));
+    this.lista = dividirEnTarjetas(bloques);
+    this.corte = nivelDeCorte(bloques);
+    if (!this.lista.length) { toast("No hay texto que mostrar."); return; }
+    const b = desdeBloque ?? reader.bloqueActual() ?? 0;
+    this.i = Math.max(0, this.lista.findIndex((t) => b >= t.inicio && b < t.fin));
+    this.activo = true;
+    $("#cards").hidden = false;
+    this.pintar(0);
+    timer.paint();
+  },
+  cerrar() {
+    if (!this.activo) return;
+    ensayo.tic();
+    this.activo = false;
+    $("#cards").hidden = true;
+    const t = this.lista[this.i];
+    if (t) reader.goToBlock(t.inicio, { flash: false });
+    timer.paint();
+  },
+  pintar(dir) {
+    const t = this.lista[this.i];
+    const hijos = reader.contentEl.children;
+    const body = $("#card-body");
+    const copias = [];
+    for (let k = t.inicio; k < t.fin; k++) copias.push(hijos[k].cloneNode(true));
+    body.replaceChildren(...copias);
+    // Título de la parte (no el del discurso, si la primera tarjeta lleva los dos)
+    const titulo = copias.find((c) => c.tagName === "H" + this.corte) || copias.find((c) => /^H[1-4]$/.test(c.tagName));
+    $("#cards-title").textContent = titulo ? tituloSinMinutos(titulo.textContent) : `Parte ${this.i + 1}`;
+    $("#cards-count").textContent = `${this.i + 1} / ${this.lista.length}`;
+    $("#cards-prev").disabled = this.i === 0;
+    $("#cards-next").disabled = this.i === this.lista.length - 1;
+    $("#cards-stage").scrollTop = 0;
+    body.classList.remove("in-next", "in-prev");
+    if (dir) { void body.offsetWidth; body.classList.add(dir > 0 ? "in-next" : "in-prev"); }
+    reader.paintPace();
+  },
+  ir(d) {
+    const n = this.i + d;
+    if (n < 0 || n >= this.lista.length) {
+      const body = $("#card-body");
+      body.classList.remove("tope"); void body.offsetWidth; body.classList.add("tope");
+      return;
+    }
+    ensayo.tic(); // el tiempo hasta aquí cuenta para la tarjeta anterior
+    this.i = n;
+    this.pintar(d);
+    ensayo.tic();
+  },
+  init() {
+    const stage = $("#cards-stage");
+    attachPinch(stage, $("#card-body"));
+    let p0 = null, varios = false;
+    stage.addEventListener("pointerdown", (e) => {
+      if (p0) { varios = true; return; }
+      p0 = { x: e.clientX, y: e.clientY, t: Date.now(), id: e.pointerId };
+      varios = false;
+    });
+    stage.addEventListener("pointerup", (e) => {
+      if (!p0 || e.pointerId !== p0.id) return;
+      const dx = e.clientX - p0.x, dy = e.clientY - p0.y, dt = Date.now() - p0.t;
+      const fueronVarios = varios;
+      p0 = null;
+      if (fueronVarios) return;
+      if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.4 && dt < 900) { this.ir(dx < 0 ? 1 : -1); return; }
+      if (Math.abs(dx) < 12 && Math.abs(dy) < 12 && dt < 500 && !e.target.closest("a")) {
+        const r = stage.getBoundingClientRect();
+        const fx = (e.clientX - r.left) / r.width;
+        if (fx > 0.65) this.ir(1);
+        else if (fx < 0.35) this.ir(-1);
+      }
+    });
+    stage.addEventListener("pointercancel", () => { p0 = null; });
+    stage.addEventListener("scroll", () => { if (timer.running || timer.elapsed) reader.paintPace(); }, { passive: true });
+    $("#cards-prev").addEventListener("click", () => this.ir(-1));
+    $("#cards-next").addEventListener("click", () => this.ir(1));
+    $("#cards-close").addEventListener("click", () => this.cerrar());
+    $("#cards-timer-toggle").addEventListener("click", () => timer.toggle());
+  },
+};
+
+/* ============================================================
+   Desplazamiento automático (teleprompter)
+   ============================================================ */
+const prompter = {
+  activo: false, pausado: false, wpm: 130, pos: 0, raf: 0, ultimo: 0, pxPorPalabra: 1, medido: 0, tocando: false, soltar: 0,
+  abrir() {
+    buscador.cerrar();
+    if (tarjetas.activo) tarjetas.cerrar();
+    if (reader.mode !== "texto") reader.setMode("texto");
+    const palabras = contarPalabras(reader.contentEl.textContent || "");
+    if (!palabras) { toast("No hay texto que desplazar."); return; }
+    const objetivo = Number(reader.item && reader.item.target) || 0;
+    this.wpm = clamp(Math.round(objetivo ? palabras / objetivo : Number(settings.tpWpm) || 130), 40, 300);
+    this.activo = true;
+    this.pausado = false;
+    views.reader.classList.add("immersive", "tp-on");
+    $("#tp-bar").hidden = false;
+    $("#tp-guide").hidden = false;
+    this.medir();
+    this.pos = reader.scrollEl.scrollTop;
+    this.ultimo = performance.now();
+    this.pintar();
+    cancelAnimationFrame(this.raf);
+    this.raf = requestAnimationFrame((t) => this.paso(t));
+    reader.paintPace();
+  },
+  cerrar() {
+    if (!this.activo) return;
+    this.activo = false;
+    cancelAnimationFrame(this.raf);
+    views.reader.classList.remove("tp-on", "immersive");
+    $("#tp-bar").hidden = true;
+    $("#tp-guide").hidden = true;
+    reader.savePos();
+    reader.paintPace();
+  },
+  medir() {
+    const c = reader.contentEl, cs = getComputedStyle(c);
+    const alto = c.offsetHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+    this.pxPorPalabra = Math.max(0.1, alto / Math.max(1, contarPalabras(c.textContent || "")));
+    this.medido = performance.now();
+  },
+  paso(t) {
+    if (!this.activo) return;
+    const dt = Math.min(100, t - this.ultimo) / 1000;
+    this.ultimo = t;
+    const sc = reader.scrollEl;
+    if (!this.pausado && !this.tocando) {
+      if (t - this.medido > 1000) this.medir();
+      if (Math.abs(sc.scrollTop - this.pos) > 3) this.pos = sc.scrollTop; // lo ha movido el usuario o el zoom
+      this.pos += (this.pxPorPalabra * this.wpm / 60) * dt;
+      sc.scrollTop = this.pos;
+      if (sc.scrollTop >= sc.scrollHeight - sc.clientHeight - 1) { this.pausado = true; this.pintar(); toast("Has llegado al final."); }
+    }
+    this.raf = requestAnimationFrame((x) => this.paso(x));
+  },
+  alternar() {
+    this.pausado = !this.pausado;
+    this.pos = reader.scrollEl.scrollTop;
+    this.pintar();
+  },
+  velocidad(d) {
+    this.wpm = clamp(this.wpm + d, 40, 300);
+    settings.tpWpm = this.wpm;
+    saveSettings();
+    this.pintar();
+  },
+  pintar() {
+    const play = $("#tp-play");
+    play.innerHTML = icon(this.pausado ? "play" : "pause");
+    play.setAttribute("aria-label", this.pausado ? "Seguir" : "Pausa");
+    $("#tp-speed").textContent = `${this.wpm} pal/min`;
+    $("#tp-bar").classList.toggle("paused", this.pausado);
+  },
+  init() {
+    const sc = reader.scrollEl;
+    sc.addEventListener("touchstart", () => { if (this.activo) { this.tocando = true; clearTimeout(this.soltar); } }, { passive: true });
+    const fin = () => {
+      if (!this.activo) return;
+      clearTimeout(this.soltar);
+      this.soltar = setTimeout(() => { this.tocando = false; this.pos = sc.scrollTop; this.ultimo = performance.now(); }, 700);
+    };
+    sc.addEventListener("touchend", fin, { passive: true });
+    sc.addEventListener("touchcancel", fin, { passive: true });
+    $("#tp-play").addEventListener("click", () => this.alternar());
+    $("#tp-slower").addEventListener("click", () => this.velocidad(-10));
+    $("#tp-faster").addEventListener("click", () => this.velocidad(10));
+    $("#tp-close").addEventListener("click", () => this.cerrar());
   },
 };
 
@@ -1170,6 +2033,7 @@ const editor = {
     this.area.innerHTML = item.html && item.html !== "<p><br></p>" ? item.html : "<p><br></p>";
     $("#save-state").textContent = "";
     document.title = (item.title || "Editar") + " · Atril";
+    this.togglePalette(false);
     showView("editor");
     this.scrollEl.scrollTop = 0;
     this.paintToolbar();
@@ -1214,7 +2078,7 @@ const editor = {
       case "bold": d.execCommand("bold"); break;
       case "italic": d.execCommand("italic"); break;
       case "underline": d.execCommand("underline"); break;
-      case "highlight": this.toggleHighlight(); break;
+      case "highlight": this.togglePalette(); return;
       case "h1": d.execCommand("formatBlock", false, "<h1>"); break;
       case "h2": d.execCommand("formatBlock", false, "<h2>"); break;
       case "p": d.execCommand("formatBlock", false, "<p>"); break;
@@ -1250,16 +2114,67 @@ const editor = {
     $$("mark", this.area).forEach((m) => { if (range.intersectsNode(m)) m.replaceWith(...m.childNodes); });
   },
 
-  toggleHighlight() {
+  /** Paleta del resaltador (debajo de la barra). */
+  togglePalette(force) {
+    const p = $("#palette");
+    const show = force ?? p.hidden;
+    p.hidden = !show;
+    $('#toolbar button[data-cmd="highlight"]').setAttribute("aria-expanded", String(show));
+    if (show) this.paintPalette();
+  },
+
+  colorActual() {
+    const m = this.selectionMark();
+    if (!m) return null;
+    return m.tagName === "MARK" ? colorDeMark(m) : (claseDeFondo(fondoDe(m)).slice(2) || "amarillo");
+  },
+
+  paintPalette() {
+    const actual = this.colorActual();
+    $$("#palette [data-color]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.color === actual)));
+  },
+
+  quitarResaltado(m) {
+    if (m.tagName === "MARK") { m.replaceWith(...m.childNodes); return; }
+    m.style.backgroundColor = "";
+    if (!m.getAttribute("style")) m.replaceWith(...m.childNodes);
+  },
+
+  aplicarColor(id) {
+    this.area.focus();
     const sel = window.getSelection();
     if (!sel || !sel.rangeCount) return;
+    const range = sel.getRangeAt(0);
     const m = this.selectionMark();
-    if (m) { m.replaceWith(...m.childNodes); return; }
-    if (sel.isCollapsed) { toast("Selecciona primero el texto que quieres resaltar."); return; }
-    // hiliteColor funciona en Safari y Chrome; al guardar se convierte en <mark>
-    document.execCommand("styleWithCSS", false, true);
-    document.execCommand("hiliteColor", false, "#fff176");
-    document.execCommand("styleWithCSS", false, false);
+    const dentro = m && (sel.isCollapsed || m.contains(range.commonAncestorContainer));
+    if (id === "quitar") {
+      if (dentro) this.quitarResaltado(m);
+      else {
+        $$("mark, span", this.area).forEach((n) => {
+          if (range.intersectsNode(n) && (n.tagName === "MARK" || hasBackground(n))) this.quitarResaltado(n);
+        });
+      }
+    } else {
+      const c = COLORES.find((x) => x.id === id);
+      if (!c) return;
+      if (dentro) {
+        // Cambia el color del resaltado en el que está el cursor
+        if (m.tagName === "MARK") { if (c.clase) m.className = c.clase; else m.removeAttribute("class"); }
+        else m.style.backgroundColor = c.hex;
+      } else if (sel.isCollapsed) {
+        toast("Selecciona primero el texto que quieres resaltar.");
+        return;
+      } else {
+        // hiliteColor funciona en Safari y Chrome; al guardar se convierte en <mark> del color que toca
+        document.execCommand("styleWithCSS", false, true);
+        document.execCommand("hiliteColor", false, c.hex);
+        document.execCommand("styleWithCSS", false, false);
+      }
+      settings.markColor = id;
+      saveSettings();
+    }
+    this.markDirty();
+    this.paintToolbar();
   },
 
   paintToolbar() {
@@ -1272,6 +2187,7 @@ const editor = {
       h1: block === "h1", h2: block === "h2", highlight: !!this.selectionMark(),
     };
     $$("#toolbar button[data-cmd]").forEach((b) => b.classList.toggle("active", !!map[b.dataset.cmd]));
+    if (!$("#palette").hidden) this.paintPalette();
   },
 
   init() {
@@ -1295,6 +2211,12 @@ const editor = {
       b.addEventListener("mousedown", (e) => e.preventDefault());
       b.addEventListener("click", () => this.exec(b.dataset.cmd));
     });
+    $$("#palette button").forEach((b) => {
+      b.tabIndex = -1;
+      b.addEventListener("pointerdown", (e) => e.preventDefault());
+      b.addEventListener("mousedown", (e) => e.preventDefault());
+      b.addEventListener("click", () => { if (b.dataset.color === "cerrar") this.togglePalette(false); else this.aplicarColor(b.dataset.color); });
+    });
     $("#editor-back").addEventListener("click", async () => {
       await this.flush();
       go(this.kind === "docs" ? `#/leer/docs/${this.id}` : "#/", { replace: true });
@@ -1305,6 +2227,7 @@ const editor = {
       const item = this.item;
       actionSheet(item.title, [
         { label: "Guardar como Word", icon: "word", run: () => exportWord(this.kind, item) },
+        { label: "Guardar como PDF", icon: "pdf", run: () => exportPdf(this.kind, item) },
         { label: "Copiar el texto", icon: "copy", run: () => copyText(htmlToText(item.html)) },
         { label: "Compartir el texto", icon: "share", run: () => shareText(item.title, htmlToText(item.html)) },
         { label: "Tamaño de letra y tema", icon: "aa", run: () => openAaSheet() },
@@ -1334,6 +2257,9 @@ function init() {
   $("#backup-input").addEventListener("change", (e) => { const f = e.target.files && e.target.files[0]; if (f) importBackup(f).finally(() => { e.target.value = ""; }); });
 
   reader.init();
+  buscador.init();
+  tarjetas.init();
+  prompter.init();
   editor.init();
 
   window.addEventListener("hashchange", route);
@@ -1355,6 +2281,8 @@ function init() {
 
   // Pide al navegador que no borre los datos
   if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
+  // Limpieza de grabaciones sueltas, cuando la app ya está tranquila
+  setTimeout(limpiarGrabaciones, 8000);
 
   route();
   registerSW();
@@ -1374,4 +2302,7 @@ function registerSW() {
 init();
 
 // Exportado para las pruebas automáticas
-window.__atril = { sanitize, htmlToText, textToHtml, store, settings: () => settings, setFontSize, importFiles, exportWord, timer, reader };
+window.__atril = {
+  sanitize, htmlToText, textToHtml, store, settings: () => settings, setFontSize, importFiles, exportWord, crearPdf,
+  timer, reader, editor, ensayo, buscador, tarjetas, prompter, crearPlantilla,
+};

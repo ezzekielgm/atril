@@ -4,7 +4,10 @@ import { htmlToContent } from "docx/html";
 
 export async function buildDocx(title, html) {
   const children = htmlToContent(html, {
-    stylesheet: "mark { background-color: yellow; }",
+    // Colores de resaltado de Word: amarillo, verde brillante, turquesa y rosa
+    stylesheet:
+      "mark { background-color: #FFFF00; } mark.c-verde { background-color: #00FF00; } " +
+      "mark.c-azul { background-color: #00FFFF; } mark.c-rosa { background-color: #FF00FF; }",
     maxImageWidth: 600,
   });
   const doc = new Document({

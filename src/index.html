@@ -59,14 +59,51 @@
     <span class="pace" id="pace" role="status" hidden></span>
     <button class="icon-btn" id="reader-outline-btn" aria-label="Esquema" aria-pressed="false" data-icon="outline"></button>
     <button class="icon-btn" id="reader-aa" aria-label="Texto, tema y tiempo" data-icon="aa"></button>
+    <button class="icon-btn" id="reader-more" aria-label="Más: buscar, tarjetas, ensayos…" data-icon="more"></button>
     <button class="icon-btn" id="reader-edit" aria-label="Editar" data-icon="edit"></button>
   </header>
+  <div class="findbar" id="findbar" hidden>
+    <label class="search">
+      <span data-icon="search"></span>
+      <input id="find-input" type="search" placeholder="Buscar en el texto" autocomplete="off" enterkeyhint="search">
+    </label>
+    <span class="find-count" id="find-count" role="status"></span>
+    <button class="icon-btn" id="find-prev" aria-label="Anterior" data-icon="up"></button>
+    <button class="icon-btn" id="find-next" aria-label="Siguiente" data-icon="down"></button>
+    <button class="icon-btn" id="find-close" aria-label="Cerrar la búsqueda" data-icon="close"></button>
+  </div>
   <div class="progress"><div id="progress-bar"></div></div>
   <div class="scroll reader-scroll" id="reader-scroll">
     <article class="doc-content" id="reader-content"></article>
     <div class="doc-content outline" id="reader-outline" hidden></div>
   </div>
   <button class="float-timer" id="float-timer" aria-label="Cronómetro" hidden></button>
+  <div class="tp-guide" id="tp-guide" aria-hidden="true" hidden></div>
+  <div class="tp-bar" id="tp-bar" role="toolbar" aria-label="Desplazamiento automático" hidden>
+    <button class="icon-btn" id="tp-play" aria-label="Pausa"></button>
+    <button class="icon-btn tp-step" id="tp-slower" aria-label="Más despacio">−</button>
+    <span class="tp-speed" id="tp-speed"></span>
+    <button class="icon-btn tp-step" id="tp-faster" aria-label="Más deprisa">+</button>
+    <button class="icon-btn" id="tp-close" aria-label="Terminar" data-icon="close"></button>
+  </div>
+  <div class="cards" id="cards" hidden>
+    <header class="topbar cards-bar">
+      <button class="icon-btn" id="cards-close" aria-label="Salir de las tarjetas" data-icon="close"></button>
+      <div class="title" id="cards-title"></div>
+      <div class="timer" id="cards-timer">
+        <button class="timer-btn" id="cards-timer-toggle" aria-label="Cronómetro"><span data-icon="timer"></span><span id="cards-timer-text">00:00</span></button>
+      </div>
+      <span class="pace" id="cards-pace" role="status" hidden></span>
+    </header>
+    <div class="cards-stage" id="cards-stage">
+      <article class="doc-content card-body" id="card-body"></article>
+    </div>
+    <footer class="cards-nav">
+      <button class="icon-btn" id="cards-prev" aria-label="Tarjeta anterior" data-icon="prev"></button>
+      <span class="cards-count" id="cards-count"></span>
+      <button class="icon-btn" id="cards-next" aria-label="Tarjeta siguiente" data-icon="next"></button>
+    </footer>
+  </div>
 </section>
 
 <!-- Editor -->
@@ -85,7 +122,7 @@
     <button data-cmd="bold" aria-label="Negrita"><b>N</b></button>
     <button data-cmd="italic" aria-label="Cursiva"><i>K</i></button>
     <button data-cmd="underline" aria-label="Subrayado"><u>S</u></button>
-    <button data-cmd="highlight" aria-label="Resaltar" data-icon="marker"></button>
+    <button data-cmd="highlight" aria-label="Resaltar" aria-expanded="false" data-icon="marker"></button>
     <span class="sep"></span>
     <button data-cmd="h1" aria-label="Título" class="txt">Título</button>
     <button data-cmd="h2" aria-label="Subtítulo" class="txt">Subtítulo</button>
@@ -94,6 +131,16 @@
     <button data-cmd="ul" aria-label="Viñetas" data-icon="list"></button>
     <button data-cmd="ol" aria-label="Lista numerada" data-icon="olist"></button>
     <button data-cmd="clear" aria-label="Quitar formato" data-icon="clear"></button>
+  </div>
+  <div class="palette" id="palette" role="toolbar" aria-label="Colores del resaltador" hidden>
+    <span class="palette-label">Resaltar</span>
+    <button data-color="amarillo" class="sw sw-amarillo" aria-label="Amarillo"></button>
+    <button data-color="verde" class="sw sw-verde" aria-label="Verde"></button>
+    <button data-color="azul" class="sw sw-azul" aria-label="Azul"></button>
+    <button data-color="rosa" class="sw sw-rosa" aria-label="Rosa"></button>
+    <button data-color="quitar" class="txt">Quitar</button>
+    <span class="spacer"></span>
+    <button data-color="cerrar" aria-label="Cerrar los colores" data-icon="close"></button>
   </div>
   <div class="scroll editor-scroll" id="editor-scroll">
     <div class="doc-content editor" id="editor" contenteditable="true" spellcheck="true" autocapitalize="sentences"></div>

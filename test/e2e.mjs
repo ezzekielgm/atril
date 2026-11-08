@@ -94,11 +94,11 @@ const t = await page.textContent("#timer-text");
 ok("El cronómetro cuenta", t !== "00:00", t);
 await page.click("#timer-toggle");
 await page.tap("#reader-content p >> nth=3");
-await page.waitForTimeout(300);
+await page.waitForTimeout(500);
 ok("Tocar el texto oculta la barra", await page.evaluate(() => document.querySelector("#view-reader").classList.contains("immersive")));
 await page.screenshot({ path: `${OUTDIR}/04-modo-atril.png` });
 await page.tap("#reader-content p >> nth=3");
-await page.waitForTimeout(300);
+await page.waitForTimeout(500);
 
 // --- Tema y tamaño desde el panel Aa
 await page.click("#reader-aa");
@@ -131,6 +131,7 @@ await page.evaluate(() => {
 });
 await page.click('#toolbar [data-cmd="bold"]');
 await page.click('#toolbar [data-cmd="highlight"]');
+await page.click('#palette [data-color="amarillo"]');
 await page.waitForTimeout(1200);
 ok("Autoguardado", (await page.textContent("#save-state")) === "Guardado");
 await page.screenshot({ path: `${OUTDIR}/07-editor.png` });
