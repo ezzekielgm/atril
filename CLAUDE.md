@@ -59,6 +59,7 @@ dist/                 lo que se sube a internet (se genera; no editar a mano)
 - `npm run serve` — sirve `dist/` en http://localhost:8080 para probar.
 - `npm test` — todas las pruebas (con `dist/` servido en el puerto 8080).
 - `node test/e2e.mjs` — pruebas (con `dist/` servido en el puerto 8080). Requiere Playwright con Chromium (`npx playwright install chromium`). La ruta del .docx de prueba se pasa con `ATRIL_DOCX=...`.
+- `node scripts/capturas-diseno.mjs` y luego `python3 scripts/laminas.py` — 24 capturas de todas las pantallas (iPad horizontal y vertical, móvil, temas) con un discurso de ejemplo, en `capturas/` (no se sube a git), más 3 láminas numeradas y un ZIP. Sirven para enseñar la app a otra IA (rediseño) o comparar antes y después. Con `dist/` servido en el 8080.
 - `npm run icons` — regenera iconos, banner y vista previa del enlace desde `scripts/arte/icono-original.jpg` y `banner-original.jpg` (imágenes que hizo Ezequiel con IA). Necesita Python con Pillow, numpy y fontTools. El script quita el marco blanco del icono, recorta el atril y lo centra sobre el mismo degradado; la versión maskable de Android lleva más margen.
 
 ## Cómo funciona por dentro
