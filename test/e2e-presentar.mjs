@@ -23,8 +23,8 @@ page.on("console", (m) => { if (m.type() === "error") errors.push(m.text()); });
 
 // ============ Vista previa del enlace ============
 const html = await (await fetch(URL)).text();
-ok("El enlace se ve con nombre, descripción e imagen al mandarlo", /og:title" content="Atril, lector de discursos"/.test(html) && /og:description" content="Lee tus discursos de Word/.test(html) && /og:image" content="https:\/\/[^"]+\/icons\/og\.png"/.test(html));
-ok("La imagen de la vista previa existe", (await fetch(URL + "icons/og.png")).ok);
+ok("El enlace se ve con nombre, descripción e imagen al mandarlo", /og:title" content="Atril, lector de discursos"/.test(html) && /og:description" content="Lee tus discursos de Word/.test(html) && /og:image" content="https:\/\/[^"]+\/icons\/og\.jpg"/.test(html));
+ok("La imagen de la vista previa existe", (await fetch(URL + "icons/og.jpg")).ok);
 
 // ============ Bienvenida y ejemplo ============
 await page.goto(URL);

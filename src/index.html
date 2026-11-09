@@ -10,7 +10,8 @@
 <meta property="og:site_name" content="Atril">
 <meta property="og:title" content="Atril, lector de discursos">
 <meta property="og:description" content="Lee tus discursos de Word en el iPad con letra grande, cronómetro y sin conexión. Gratis; todo se queda en tu dispositivo.">
-<meta property="og:image" content="https://ezzekielgm.github.io/atril/icons/og.png">
+<meta property="og:image" content="https://ezzekielgm.github.io/atril/icons/og.jpg">
+<meta property="og:image:type" content="image/jpeg">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:locale" content="es_ES">
@@ -29,15 +30,19 @@
 
 <!-- Inicio -->
 <section id="view-home" class="view" hidden>
-  <header class="topbar home-bar word-bar">
-    <h1 class="brand">Atril <span class="brand-sub">lector de discursos</span></h1>
-    <div class="spacer"></div>
-    <button class="icon-btn" id="btn-settings" aria-label="Ajustes" data-icon="settings"></button>
+  <header class="home-hero">
+    <div class="hero-txt">
+      <h1 class="brand">Atril</h1>
+      <p class="brand-sub">Lector de discursos</p>
+    </div>
   </header>
   <div class="home-tools home-wrap">
-    <div class="segmented" role="tablist">
-      <button role="tab" data-tab="docs">Discursos</button>
-      <button role="tab" data-tab="notes">Notas</button>
+    <div class="tabs-row">
+      <div class="segmented" role="tablist">
+        <button role="tab" data-tab="docs">Discursos</button>
+        <button role="tab" data-tab="notes">Notas</button>
+      </div>
+      <button class="tool tool-ajustes" id="btn-settings"><span data-icon="settings"></span><span class="lbl">Ajustes</span></button>
     </div>
     <label class="search">
       <span data-icon="search"></span>

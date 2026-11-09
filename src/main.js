@@ -375,7 +375,9 @@ const THEME_COLORS = { claro: ["#ffffff", "#185abd"], sepia: ["#f7efdd", "#6b452
 function pintarColorBarra() {
   const c = THEME_COLORS[settings.theme] || THEME_COLORS.claro;
   const meta = $('meta[name="theme-color"]');
-  if (meta) meta.setAttribute("content", currentView === "reader" ? c[0] : c[1]);
+  // Inicio: el azul del banner; editor: la barra azul; lector: el papel
+  const color = currentView === "home" ? (settings.theme === "oscuro" ? "#081f47" : "#0c306d") : currentView === "reader" ? c[0] : c[1];
+  if (meta) meta.setAttribute("content", color);
 }
 function applySettings() {
   const root = document.documentElement;

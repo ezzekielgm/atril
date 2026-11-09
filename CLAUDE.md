@@ -29,7 +29,7 @@ src/
   docx-export.js      HTML -> .docx (se carga solo al exportar; usa docx + docx/html)
   sw.js               service worker (plantilla: el build mete versión y lista de archivos)
   manifest.webmanifest
-  icons/              iconos PNG (se generan con scripts/make-icons.mjs desde scripts/icon.svg)
+  icons/              iconos, banner del inicio y og.jpg (se generan con scripts/iconos.py desde scripts/arte/)
 build.mjs             construye dist/ con esbuild
 test/e2e.mjs          prueba de punta a punta con Playwright (Chromium emulando iPad táctil)
 test/e2e-funciones.mjs  pruebas de citas, esquema, tiempo objetivo y vista de móvil
@@ -50,7 +50,7 @@ dist/                 lo que se sube a internet (se genera; no editar a mano)
 - `npm run serve` — sirve `dist/` en http://localhost:8080 para probar.
 - `npm test` — todas las pruebas (con `dist/` servido en el puerto 8080).
 - `node test/e2e.mjs` — pruebas (con `dist/` servido en el puerto 8080). Requiere Playwright con Chromium (`npx playwright install chromium`). La ruta del .docx de prueba se pasa con `ATRIL_DOCX=...`.
-- `npm run icons` — regenera los iconos.
+- `npm run icons` — regenera iconos, banner y vista previa del enlace desde `scripts/arte/icono-original.jpg` y `banner-original.jpg` (imágenes que hizo Ezequiel con IA). Necesita Python con Pillow, numpy y fontTools. El script quita el marco blanco del icono, recorta el atril y lo centra sobre el mismo degradado; la versión maskable de Android lleva más margen.
 
 ## Cómo funciona por dentro
 
@@ -76,7 +76,7 @@ dist/                 lo que se sube a internet (se genera; no editar a mano)
 - **Botones con nombre** (a petición de Ezequiel): en el lector, `.reader-tools` (Esquema, Letra, Presentar, Editar, Más) va en la barra de arriba en el iPad y fija abajo en el móvil (≤ 700 px). En el iPad en vertical se oculta el título de la barra para que quepan los nombres. El modo atril ya no usa `transform` en la barra (rompería la barra fija de abajo).
 - **Bienvenida**: si no hay discursos, el inicio explica qué es Atril (3 pasos), con «Abrir un Word», «Probar con un ejemplo» (`crearEjemplo()`) y «¿Cómo paso el Word del PC al iPad?» (`ayudaWord()`).
 - **Versiones de un Word**: al abrir un .docx con el mismo nombre de archivo o título que uno guardado, pregunta si sustituirlo (conserva ensayos, objetivo, «dónde lo he dado») o añadirlo como otro.
-- **Vista previa del enlace**: metas Open Graph en `index.html` con `icons/og.png` (1200×630). La URL de la imagen es absoluta (GitHub Pages); si cambia la dirección, cámbiala.
+- **Vista previa del enlace**: metas Open Graph en `index.html` con `icons/og.jpg` (1200×630, en JPEG porque WhatsApp no enseña imágenes pesadas). La URL de la imagen es absoluta (GitHub Pages); si cambia la dirección, cámbiala.
 - **Navegación**: rutas en el hash (`#/`, `#/leer/docs/<id>`, `#/editar/notes/<id>`). `route()` ignora navegaciones viejas (`routeSeq`) para que siempre gane la última.
 - **Sin conexión**: `sw.js` precachea todos los archivos de `dist/` y sirve `index.html` en cualquier navegación. `_headers` (Netlify) evita que `sw.js` e `index.html` se queden en la caché del navegador.
 
@@ -87,6 +87,7 @@ dist/                 lo que se sube a internet (se genera; no editar a mano)
 - Buscar y reemplazar (`reemplazo`): no toca el documento para resaltar; usa la CSS Custom Highlight API (`::highlight(rep)` y `rep-actual`) y rangos de `rangosCoincidencias()`. Reemplazar cambia el DOM directamente y ofrece «Deshacer» en el aviso (restaura el HTML anterior).
 - Títulos de los documentos en azul (`--heading`), como los estilos de Word. «(N min)» de los títulos se ve como etiqueta al margen en el lector (`decorarMinutos()`, solo en pantalla).
 - Letras incluidas (sin conexión): Carlito, con las mismas medidas que Calibri («Como Word», la de por defecto) y Literata («Clásica»). La interfaz usa la letra del sistema, como las apps de Office. `settings.estiloWord` marca que ya se cambió la letra a «Como Word» una vez.
+- Cabecera del inicio (`.home-hero`): el banner a la derecha (`icons/banner.jpg`, `banner-movil.jpg` en el móvil) a toda la altura, con el nombre en blanco sobre la parte azul; el resto del ancho se rellena con el azul del borde del banner (#0c306d). «Ajustes» va en la fila de las pestañas, no encima del banner.
 - Inicio: lista como los recientes de Office (icono de documento, título, duración a la derecha, «Dado el… en…», primera línea si el título es el nombre del archivo). Pestañas con subrayado azul.
 - Hojas: en el móvil salen desde abajo; en el iPad, centradas. Menús (`actionSheet`) en lista agrupada (`.menu`). Esquinas pequeñas (4–8 px), como Office.
 
