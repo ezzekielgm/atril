@@ -106,7 +106,8 @@ button:focus:not(:focus-visible) { outline: none; }
 
 /* ---------- Inicio ---------- */
 .home-bar { height: 56px; padding-left: max(14px, env(safe-area-inset-left)); }
-.brand { margin: 0; font: 600 21px var(--ui); letter-spacing: .01em; }
+.brand { margin: 0; font: 600 21px var(--ui); letter-spacing: .01em; white-space: nowrap; }
+.brand-sub { font-size: 15px; font-weight: 400; opacity: .85; margin-left: 6px; }
 .home-wrap { width: 100%; max-width: 1040px; margin: 0 auto; }
 .home-tools { flex: none; display: flex; flex-direction: column; align-items: stretch; gap: 10px; padding: 0 16px 10px; background: var(--desk); }
 /* Pestañas como las de Office: subrayado azul en la activa */
@@ -205,7 +206,7 @@ button:focus:not(:focus-visible) { outline: none; }
 
 /* ---------- Lector ---------- */
 .reader-scroll { touch-action: pan-y; }
-.reader-bar { transition: transform .22s ease, opacity .22s ease; }
+.reader-bar { transition: top .22s ease, opacity .22s ease; }
 .timer { display: flex; align-items: center; gap: 2px; }
 .timer-btn {
   display: inline-flex; align-items: center; gap: 6px; height: 40px; padding: 0 13px; border-radius: 20px;
@@ -216,7 +217,7 @@ button:focus:not(:focus-visible) { outline: none; }
 .timer.running .timer-btn svg { color: var(--accent-text); }
 .progress { flex: none; height: 3px; background: transparent; }
 .progress div { height: 100%; width: 0; background: var(--accent); opacity: .5; border-radius: 0 2px 2px 0; }
-#view-reader.immersive .reader-bar { position: absolute; left: 0; right: 0; top: 0; z-index: 5; transform: translateY(-100%); opacity: 0; pointer-events: none; }
+#view-reader.immersive .reader-bar { position: absolute; left: 0; right: 0; top: calc(-1 * var(--topbar) - 6px); z-index: 5; opacity: 0; pointer-events: none; }
 
 /* ---------- Editor: como Word ---------- */
 .title-input { flex: 1; min-width: 0; height: 40px; border: 0; outline: 0; background: transparent; font-size: 17px; font-weight: 600; padding: 0 6px; border-radius: 4px; }
@@ -575,3 +576,106 @@ button:focus:not(:focus-visible) { outline: none; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }
+
+/* ---------- Botones clásicos del lector: icono y nombre ---------- */
+.back-btn { display: inline-flex; align-items: center; gap: 0; height: 44px; padding: 0 10px 0 2px; border-radius: 6px; color: var(--accent); font-weight: 600; flex: none; }
+.back-btn svg { width: 26px; height: 26px; }
+.back-btn:active { background: var(--surface-2); }
+.reader-tools { display: flex; align-items: center; gap: 4px; flex: none; margin-left: 6px; }
+.tool { display: inline-flex; align-items: center; gap: 6px; height: 40px; padding: 0 11px; border-radius: 6px; font-size: 15px; font-weight: 600; color: var(--text); white-space: nowrap; }
+.tool svg { width: 20px; height: 20px; color: var(--accent); flex: none; }
+.tool:active { background: var(--surface-2); }
+.tool.active { background: var(--accent-soft); color: var(--accent); }
+.tool-presentar { background: var(--accent); color: var(--accent-text); padding: 0 14px; }
+.tool-presentar svg { color: var(--accent-text); width: 16px; height: 16px; }
+.tool-presentar:active { background: var(--accent); filter: brightness(.9); }
+/* En el iPad en vertical: los botones conservan su nombre; se quita el título (ya está en la página) */
+@media (max-width: 1000px) and (min-width: 701px) {
+  .reader-bar .title { display: none; }
+  .reader-tools { margin-left: auto; }
+  .back-btn .lbl { display: none; }
+  .reader-bar .pace .long { display: none; }
+  .reader-bar .pace .short { display: inline; }
+  .tool { padding: 0 9px; }
+}
+/* En el móvil: barra de herramientas abajo, al alcance del pulgar */
+@media (max-width: 700px) {
+  .back-btn .lbl { display: none; }
+  #view-reader { padding-bottom: calc(62px + env(safe-area-inset-bottom)); }
+  #view-reader.immersive, #view-reader.presentando { padding-bottom: 0; }
+  .reader-tools {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 8; margin: 0; gap: 0;
+    display: grid; grid-template-columns: repeat(5, 1fr); align-items: stretch;
+    background: var(--bg); border-top: 1px solid var(--border);
+    padding: 3px max(4px, env(safe-area-inset-right)) max(3px, env(safe-area-inset-bottom)) max(4px, env(safe-area-inset-left));
+    transition: transform .22s ease;
+  }
+  #view-reader.immersive .reader-tools { transform: translateY(110%); }
+  .tool { flex-direction: column; justify-content: center; gap: 2px; height: 56px; padding: 0 2px; font-size: 12px; font-weight: 600; color: var(--muted); border-radius: 8px; }
+  .tool svg { width: 22px; height: 22px; }
+  .tool-presentar { color: var(--accent-text); margin: 3px 4px; height: 50px; border-radius: 10px; }
+  .tool-presentar svg { width: 18px; height: 18px; }
+  .toast { bottom: calc(76px + env(safe-area-inset-bottom)); }
+}
+
+/* ---------- Presentar ---------- */
+#view-reader.presentando .reader-bar, #view-reader.presentando .findbar, #view-reader.presentando .progress,
+#view-reader.presentando .float-timer, #view-reader.presentando .tp-bar, #view-reader.presentando .tp-guide { display: none !important; }
+#view-reader.presentando .doc-content a { pointer-events: none; color: inherit; text-decoration: none; }
+.pres-bar {
+  flex: none; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px 16px; align-items: center;
+  padding: 10px max(16px, env(safe-area-inset-right)) 10px max(16px, env(safe-area-inset-left)); background: var(--bg); border-bottom: 1px solid var(--border);
+}
+.pres-timer {
+  display: flex; flex-direction: column; align-items: flex-start; padding: 6px 16px 7px; border-radius: 10px; background: var(--surface); min-width: 168px;
+  -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; touch-action: manipulation;
+}
+.pres-t { font-size: 46px; font-weight: 700; line-height: 1.05; font-variant-numeric: tabular-nums; letter-spacing: .01em; }
+.pres-hint { font-size: 13px; color: var(--muted); }
+.pres-timer.running { background: var(--accent); color: var(--accent-text); }
+.pres-timer.running .pres-hint { color: inherit; opacity: .85; }
+.pres-timer.warn { background: #f2a51a; color: #241600; }
+.pres-timer.over { background: var(--danger); color: #fff; }
+.pres-timer.warn .pres-hint, .pres-timer.over .pres-hint { color: inherit; opacity: .85; }
+.pres-info { min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
+.pres-info .pace { font-size: 15px; }
+.pres-parte { max-width: 100%; font-size: 19px; font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pres-sigue { max-width: 100%; font-size: 15px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pres-prog { grid-column: 1 / -1; display: flex; gap: 4px; }
+.pres-prog i { flex: 1; height: 5px; border-radius: 3px; background: var(--surface-2); }
+.pres-prog i.hecha { background: var(--accent); opacity: .45; }
+.pres-prog i.actual { background: var(--accent); }
+.pres-salir {
+  position: fixed; left: 50%; transform: translateX(-50%); bottom: max(12px, env(safe-area-inset-bottom)); z-index: 30;
+  display: inline-flex; align-items: center; gap: 8px; padding: 10px 16px; border-radius: 22px; overflow: hidden;
+  background: rgba(20,20,22,.62); color: #fff; font-size: 14px; font-weight: 600; opacity: .7; white-space: nowrap;
+  -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; touch-action: none;
+}
+.pres-salir svg { width: 16px; height: 16px; }
+.pres-carga { position: absolute; left: 0; bottom: 0; height: 3px; width: 0; background: #fff; }
+.pres-salir.cargando { opacity: 1; }
+.pres-salir.cargando .pres-carga { width: 100%; transition: width .8s linear; }
+@media (max-width: 480px) {
+  .pres-bar { gap: 6px 12px; padding: 8px 12px; }
+  .pres-timer { min-width: 0; padding: 5px 12px; }
+  .pres-t { font-size: 36px; }
+  .pres-parte { font-size: 16px; }
+  .pres-sigue { font-size: 13px; }
+}
+
+/* ---------- Bienvenida (sin discursos) ---------- */
+.empty.bienvenida { max-width: 560px; text-align: left; padding: 28px 20px 48px; color: var(--text); }
+.bienvenida .bv-icono { width: 72px; height: 72px; border-radius: 16px; display: block; margin-bottom: 14px; }
+.bienvenida h2 { font-size: 26px; font-weight: 700; margin: 0 0 8px; }
+.bienvenida .bv-lema { color: var(--muted); font-size: 17px; margin: 0 0 18px; }
+.bv-pasos { list-style: none; margin: 0 0 20px; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.bv-pasos li { display: grid; grid-template-columns: 40px 1fr; column-gap: 12px; align-items: start; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 12px; }
+.bv-pasos .bv-ic { grid-row: 1 / span 2; width: 40px; height: 40px; border-radius: 8px; background: var(--accent-soft); color: var(--accent); display: flex; align-items: center; justify-content: center; }
+.bv-pasos .bv-ic svg { width: 22px; height: 22px; }
+.bv-pasos b { font-size: 16px; }
+.bv-pasos li > span:last-child { color: var(--muted); font-size: 15px; line-height: 1.4; }
+.bv-botones { display: flex; gap: 10px; flex-wrap: wrap; }
+.bv-botones .btn { flex: 1 1 200px; }
+.bv-mas { display: flex; gap: 4px 12px; flex-wrap: wrap; margin-top: 10px; margin-left: -12px; }
+.home-actions .ayuda-word { font-size: 15px; }
+.lista-pasos { margin: 0; padding-left: 1.3em; display: flex; flex-direction: column; gap: 8px; line-height: 1.45; }

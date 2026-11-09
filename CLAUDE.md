@@ -33,6 +33,7 @@ src/
 build.mjs             construye dist/ con esbuild
 test/e2e.mjs          prueba de punta a punta con Playwright (Chromium emulando iPad táctil)
 test/e2e-funciones.mjs  pruebas de citas, esquema, tiempo objetivo y vista de móvil
+test/e2e-presentar.mjs  pruebas de Presentar, volver tras cerrarse la app, sustituir un Word, bienvenida y barra del móvil
 test/e2e-word.mjs     pruebas del editor al estilo Word: cinta, estilos, tachado, buscar y reemplazar, zoom
 test/e2e-mejoras2.mjs pruebas del tiempo en el editor, «dónde lo he dado» y el aviso de copia de seguridad
 test/e2e-mejoras.mjs  pruebas de colores, búsqueda, «voy por aquí», tarjetas, teleprompter, ensayos, grabación, PDF y plantilla
@@ -70,6 +71,12 @@ dist/                 lo que se sube a internet (se genera; no editar a mano)
 - **Tiempo en el editor** (solo discursos): chip `#editor-time` (en la barra de estado) con `estimarPartes()` (tarjetas.js) al ritmo `ppm()`; naranja si alguna parte se pasa de sus minutos, rojo si el total se pasa. Al tocarlo: desglose por partes, duración objetivo y ritmo (110/130/150 o el real según los ensayos, `ritmoDeEnsayos()`).
 - **Dónde lo he dado**: `abrirDado()` (menú ⋯ del lector o de la tarjeta). Avisa si ya se dio en ese lugar (comparando sin acentos con `plegarTexto`). La búsqueda del inicio también mira lugares y notas.
 - **Aviso de copia**: `pintarAvisoCopia()` en el inicio si hay cambios y la última copia tiene ≥ 14 días (o nunca se hizo y hay datos de hace ≥ 7 días). «Más tarde» lo aplaza 3 días. `offerFile(..., {onDone})` marca la copia como hecha.
+- **Presentar** (`presentar`): botón principal del lector. Oculta las barras y muestra `#pres-bar` (cronómetro grande, ritmo, «Parte X de N», la siguiente y rayas de progreso). Los toques sobre el texto no hacen nada y las citas no se pueden tocar (no se sale a JW Library). El cronómetro arranca con un toque y se pausa manteniéndolo pulsado; para salir hay que mantener pulsado `#pres-salir`. La primera vez en iPad/iPhone explica «Acceso guiado» (impide salir de la app a nivel del sistema).
+- **Volver donde estabas** (`sesion`): mientras se presenta o corre el cronómetro en el lector se guarda `atril.sesion` ({kind, id, enLector, presentando, timer{running, startedAt, elapsed}, t}) al hacer scroll, cada 5 s, al ocultarse la app y al cerrar. Al abrir Atril (inicio o el mismo discurso) con una sesión de menos de 4 h que estaba presentando o con el cronómetro en marcha en el lector, vuelve a ese discurso, restaura el cronómetro (sigue contando con la hora real) y Presentar. Si el usuario sale al inicio él mismo, no se restaura.
+- **Botones con nombre** (a petición de Ezequiel): en el lector, `.reader-tools` (Esquema, Letra, Presentar, Editar, Más) va en la barra de arriba en el iPad y fija abajo en el móvil (≤ 700 px). En el iPad en vertical se oculta el título de la barra para que quepan los nombres. El modo atril ya no usa `transform` en la barra (rompería la barra fija de abajo).
+- **Bienvenida**: si no hay discursos, el inicio explica qué es Atril (3 pasos), con «Abrir un Word», «Probar con un ejemplo» (`crearEjemplo()`) y «¿Cómo paso el Word del PC al iPad?» (`ayudaWord()`).
+- **Versiones de un Word**: al abrir un .docx con el mismo nombre de archivo o título que uno guardado, pregunta si sustituirlo (conserva ensayos, objetivo, «dónde lo he dado») o añadirlo como otro.
+- **Vista previa del enlace**: metas Open Graph en `index.html` con `icons/og.png` (1200×630). La URL de la imagen es absoluta (GitHub Pages); si cambia la dirección, cámbiala.
 - **Navegación**: rutas en el hash (`#/`, `#/leer/docs/<id>`, `#/editar/notes/<id>`). `route()` ignora navegaciones viejas (`routeSeq`) para que siempre gane la última.
 - **Sin conexión**: `sw.js` precachea todos los archivos de `dist/` y sirve `index.html` en cualquier navegación. `_headers` (Netlify) evita que `sw.js` e `index.html` se queden en la caché del navegador.
 

@@ -25,7 +25,7 @@ const doc = (id) => page.evaluate((x) => window.__atril.store.get("docs", x), id
 const idActual = () => page.evaluate(() => location.hash.split("/").pop());
 
 // ============ 1. Tiempo estimado en el editor ============
-await page.click("text=Nuevo discurso");
+await page.click("text=Escribir uno nuevo");
 await page.click(".sheet >> text=Con plantilla");
 await page.fill('.sheet input[type="text"]', "La paciencia");
 await page.fill(".sheet .num-input", "10");

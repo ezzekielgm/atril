@@ -19,7 +19,9 @@ La dirección es pública, pero solo contiene la app vacía: tus discursos y not
 ## 3. Cómo se usa
 
 **Discursos**
-- **Abrir Word**: eliges un .docx desde Archivos, iCloud, OneDrive o el correo (guardado antes en Archivos).
+- **Abrir Word**: eliges un .docx desde Archivos, iCloud, OneDrive o el correo (guardado antes en Archivos). Lo más cómodo: prepáralo en el PC, guárdalo en OneDrive o iCloud Drive y ábrelo desde el iPad. Si lo cambias en el PC y lo abres otra vez, Atril te ofrece **sustituir la versión anterior** sin perder ensayos, duración ni dónde lo has dado.
+- **Presentar** (el botón azul): para dar el discurso. Cronómetro grande, en qué parte vas y cuál sigue. Toca el cronómetro para empezar; para pausarlo, mantenlo pulsado. Los toques en el texto no hacen nada (no te sacan del discurso) y para salir hay que **mantener pulsado** «Salir». Si aun así la app se cierra, al abrirla vuelves al mismo sitio con el cronómetro en marcha.
+- **Acceso guiado** (recomendado en el atril): Ajustes → Accesibilidad → Acceso guiado (actívalo y pon un código). En Atril, pulsa tres veces el botón de inicio (o el superior) e Iniciar. Así el iPad no puede salir de la app. Para terminar, pulsa tres veces y escribe el código.
 - **Leer**: separa dos dedos sobre el texto para agrandar la letra y pellízcalo para achicarla. El texto se recoloca solo, como en una web de móvil.
 - **Un toque en el texto** oculta la barra de arriba para tener toda la pantalla. Otro toque la devuelve.
 - **Dos toques en un párrafo** lo marcan como «Voy por aquí» (una raya azul a la izquierda). Se recuerda al volver a abrir y sale en el esquema. Dos toques otra vez lo quitan.

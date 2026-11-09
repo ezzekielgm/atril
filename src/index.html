@@ -3,9 +3,19 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<title>Atril</title>
-<meta name="description" content="Lee, edita y toma notas de tus discursos.">
-<meta name="theme-color" content="#ffffff">
+<title>Atril – lector de discursos</title>
+<meta name="description" content="Lee tus discursos de Word en el iPad con letra grande, cronómetro y sin conexión. Gratis; todo se queda en tu dispositivo.">
+<!-- Vista previa al mandar el enlace (WhatsApp, correo…) -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Atril">
+<meta property="og:title" content="Atril, lector de discursos">
+<meta property="og:description" content="Lee tus discursos de Word en el iPad con letra grande, cronómetro y sin conexión. Gratis; todo se queda en tu dispositivo.">
+<meta property="og:image" content="https://ezzekielgm.github.io/atril/icons/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:locale" content="es_ES">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#185abd">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Atril">
@@ -20,7 +30,7 @@
 <!-- Inicio -->
 <section id="view-home" class="view" hidden>
   <header class="topbar home-bar word-bar">
-    <h1 class="brand">Atril</h1>
+    <h1 class="brand">Atril <span class="brand-sub">lector de discursos</span></h1>
     <div class="spacer"></div>
     <button class="icon-btn" id="btn-settings" aria-label="Ajustes" data-icon="settings"></button>
   </header>
@@ -57,18 +67,30 @@
 <!-- Lector -->
 <section id="view-reader" class="view" hidden>
   <header class="topbar reader-bar">
-    <button class="icon-btn" id="reader-back" aria-label="Volver" data-icon="back"></button>
+    <button class="back-btn" id="reader-back" aria-label="Volver a tus discursos"><span data-icon="back"></span><span class="lbl">Discursos</span></button>
     <div class="title" id="reader-title"></div>
     <div class="timer" id="timer">
       <button class="timer-btn" id="timer-toggle" aria-label="Cronómetro"><span data-icon="timer"></span><span id="timer-text">00:00</span></button>
       <button class="icon-btn small" id="timer-reset" aria-label="Poner a cero" data-icon="reset" hidden></button>
     </div>
     <span class="pace" id="pace" role="status" hidden></span>
-    <button class="icon-btn" id="reader-outline-btn" aria-label="Esquema" aria-pressed="false" data-icon="outline"></button>
-    <button class="icon-btn" id="reader-aa" aria-label="Texto, tema y tiempo" data-icon="aa"></button>
-    <button class="icon-btn" id="reader-more" aria-label="Más: buscar, tarjetas, ensayos…" data-icon="more"></button>
-    <button class="icon-btn" id="reader-edit" aria-label="Editar" data-icon="edit"></button>
+    <nav class="reader-tools" aria-label="Herramientas del discurso">
+      <button class="tool" id="reader-outline-btn" aria-pressed="false"><span data-icon="outline"></span><span class="lbl">Esquema</span></button>
+      <button class="tool" id="reader-aa"><span data-icon="aa"></span><span class="lbl">Letra</span></button>
+      <button class="tool tool-presentar" id="reader-presentar"><span data-icon="play"></span><span class="lbl">Presentar</span></button>
+      <button class="tool" id="reader-edit"><span data-icon="edit"></span><span class="lbl">Editar</span></button>
+      <button class="tool" id="reader-more"><span data-icon="more"></span><span class="lbl">Más</span></button>
+    </nav>
   </header>
+  <div class="pres-bar" id="pres-bar" hidden>
+    <button class="pres-timer" id="pres-timer" aria-label="Cronómetro"><span class="pres-t" id="pres-timer-text">00:00</span><span class="pres-hint" id="pres-hint">Toca para empezar</span></button>
+    <div class="pres-info">
+      <span class="pace" id="pres-pace" role="status" hidden></span>
+      <div class="pres-parte" id="pres-parte"></div>
+      <div class="pres-sigue" id="pres-sigue"></div>
+    </div>
+    <div class="pres-prog" id="pres-prog" aria-hidden="true"></div>
+  </div>
   <div class="findbar" id="findbar" hidden>
     <label class="search">
       <span data-icon="search"></span>
@@ -85,6 +107,7 @@
     <div class="doc-content outline" id="reader-outline" hidden></div>
   </div>
   <button class="float-timer" id="float-timer" aria-label="Cronómetro" hidden></button>
+  <button class="pres-salir" id="pres-salir" hidden><span data-icon="lock"></span><span>Mantén pulsado para salir</span><i class="pres-carga"></i></button>
   <div class="tp-guide" id="tp-guide" aria-hidden="true" hidden></div>
   <div class="tp-bar" id="tp-bar" role="toolbar" aria-label="Desplazamiento automático" hidden>
     <button class="icon-btn" id="tp-play" aria-label="Pausa"></button>

@@ -28,7 +28,7 @@ page.on("console", (m) => { if (m.type() === "error") errors.push(m.text()); });
 
 await page.goto(URL);
 await page.waitForSelector("#view-home:not([hidden])");
-ok("La pantalla de inicio carga", await page.isVisible("text=Abrir Word"));
+ok("La pantalla de inicio carga con la bienvenida", (await page.isVisible("text=Atril, tu lector de discursos")) && (await page.isVisible("text=Abrir un Word")));
 await page.screenshot({ path: `${OUTDIR}/01-inicio-vacio.png` });
 
 // --- Abrir un Word

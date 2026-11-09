@@ -141,6 +141,7 @@ const P = {
   doc: '<path d="M6 1.5h8.5l5.5 5.5v14a1.5 1.5 0 0 1-1.5 1.5h-12.5a1.5 1.5 0 0 1-1.5-1.5v-18a1.5 1.5 0 0 1 1.5-1.5z" fill="currentColor" stroke="none"/><path d="M14.5 1.5v5.5h5.5" stroke="#fff" stroke-opacity=".55" fill="none"/><path d="M8 12h8M8 15.5h8M8 19h5" stroke="#fff" stroke-width="1.6"/>',
   nota: '<rect x="3.5" y="2" width="17" height="20" rx="2" fill="currentColor" stroke="none"/><path d="M7.5 8h9M7.5 12h9M7.5 16h5" stroke="#fff" stroke-width="1.6"/>',
   replace: '<path d="M4 7h11l-3-3"/><path d="M20 17H9l3 3"/>',
+  lock: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
 };
 const icon = (name) =>
   `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${P[name] || ""}</svg>`;
@@ -576,7 +577,7 @@ async function importFiles(files) {
   const list = [...files];
   if (!list.length) return;
   const done = [];
-  const close = busy(list.length > 1 ? `Abriendo ${list.length} documentos…` : "Abriendo el documento…");
+  let close = busy(list.length > 1 ? `Abriendo ${list.length} documentos…` : "Abriendo el documento…");
   try {
     for (const f of list) {
       const name = f.name || "Documento";
@@ -593,15 +594,65 @@ async function importFiles(files) {
         continue;
       }
       const now = Date.now();
-      const doc = { id: uid(), title: name.replace(/\.(docx|txt)$/i, "").replace(/[_]+/g, " ").trim(), html, created: now, updated: now, source: name };
+      const title = name.replace(/\.(docx|txt)$/i, "").replace(/[_]+/g, " ").trim();
+      // ¿Es una versión nueva de un discurso que ya está? (mismo nombre de archivo o mismo título)
+      const previo = (await store.all("docs")).find((d) => d.source === name || plegarTexto(d.title) === plegarTexto(title));
+      if (previo) {
+        close();
+        const sustituir = await confirmDialog({
+          title: `Ya tienes «${previo.title || title}»`,
+          message: "¿Lo cambias por esta versión? Se conservan tus ensayos, la duración y dónde lo has dado.",
+          ok: "Sustituir por esta versión", cancel: "Añadir como otro discurso",
+        });
+        close = busy("Abriendo el documento…");
+        if (sustituir) {
+          const fresco = (await store.get("docs", previo.id)) || previo;
+          await store.put("docs", { ...fresco, html, updated: now, source: name });
+          done.push({ ...fresco, actualizado: true });
+          continue;
+        }
+      }
+      const doc = { id: uid(), title, html, created: now, updated: now, source: name };
       await store.put("docs", doc);
       done.push(doc);
     }
   } finally {
     close();
   }
-  if (done.length === 1) go(`#/leer/docs/${done[0].id}`);
-  else if (done.length > 1) { toast(`${done.length} documentos añadidos.`); renderHome(); }
+  if (done.length === 1) {
+    if (done[0].actualizado) toast(`«${done[0].title}» actualizado con la versión nueva.`);
+    go(`#/leer/docs/${done[0].id}`);
+  } else if (done.length > 1) { toast(`${done.length} documentos abiertos.`); renderHome(); }
+}
+
+/** Cómo llevar el Word del PC al iPad. */
+function ayudaWord() {
+  openSheet([
+    el("h2", { text: "Pasar el Word del PC al iPad" }),
+    el("p", { text: "Atril abre los .docx que tengas en el iPad. La forma más cómoda:" }),
+    el("ol", { class: "lista-pasos" },
+      el("li", { text: "En el PC, guarda el Word en OneDrive o en iCloud Drive. También puedes mandártelo por correo y, en el iPad, guardarlo en Archivos." }),
+      el("li", { text: "En el iPad, toca «Abrir Word» y búscalo en Explorar → OneDrive o iCloud Drive." }),
+      el("li", { text: "Si luego lo cambias en el PC, ábrelo otra vez: Atril te ofrecerá sustituir la versión anterior sin perder tus ensayos, la duración ni dónde lo has dado." })),
+    el("p", { class: "small-print", text: "Para que OneDrive salga en Archivos, instala la app de OneDrive en el iPad e inicia sesión." }),
+    el("div", { class: "actions" },
+      el("button", { class: "action primary", html: icon("open") + "<span>Abrir Word</span>", onclick: () => { closeSheet(); $("#file-input").click(); } }),
+      el("button", { class: "action plain", text: "Cerrar", onclick: () => closeSheet() })),
+  ]);
+}
+
+/** Discurso de ejemplo para ver cómo funciona Atril. */
+async function crearEjemplo() {
+  const now = Date.now();
+  const html = `<h1>La paciencia</h1>
+<h2>Introducción (1 min)</h2><p>¿Le ha tocado alguna vez esperar en una cola que no avanza? A todos nos cuesta esperar. Pero la Biblia dice en Gálatas 5:22 que la paciencia forma parte del fruto del espíritu.</p>
+<h2>Por qué vale la pena (2 min)</h2><p><mark>La paciencia nos ayuda a mantener la calma</mark> cuando las cosas no salen como queremos. Santiago 5:7 pone el ejemplo del agricultor, que espera la cosecha sin desanimarse.</p><ul><li>Pausa aquí y mira al público.</li><li>Pregunta: ¿qué haríamos nosotros?</li></ul>
+<h2>Cómo cultivarla (1 min)</h2><p>Pidamos ayuda en oración y pensemos en lo paciente que es Dios con nosotros (2 Pedro 3:9).</p>
+<h2>Conclusión (1 min)</h2><p><mark class="c-verde">Quien espera con paciencia, gana.</mark> Esta semana, probemos a contar hasta diez antes de responder.</p>`;
+  const item = { id: uid(), title: "Ejemplo: la paciencia", html: sanitize(html), created: now, updated: now, target: 5 };
+  await store.put("docs", item);
+  go(`#/leer/docs/${item.id}`);
+  setTimeout(() => toast("Separa dos dedos para agrandar la letra. Toca «Presentar» para darlo con el cronómetro.", { ms: 7000 }), 500);
 }
 
 /* ============================================================
@@ -921,7 +972,8 @@ async function renderHome() {
   if (tab === "docs") {
     actions.append(
       el("button", { class: "btn primary", html: icon("open") + "<span>Abrir Word</span>", onclick: () => $("#file-input").click() }),
-      el("button", { class: "btn", html: icon("plus") + "<span>Nuevo discurso</span>", onclick: nuevoDiscurso })
+      el("button", { class: "btn", html: icon("plus") + "<span>Nuevo discurso</span>", onclick: nuevoDiscurso }),
+      el("button", { class: "text-btn ayuda-word", text: "¿Cómo paso el Word del PC?", onclick: ayudaWord })
     );
   } else {
     actions.append(el("button", { class: "btn primary", html: icon("plus") + "<span>Nueva nota</span>", onclick: () => newItem("notes") }));
@@ -967,13 +1019,27 @@ async function renderHome() {
   );
 
   const empty = $("#empty");
+  const bienvenida = !items.length && !q && tab === "docs";
+  actions.hidden = bienvenida;
+  empty.classList.toggle("bienvenida", bienvenida);
   if (items.length) empty.hidden = true;
   else {
     empty.hidden = false;
     if (q) empty.replaceChildren(el("h2", { text: "Sin resultados" }), el("p", { text: `Nada coincide con «${home.query}».` }));
     else if (tab === "docs") empty.replaceChildren(
-      el("h2", { text: "Aún no hay discursos" }),
-      el("p", { text: "Toca «Abrir Word» para traer un .docx desde Archivos, iCloud o el correo. Luego podrás leerlo con letra grande y retocarlo." })
+      el("img", { class: "bv-icono", src: "icons/icon-192.png", alt: "" }),
+      el("h2", { text: "Atril, tu lector de discursos" }),
+      el("p", { class: "bv-lema", text: "Prepara el discurso en Word, ábrelo aquí y léelo en el iPad con letra grande y cronómetro. Gratis, sin cuentas, y todo se queda en tu dispositivo." }),
+      el("ol", { class: "bv-pasos" },
+        el("li", {}, el("span", { class: "bv-ic", html: icon("open") }), el("b", { text: "Abre tu Word" }), el("span", { text: "El que preparaste en el PC: desde Archivos, iCloud, OneDrive o el correo." })),
+        el("li", {}, el("span", { class: "bv-ic", html: icon("aa") }), el("b", { text: "Léelo a tu medida" }), el("span", { text: "Separa dos dedos para agrandar la letra; el texto se recoloca solo." })),
+        el("li", {}, el("span", { class: "bv-ic", html: icon("play") }), el("b", { text: "Preséntalo" }), el("span", { text: "Pantalla bloqueada, cronómetro grande y aviso si vas retrasado." }))),
+      el("div", { class: "bv-botones" },
+        el("button", { class: "btn primary", html: icon("open") + "<span>Abrir un Word</span>", onclick: () => $("#file-input").click() }),
+        el("button", { class: "btn", html: icon("book") + "<span>Probar con un ejemplo</span>", onclick: crearEjemplo })),
+      el("div", { class: "bv-mas" },
+        el("button", { class: "text-btn", text: "¿Cómo paso el Word del PC al iPad?", onclick: ayudaWord }),
+        el("button", { class: "text-btn", text: "Escribir uno nuevo", onclick: nuevoDiscurso }))
     );
     else empty.replaceChildren(
       el("h2", { text: "Aún no hay notas" }),
@@ -1261,6 +1327,18 @@ const timer = {
       else ensayo.seguir();
     }
     this.paint();
+    sesion.guardar();
+  },
+  /** Vuelve a poner el cronómetro como estaba (después de cerrarse la app sin querer). */
+  restaurar(t, docKey) {
+    clearInterval(this.int);
+    this.elapsed = Number(t.elapsed) || 0;
+    this.running = !!t.running;
+    this.startedAt = Number(t.startedAt) || Date.now();
+    this.docKey = docKey;
+    if (this.running) this.int = setInterval(() => this.paint(), 500);
+    if (this.running || this.elapsed) { ensayo.empezar({ sinGrabar: true }); if (!this.running) ensayo.pausa(); }
+    this.paint();
   },
   /** A cero. Si el ensayo ha durado al menos 30 s, se guarda en el historial. */
   reset({ otroDoc = false } = {}) {
@@ -1270,6 +1348,7 @@ const timer = {
     clearInterval(this.int);
     ensayo.terminar(ms, { otroDoc });
     this.paint();
+    sesion.guardar();
   },
   paint() {
     ensayo.tic();
@@ -1282,8 +1361,34 @@ const timer = {
     for (const n of [$("#timer"), $("#cards-timer")]) { n.classList.toggle("running", this.running); n.classList.toggle("rec", rec); }
     $("#timer-reset").hidden = this.running || this.elapsed === 0;
     if (currentView === "reader") reader.paintPace();
+    if (this.running && Date.now() - (this.ultimaSesion || 0) > 5000) { this.ultimaSesion = Date.now(); sesion.guardar(); }
   },
 };
+
+/* ============================================================
+   Sesión: si la app se cierra sin querer en medio de un discurso, al volver a abrirla
+   se vuelve al mismo discurso, al mismo sitio y con el cronómetro como iba.
+   ============================================================ */
+const SESION = "atril.sesion";
+const sesion = {
+  guardar({ enLector = currentView === "reader" } = {}) {
+    if (!reader.id) return;
+    const enMarcha = timer.running || timer.elapsed > 0;
+    if (!presentar.activo && !enMarcha) { lsSet(SESION, ""); return; }
+    lsSet(SESION, JSON.stringify({
+      kind: reader.kind, id: reader.id, enLector, presentando: presentar.activo && enLector,
+      timer: { running: timer.running, startedAt: timer.startedAt, elapsed: timer.elapsed }, t: Date.now(),
+    }));
+  },
+  /** Sesión que hay que recuperar al abrir la app, o null. */
+  pendiente() {
+    let s = null;
+    try { s = JSON.parse(lsGet(SESION, "") || "null"); } catch {}
+    if (!s || !s.id || Date.now() - s.t > 4 * 3600e3) return null;
+    return s.presentando || (s.enLector && s.timer && s.timer.running) ? s : null;
+  },
+};
+let sesionARestaurar = null;
 
 /* ============================================================
    Ensayos: tiempo total y por parte, con grabación opcional
@@ -1298,7 +1403,7 @@ const ensayo = {
 
   grabando() { return !!(this.grab && this.grabListo && this.grab.activa); },
 
-  empezar() {
+  empezar({ sinGrabar = false } = {}) {
     if (!reader.item) { this.activo = false; return; }
     this.activo = true;
     this.kind = reader.kind; this.id = reader.id;
@@ -1309,7 +1414,7 @@ const ensayo = {
     this.parte = reader.parteActual() ?? 0;
     this.ultimo = Date.now();
     this.marcas = [];
-    if (settings.grabar && puedeGrabar()) this.empezarGrabacion();
+    if (settings.grabar && puedeGrabar() && !sinGrabar) this.empezarGrabacion();
   },
 
   async empezarGrabacion() {
@@ -1519,7 +1624,15 @@ const reader = {
     this.buildPlan();
     views.reader.classList.remove("immersive");
     showView("reader");
+    // Vuelta después de cerrarse la app sin querer: cronómetro y modo presentar como estaban
+    const vuelta = sesionARestaurar && sesionARestaurar.kind === kind && sesionARestaurar.id === id ? sesionARestaurar : null;
+    sesionARestaurar = null;
+    if (vuelta) timer.restaurar(vuelta.timer || {}, kind + "/" + id);
     timer.paint();
+    if (vuelta) {
+      if (vuelta.presentando) presentar.entrar({ consejo: false });
+      toast(vuelta.timer && (vuelta.timer.running || vuelta.timer.elapsed) ? "Has vuelto donde estabas. El cronómetro no se ha parado." : "Has vuelto donde estabas.", { ms: 5000 });
+    }
     // Recupera la posición de lectura
     const ratio = parseFloat(lsGet(this.posKey(), "0")) || 0;
     requestAnimationFrame(() => { this.scrollEl.scrollTop = ratio * this.scrollEl.scrollHeight; this.paintProgress(); });
@@ -1528,6 +1641,8 @@ const reader = {
 
   leave() {
     keepAwake(false);
+    if (presentar.activo) presentar.salir({ guardar: false });
+    sesion.guardar({ enLector: false });
     buscador.cerrar();
     prompter.cerrar();
     if (tarjetas.activo) tarjetas.cerrar();
@@ -1558,6 +1673,7 @@ const reader = {
   bloqueActual() {
     if (tarjetas.activo) { const t = tarjetas.lista[tarjetas.i]; return t ? t.inicio : null; }
     if (this.mode !== "texto") return null;
+    if (this.scrollEl.scrollTop <= 4) return 0; // al principio del todo se está en la primera parte
     const r = this.scrollEl.getBoundingClientRect();
     const y = r.top + r.height * 0.33;
     const hijos = this.contentEl.children;
@@ -1613,6 +1729,7 @@ const reader = {
     const html = estado ? `<span class="long">${escapeHtml(largo)}</span><span class="short">${escapeHtml(corto)}</span>` : "";
     for (const chip of [$("#pace"), $("#cards-pace")]) { chip.hidden = !estado; chip.className = "pace " + estado; chip.innerHTML = html; }
     $("#timer-toggle").title = plan ? `Objetivo ${mmss(plan.objetivoSeg)}` : "Cronómetro";
+    if (presentar.activo) presentar.pintar({ estado, largo, corto, aviso, seg, started });
     // Cronómetro flotante en modo atril
     const flot = $("#float-timer");
     const showFloat = views.reader.classList.contains("immersive") && started && !tarjetas.activo;
@@ -1902,7 +2019,7 @@ const reader = {
 
   init() {
     attachPinch(this.scrollEl, this.contentEl);
-    const saveLater = debounce(() => this.savePos(), 400);
+    const saveLater = debounce(() => { this.savePos(); if (presentar.activo) sesion.guardar(); }, 400);
     let paceRaf = 0;
     this.scrollEl.addEventListener("scroll", () => {
       this.paintProgress();
@@ -1912,6 +2029,8 @@ const reader = {
     // Un toque sobre el texto oculta o muestra la barra (modo atril); dos toques marcan «voy por aquí»
     let ultimoToque = { t: 0, x: 0, y: 0 }, esperaToque = 0;
     this.contentEl.addEventListener("click", (e) => {
+      // Presentando: los toques no hacen nada (ni enlaces que saquen de la app)
+      if (presentar.activo) { e.preventDefault(); return; }
       if (e.target.closest("a")) return;
       if (prompter.activo) { prompter.alternar(); return; }
       const now = Date.now();
@@ -1939,6 +2058,7 @@ const reader = {
       if (it) this.goToBlock(Number(it.dataset.i));
     });
     $("#reader-outline-btn").addEventListener("click", () => this.toggleOutline());
+    $("#reader-presentar").addEventListener("click", () => presentar.entrar());
     $("#reader-more").addEventListener("click", () => this.openMenu());
     $("#float-timer").addEventListener("click", () => timer.toggle());
     $("#reader-back").addEventListener("click", () => go("#/"));
@@ -1962,7 +2082,7 @@ const reader = {
         else if (k === "Escape") tarjetas.cerrar();
         return;
       }
-      if (k === "Escape") { if (buscador.abierto) buscador.cerrar(); else if (prompter.activo) prompter.cerrar(); return; }
+      if (k === "Escape") { if (buscador.abierto) buscador.cerrar(); else if (prompter.activo) prompter.cerrar(); else if (presentar.activo) presentar.salir(); return; }
       if (this.mode === "texto" && (adelante || atras)) {
         e.preventDefault();
         this.scrollEl.scrollBy({ top: (adelante ? 1 : -1) * this.scrollEl.clientHeight * 0.85, behavior: "smooth" });
@@ -1970,6 +2090,108 @@ const reader = {
     });
   },
 };
+
+/* ============================================================
+   Presentar: pantalla bloqueada para dar el discurso
+   ============================================================ */
+const presentar = {
+  activo: false, partes: [],
+  entrar({ consejo = true } = {}) {
+    if (!reader.item) return;
+    buscador.cerrar();
+    prompter.cerrar();
+    if (tarjetas.activo) tarjetas.cerrar();
+    if (reader.mode !== "texto") reader.setMode("texto", { keepScroll: true });
+    this.activo = true;
+    this.partes = reader.partesEnsayo();
+    views.reader.classList.remove("immersive");
+    views.reader.classList.add("presentando");
+    $("#pres-bar").hidden = false;
+    $("#pres-salir").hidden = false;
+    keepAwake(true);
+    reader.paintPace();
+    sesion.guardar();
+    if (consejo && esIOS() && lsGet("atril.consejoAcceso") !== "1") this.consejo();
+  },
+  salir({ guardar = true } = {}) {
+    if (!this.activo) return;
+    this.activo = false;
+    views.reader.classList.remove("presentando");
+    $("#pres-bar").hidden = true;
+    $("#pres-salir").hidden = true;
+    if (guardar) sesion.guardar();
+    reader.paintPace();
+  },
+  pintar({ estado, corto, largo, aviso, seg, started }) {
+    const b = $("#pres-timer");
+    $("#pres-timer-text").textContent = mmss(seg);
+    b.className = "pres-timer" + (timer.running ? " running" : "") + (aviso ? " " + aviso : "");
+    $("#pres-hint").textContent = !started ? "Toca para empezar" : timer.running ? "Mantén pulsado para pausar" : "En pausa · toca para seguir";
+    const chip = $("#pres-pace");
+    chip.hidden = !estado;
+    chip.className = "pace " + estado;
+    chip.textContent = largo || "";
+    // Parte actual y la siguiente
+    const partes = this.partes;
+    const b0 = reader.bloqueActual();
+    const k = partes.length && b0 != null ? parteDeBloque(partes, b0) : 0;
+    const p = partes[k];
+    $("#pres-parte").textContent = partes.length > 1 ? `Parte ${k + 1} de ${partes.length} · ${p.titulo}` : (reader.item.title || "");
+    const sig = partes[k + 1];
+    $("#pres-sigue").textContent = sig ? `Sigue: ${sig.titulo}${sig.objetivoSeg ? ` (${String(Math.round(sig.objetivoSeg / 6) / 10).replace(".", ",")} min)` : ""}` : partes.length > 1 ? "Última parte" : "";
+    const prog = $("#pres-prog");
+    if (prog.childElementCount !== partes.length) prog.replaceChildren(...partes.map(() => el("i")));
+    [...prog.children].forEach((x, i) => { x.className = i < k ? "hecha" : i === k ? "actual" : ""; });
+  },
+  consejo() {
+    openSheet([
+      el("h2", { text: "Para no salirte del discurso" }),
+      el("p", { text: "Atril ya no responde a toques sueltos mientras presentas. Para que el iPad tampoco pueda salir de la app (por un gesto o un aviso), usa «Acceso guiado» del iPad:" }),
+      el("ol", { class: "lista-pasos" },
+        el("li", { text: "Ajustes → Accesibilidad → Acceso guiado: actívalo y pon un código." }),
+        el("li", { text: "En Atril, pulsa tres veces el botón de inicio (o el botón superior si tu iPad no tiene) y toca Iniciar." }),
+        el("li", { text: "Al terminar, vuelve a pulsar tres veces, escribe el código y toca Finalizar." })),
+      el("p", { class: "small-print", text: "Si aun así se cierra, al abrir Atril volverás al mismo sitio con el cronómetro en marcha." }),
+      el("div", { class: "actions" }, el("button", { class: "action primary", text: "Entendido", onclick: () => { lsSet("atril.consejoAcceso", "1"); closeSheet(); } })),
+    ]);
+  },
+  init() {
+    // El cronómetro: un toque lo pone en marcha; para pausarlo hay que mantenerlo pulsado
+    const t = $("#pres-timer");
+    let espera = 0, largo = false;
+    t.addEventListener("pointerdown", () => {
+      largo = false;
+      clearTimeout(espera);
+      espera = setTimeout(() => { largo = true; if (timer.running) { timer.toggle(); toast("Cronómetro en pausa."); } }, 650);
+    });
+    const soltar = () => clearTimeout(espera);
+    t.addEventListener("pointerup", soltar);
+    t.addEventListener("pointercancel", soltar);
+    t.addEventListener("pointerleave", soltar);
+    t.addEventListener("contextmenu", (e) => e.preventDefault());
+    t.addEventListener("click", () => {
+      if (largo) { largo = false; return; }
+      if (!timer.running) timer.toggle();
+      else toast("Para pausar, mantén pulsado el cronómetro.");
+    });
+    // Salir: mantener pulsado
+    const s = $("#pres-salir");
+    let salida = 0;
+    s.addEventListener("pointerdown", (e) => {
+      e.preventDefault();
+      s.classList.add("cargando");
+      clearTimeout(salida);
+      salida = setTimeout(() => { s.classList.remove("cargando"); this.salir(); }, 800);
+    });
+    const cancelar = () => { clearTimeout(salida); s.classList.remove("cargando"); };
+    s.addEventListener("pointerup", cancelar);
+    s.addEventListener("pointercancel", cancelar);
+    s.addEventListener("pointerleave", cancelar);
+    s.addEventListener("contextmenu", (e) => e.preventDefault());
+    s.addEventListener("click", () => { if (this.activo) toast("Mantén pulsado para salir."); });
+  },
+};
+const esIOS = () => /iP(ad|hone|od)/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 
 /* ============================================================
    Buscar en el texto
@@ -2678,14 +2900,15 @@ function init() {
   buscador.init();
   tarjetas.init();
   prompter.init();
+  presentar.init();
   editor.init();
 
   window.addEventListener("hashchange", route);
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible" && currentView === "reader") keepAwake(true);
-    if (document.visibilityState === "hidden") { if (currentView === "editor") editor.flush(); if (currentView === "reader") reader.savePos(); }
+    if (document.visibilityState === "hidden") { if (currentView === "editor") editor.flush(); if (currentView === "reader") { reader.savePos(); sesion.guardar(); } }
   });
-  window.addEventListener("pagehide", () => { if (currentView === "editor") editor.flush(); });
+  window.addEventListener("pagehide", () => { if (currentView === "editor") editor.flush(); if (currentView === "reader") sesion.guardar(); });
 
   // Con el teclado en pantalla, la app ocupa solo la parte visible (evita saltos en iPad/iPhone)
   if (window.visualViewport) {
@@ -2702,6 +2925,14 @@ function init() {
   // Limpieza de grabaciones sueltas, cuando la app ya está tranquila
   setTimeout(limpiarGrabaciones, 8000);
 
+  // ¿Se cerró la app en medio de un discurso? Se vuelve directamente a él
+  const pend = sesion.pendiente();
+  const h = location.hash || "#/";
+  const suyo = pend && `#/leer/${pend.kind}/${pend.id}`;
+  if (pend && (h === "#/" || h === "#" || h === suyo)) {
+    sesionARestaurar = pend;
+    if (h !== suyo) history.replaceState(null, "", suyo);
+  }
   route();
   registerSW();
 }
@@ -2722,5 +2953,5 @@ init();
 // Exportado para las pruebas automáticas
 window.__atril = {
   sanitize, htmlToText, textToHtml, store, settings: () => settings, setFontSize, importFiles, exportWord, crearPdf,
-  timer, reader, editor, ensayo, buscador, tarjetas, prompter, crearPlantilla, abrirDado, pintarAvisoCopia, reemplazo,
+  timer, reader, editor, ensayo, buscador, tarjetas, prompter, crearPlantilla, abrirDado, pintarAvisoCopia, reemplazo, presentar, sesion,
 };
