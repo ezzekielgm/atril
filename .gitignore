@@ -3,3 +3,6 @@ dist/
 test/out/
 capturas/
 .tmp/
+src-tauri/target/
+src-tauri/gen/
+__pycache__/

@@ -133,6 +133,34 @@ export function buscarCitas(texto) {
   return res;
 }
 
+/** «Filipenses 4:4», «Salmo 37:4-7», «Judas 9»: la cita con el nombre entero del libro. */
+export function citaCompleta(c) {
+  if (!c) return "";
+  let nombre = LIBROS[c.libro - 1][1][0];
+  if (c.libro === 19) nombre = "Salmo";
+  const v = c.vers + (c.versFin ? "-" + c.versFin : "");
+  return UN_CAPITULO.has(c.libro) && c.cap === 1 ? `${nombre} ${v}` : `${nombre} ${c.cap}:${v}`;
+}
+
+/** ¿El texto (un versículo pegado) es de esta cita? Mismo libro y capítulo, y el versículo dentro del rango. */
+export function esDeLaCita(texto, c) {
+  return buscarCitas(texto || "").some((x) => x.libro === c.libro && x.cap === c.cap &&
+    x.vers <= (c.versFin || c.vers) && (x.versFin || x.vers) >= c.vers);
+}
+
+/** Limpia un versículo copiado de JW Library o de jw.org: sin las marcas de notas (*) y referencias (+), sin espacios de más. */
+export function limpiarVersiculo(t) {
+  return String(t || "")
+    .replace(/\r\n?/g, "\n")
+    .replace(/[+*†‡]/g, "")
+    .replace(/[ \t   ]+/g, " ")
+    .replace(/ *\n */g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .replace(/ ([,.;:!?»”])/g, "$1")
+    .trim()
+    .slice(0, 6000);
+}
+
 /** Enlace para una cita. modo: "app" (JW Library) o "web" (jw.org) */
 export function enlaceCita(bible, modo = "app") {
   const q = `srcid=jwlshare&wtlocale=S&prefer=lang&pub=nwtsty&bible=${bible}`;

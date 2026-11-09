@@ -113,7 +113,7 @@ ok("La tarjeta muestra tiempo estimado y objetivo", /≈ \d+ min de lectura/.tes
 
 // --- Ajuste: citas en jw.org
 await page.click("#btn-settings");
-await page.click(".sheet >> text=Abrir en jw.org");
+await page.click('.sheet .chip:text-is("jw.org")');
 await page.click(".sheet >> text=Cerrar");
 await page.goto(URL + "#/leer/docs/" + id);
 await page.waitForSelector("#view-reader:not([hidden])");

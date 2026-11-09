@@ -30,14 +30,15 @@ La dirección es pública, pero solo contiene la app vacía: tus discursos y not
 - **Letra**: tamaño, tema (claro, sepia u oscuro), tipo de letra (Como Word, Clásica, Arial, Georgia o Verdana) e interlineado.
 - **Cronómetro**: tócalo para empezar o pararlo. Con la flecha circular vuelve a cero.
 - La pantalla no se apaga mientras lees (se puede desactivar en Ajustes).
-- **Citas bíblicas**: las citas como «Sal 37:4» o «1 Cor. 13:4-7» salen subrayadas; tócalas para abrir el versículo en JW Library (en Ajustes puedes elegir jw.org o quitar los enlaces).
+- **Citas bíblicas**: las citas como «Sal 37:4» o «1 Cor. 13:4-7» salen subrayadas. Al tocarlas: **Abrir en JW Library**, **Abrir en jw.org** o **Pegar el versículo copiado**. En Ajustes eliges cuál sale primero o que no se puedan tocar.
+- **El versículo debajo de la cita**: abre la cita, copia el versículo y vuelve a Atril; te ofrece **pegarlo debajo** con un toque. Queda en el discurso (en otro color, con su cita entre paréntesis), cuenta para el tiempo y sale en el Word. Tocando la cita otra vez puedes cambiarlo o quitarlo. En el editor: *Insertar → Texto bíblico*, con el cursor en el párrafo de la cita. Atril no descarga los textos de jw.org (sus condiciones no lo permiten): los copias tú.
 - **Esquema**: muestra solo los títulos y lo que hayas resaltado. Toca un punto para ir a esa parte del texto. Arriba puedes filtrar: solo títulos o solo un color. **Con el iPad en horizontal sale al lado del texto** (como el panel de navegación de Word) y marca la parte por la que vas; el botón «Esquema» o la ✕ lo cierran.
 - **Barra de abajo**: en qué parte vas, cuánto has leído y cuántos minutos quedan (según tu objetivo, o a tu ritmo al hablar si no tiene).
 - **Duración del discurso** (en **T**): pon los minutos que tienes. Con el cronómetro en marcha verás «Adelantado», «En tiempo» o «Retrasado»; se pone naranja cuando queda poco y rojo si te pasas. Si un título termina en «(5 min)», calcula el ritmo por partes.
 - Con la barra oculta queda un cronómetro pequeño abajo a la derecha; tócalo para pausar.
 - **Lápiz**: editar, como en Word: arriba las pestañas **Inicio** (estilos Normal, Título 1, 2 y 3, negrita, cursiva, subrayado, tachado, resaltador y listas), **Revisar** (buscar y reemplazar) y **Vista** (modo lectura y tamaño de letra). Abajo, las palabras y el zoom. Se guarda solo mientras escribes. Con el iPad en horizontal, a la izquierda sale el **panel de navegación** con los títulos (Vista → Panel de navegación lo quita o lo pone). Con teclado: ⌘⌥1, 2 o 3 para los títulos, ⌘⌥0 texto normal, ⌘⇧X tachado, ⌘⌥H resaltar, ⌘F buscar (la lista completa en ⋯ → Atajos de teclado). Abajo verás también **≈ 7 / 10 min**: lo que durará al ritmo al que hablas y tu objetivo. Se pone naranja si una parte se pasa de sus minutos y rojo si te pasas en total. Tócalo para ver cada parte, cambiar el objetivo o ajustar tu ritmo (incluso el real, sacado de tus ensayos). El **marcador** abre los colores (amarillo, verde, azul y rosa): selecciona el texto y toca un color. Con el cursor dentro de un resaltado, otro color lo cambia y «Quitar» lo borra. Los colores se respetan al abrir y al guardar en Word.
 - **Color de letra** (la **A** con una raya de color, al lado del marcador): selecciona el texto y elige rojo, azul, verde o naranja; «Automático» lo devuelve al color normal. Si en el Word del PC pones palabras de color, en Atril salen igual, y al guardar como Word o PDF también.
-- **Insertar**: **Parte nueva** (un título con sus minutos, después del párrafo donde estás), **Minutos de la parte** (pone o cambia el «(5 min)» de la parte donde tienes el cursor) y **Pausa** (escribe ‖, que al leer sale destacada en azul).
+- **Insertar**: **Parte nueva** (un título con sus minutos, después del párrafo donde estás), **Minutos de la parte** (pone o cambia el «(5 min)» de la parte donde tienes el cursor), **Pausa** (escribe ‖, que al leer sale destacada en azul) y **Texto bíblico** (el versículo de la cita del párrafo donde estás, debajo).
 - **Seleccionar texto** dice abajo cuántas palabras son y cuánto tardas en decirlas («45 de 279 palabras · ≈ 21 s»).
 - **Panel de navegación** (iPad en horizontal): cada parte dice lo que dura (en verde si cuadra con sus minutos, en rojo si se pasa) y tiene flechas para **subirla o bajarla entera**. Si te equivocas, «Deshacer» en el aviso.
 - **Versiones anteriores** (Revisar, o ⋯): Atril guarda una copia cada vez que empiezas a editar un discurso, cuando lo cambias por un Word nuevo y cuando recuperas otra. Puedes verlas y recuperar la que quieras (la que tenías también se guarda). Se quedan las 10 últimas.
@@ -87,6 +88,25 @@ Cada cambio que se sube a GitHub se publica solo en unos minutos. Al abrir Atril
 - **Qué significa cada color** (Ajustes): ponle a cada color lo que significa para ti (p. ej. amarillo = ideas clave, rojo = no saltar). Sale en los colores del editor y en el filtro del esquema. Cada persona lo elige en su propio iPad.
 - **Copia de seguridad**: Atril guarda solo cada cambio en el iPad, pero si se borra la app se pierde todo. Te recuerda la copia **cada semana** si has cambiado algo. Guárdala en OneDrive o iCloud.
 - **Actualizaciones**: en Ajustes ves la versión que tienes y el botón **«Buscar actualizaciones»**. Además, Atril mira solo si hay una nueva cuando vuelves a la app después de unas horas.
+
+## Tus tiempos van dentro del Word
+
+El Word que guarda Atril («Guardar como Word») lleva dentro, invisibles, **la duración que tienes, tus ensayos y dónde lo has dado**. Word los conserva aunque lo abras y lo cambies en el PC. Así, ese mismo archivo, abierto con Atril en el iPad, en la web o en el ordenador, llega con sus tiempos. Si ya tenías ese discurso, al sustituirlo se juntan los ensayos de los dos sin repetirse. Al **compartir** un Word con otra persona no se pone nada de esto. Un Word que nunca ha pasado por Atril no lo lleva, pero Atril calcula igualmente cuánto dura por las palabras y, si los títulos acaban en «(5 min)», el tiempo de cada parte.
+
+## Atril para el ordenador (Windows y Mac)
+
+La misma Atril, como programa del ordenador. Se descarga de **https://github.com/ezzekielgm/atril/releases** (la más reciente, arriba):
+- **Windows**: el archivo **.msi**. Al abrirlo puede salir «Windows protegió su PC» (el instalador no está firmado, porque el certificado es de pago): **Más información → Ejecutar de todas formas**. Si el ordenador no te deja instalar (sin permisos de administrador), usa el **-setup.exe**, que se instala solo para tu usuario.
+- **Mac**: el **.dmg**; arrastra Atril a Aplicaciones. La primera vez, clic derecho sobre Atril → **Abrir** (o Ajustes del Sistema → Privacidad y seguridad → «Abrir igualmente»).
+
+Qué tiene además:
+- **Abrir un Word**: con el botón, con **Ctrl+O** (⌘O en el Mac), **arrastrándolo** a la ventana o con **clic derecho → Abrir con → Atril**. Tus documentos de Word siguen abriéndose con Word con doble clic: Atril no te los quita (si quieres que un discurso se abra siempre con Atril, en «Abrir con» elige «Elegir otra aplicación» y marca «Siempre»).
+- **Guarda en el mismo Word**: «Guardar como Word» (o **Ctrl+S** en el editor) lo escribe encima del archivo que abriste, sin preguntar dónde. Si lo tienes abierto en Word, ciérralo antes. Si ese Word se ha cambiado fuera de Atril después de abrirlo, te avisa antes de sustituirlo. Si el Word está en OneDrive, el iPad abre ese mismo archivo ya con tus tiempos.
+- **Ctrl+N**: discurso nuevo. La ventana lleva el nombre del discurso que tienes abierto.
+- **Versiones nuevas**: Atril te avisa (como mucho una vez al día) cuando hay un instalador más nuevo; lo descargas y lo instalas encima. Tus discursos y notas se conservan. Ajustes → «Buscar actualizaciones» lo mira en el momento.
+- Los discursos del ordenador están **en el ordenador** (como los del iPad están en el iPad): para pasar de uno a otro, el Word (con sus tiempos dentro) o la copia de seguridad.
+
+La web (https://ezzekielgm.github.io/atril/) también funciona en el ordenador: en Edge o Chrome se puede instalar (icono de instalar en la barra de direcciones) y se puede **arrastrar un Word** a la ventana para abrirlo; lo que solo hace el programa es guardar encima del mismo Word y el «Abrir con».
 
 ## Apple Pencil y voz
 

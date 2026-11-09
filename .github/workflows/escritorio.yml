@@ -1,0 +1,65 @@
+# Construye Atril para el ordenador (Windows .msi y .exe, Mac .dmg) y lo publica en «Releases»
+# cada vez que cambia la app. La versión es 1.0.<número de esta ejecución>.
+name: Atril para el ordenador
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "src/**"
+      - "src-tauri/**"
+      - "build.mjs"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/escritorio.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: escritorio
+  cancel-in-progress: false
+
+jobs:
+  compilar:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - sistema: windows-latest
+            args: ""
+          - sistema: macos-latest
+            args: "--target universal-apple-darwin"
+    runs-on: ${{ matrix.sistema }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.sistema == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+      - run: npm ci
+      - run: npm run build
+      - name: Número de versión
+        shell: bash
+        run: |
+          node -e "const fs=require('fs');const f='src-tauri/tauri.conf.json';const c=JSON.parse(fs.readFileSync(f,'utf8'));c.version='1.0.${{ github.run_number }}';fs.writeFileSync(f,JSON.stringify(c,null,2))"
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: escritorio-v__VERSION__
+          releaseName: "Atril para el ordenador __VERSION__"
+          releaseBody: |
+            **Windows**: descarga el `.msi` y ábrelo. Si sale «Windows protegió su PC», pulsa «Más información» → «Ejecutar de todas formas». Si el ordenador no te deja instalar (sin permisos de administrador), usa el `-setup.exe`.
+            **Mac**: descarga el `.dmg`, arrastra Atril a Aplicaciones y la primera vez ábrelo con clic derecho → Abrir (o en Ajustes del Sistema → Privacidad y seguridad → «Abrir igualmente»).
+            Para actualizar, instala el nuevo encima: se conservan tus discursos y notas.
+          releaseDraft: false
+          prerelease: false
+          args: ${{ matrix.args }}

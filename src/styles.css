@@ -1199,3 +1199,24 @@ button:focus:not(:focus-visible) { outline: none; }
 .sheet .chips .chip { border-radius: 10px; }
 /* Los elementos del esquema y de la navegación no se aplastan: la lista se desplaza */
 .side-list > * { flex-shrink: 0; }
+
+/* ============================================================
+   Textos bíblicos pegados debajo de las citas (blockquote.versiculo)
+   ============================================================ */
+.doc-content blockquote.versiculo {
+  margin: .25em 0 .95em; padding: .5em .9em .55em; border-left: 4px solid var(--acento-calido);
+  border-radius: 0 12px 12px 0; background: var(--versiculo-fondo); color: var(--text); font-size: .92em;
+}
+.doc-content blockquote.versiculo p { margin: 0 0 .35em; }
+.doc-content blockquote.versiculo p:last-child { margin-bottom: 0; }
+.doc-content li > blockquote.versiculo, .doc-content td > blockquote.versiculo { margin-top: .35em; }
+:root { --versiculo-fondo: rgba(242, 193, 148, .16); }
+[data-theme="sepia"] { --versiculo-fondo: rgba(201, 143, 78, .14); }
+[data-theme="oscuro"] { --versiculo-fondo: rgba(224, 165, 111, .10); }
+.sheet textarea.versiculo-input {
+  width: 100%; min-height: 150px; font: inherit; font-size: 18px; line-height: 1.5; padding: 12px 14px;
+  border: 1.5px solid var(--border); border-radius: 12px; background: var(--bg); color: var(--text); resize: vertical;
+}
+.sheet textarea.versiculo-input:focus { outline: none; border-color: var(--accent); }
+.sheet .chips .chip svg { width: 18px; height: 18px; vertical-align: -3px; margin-right: 6px; }
+.menu-nota { margin: 0 6px 8px; }

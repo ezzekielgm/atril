@@ -103,6 +103,24 @@ def banner_y_vista_previa(icono):
     og.save(ICONOS / "og.jpg", quality=84, optimize=True, progressive=True)
 
 
+def escritorio(grande):
+    """Icono de Atril para el ordenador (Windows y Mac): cuadrado redondeado con margen y sombra suave,
+    sobre transparente, en src-tauri/icons/fuente.png. Después: npx tauri icon src-tauri/icons/fuente.png -o src-tauri/icons"""
+    n, lado, radio = 1024, 860, 190
+    x0 = (n - lado) // 2
+    lienzo = Image.new("RGBA", (n, n), (0, 0, 0, 0))
+    sombra = Image.new("L", (n, n), 0)
+    ImageDraw.Draw(sombra).rounded_rectangle((x0, x0 + 14, x0 + lado, x0 + lado + 14), radio, fill=90)
+    sombra = sombra.filter(ImageFilter.GaussianBlur(18))
+    lienzo.paste(Image.new("RGBA", (n, n), (8, 20, 50, 255)), (0, 0), sombra)
+    mascara = Image.new("L", (lado, lado), 0)
+    ImageDraw.Draw(mascara).rounded_rectangle((0, 0, lado - 1, lado - 1), radio, fill=255)
+    lienzo.paste(grande.resize((lado, lado), Image.LANCZOS).convert("RGBA"), (x0, x0), mascara)
+    destino = RAIZ / "src-tauri" / "icons"
+    destino.mkdir(parents=True, exist_ok=True)
+    lienzo.save(destino / "fuente.png", optimize=True)
+
+
 FUENTES = Path("/tmp/fuentes")
 if __name__ == "__main__":
     from fontTools.ttLib import TTFont
@@ -113,4 +131,5 @@ if __name__ == "__main__":
         f.save(FUENTES / f"carlito-{n}.ttf")
     ic = iconos()
     banner_y_vista_previa(ic)
-    print("iconos, banner y vista previa generados en src/icons/")
+    escritorio(ic)
+    print("iconos, banner y vista previa generados en src/icons/; el del ordenador, en src-tauri/icons/fuente.png")

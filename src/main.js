@@ -1,7 +1,7 @@
 // Atril — lector y editor de discursos y notas (PWA)
 // Código sin frameworks. Los datos se guardan en IndexedDB, en el propio dispositivo.
 
-import { enlazarCitas } from "./biblia.js";
+import { enlazarCitas, buscarCitas, enlaceCita, citaCompleta, esDeLaCita, limpiarVersiculo } from "./biblia.js";
 import { crearPlan, tiempoPrevisto, palabraActual, mmss, contarPalabras, minutosEstimados, minutosDeTitulo, tituloSinMinutos, ritmoDeEnsayos, analizarEnsayos, PALABRAS_POR_MINUTO } from "./tiempo.js";
 import { limpiarDibujo, figuraDibujo, svgDibujo } from "./dibujo-svg.js";
 import { COLORES, LETRAS, claseValida, claseDeFondo, colorDeMark, claseLetraValida, claseDeLetra, rgbDe } from "./colores.js";
@@ -9,6 +9,7 @@ import { crearPlantilla, repartirMinutos } from "./plantilla.js";
 import { dividirEnTarjetas, nivelDeCorte, partesDelDiscurso, parteDeBloque, estimarPartes } from "./tarjetas.js";
 import { marcarCoincidencias, limpiarCoincidencias, plegarTexto, rangosCoincidencias } from "./buscar.js";
 import { puedeGrabar, crearGrabadora, extensionDe } from "./grabadora.js";
+import { escritorio } from "./escritorio.js";
 
 /* ============================================================
    Utilidades
@@ -151,6 +152,8 @@ const P = {
   guia: '<circle cx="12" cy="12" r="9.5"/><path d="M9.3 9.2a2.8 2.8 0 0 1 5.4 1c0 1.9-2.7 2.6-2.7 4.2"/><path d="M12 17.6h.01" stroke-width="2.6"/>',
   pin: '<path d="M12 16v6"/><path d="M8.5 3h7l-1 6 3.5 3.5V16H6v-3.5L9.5 9z"/>',
   panel: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/><path d="M5.5 8h1.5M5.5 11h1.5"/>',
+  globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c2.6 2.6 3.8 5.6 3.8 9s-1.2 6.4-3.8 9c-2.6-2.6-3.8-5.6-3.8-9S9.4 5.6 12 3z"/>',
+  paste: '<path d="M9 4H7.5A1.5 1.5 0 0 0 6 5.5v14A1.5 1.5 0 0 0 7.5 21h9a1.5 1.5 0 0 0 1.5-1.5v-14A1.5 1.5 0 0 0 16.5 4H15"/><rect x="9" y="2.5" width="6" height="3" rx="1"/><path d="M9.5 11h5M9.5 15h5"/>',
 };
 const icon = (name) =>
   `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${P[name] || ""}</svg>`;
@@ -164,7 +167,7 @@ function paintIcons(root = document) {
 const ALLOWED = {
   P: [], H1: [], H2: [], H3: [], H4: [], STRONG: [], B: [], EM: [], I: [], U: [], S: [], STRIKE: [], DEL: [], MARK: [],
   BR: [], UL: [], OL: [], LI: [], TABLE: [], THEAD: [], TBODY: [], TR: [], TD: ["colspan", "rowspan"], TH: ["colspan", "rowspan"],
-  BLOCKQUOTE: [], IMG: ["src", "alt"], A: ["href"], SUB: [], SUP: [],
+  BLOCKQUOTE: ["class"], IMG: ["src", "alt"], A: ["href"], SUB: [], SUP: [],
 };
 const DROP = new Set(["SCRIPT", "STYLE", "IFRAME", "OBJECT", "EMBED", "NOSCRIPT", "TEMPLATE", "SVG", "MATH", "LINK", "META", "TITLE", "HEAD", "FORM", "INPUT", "BUTTON", "SELECT", "TEXTAREA", "VIDEO", "AUDIO", "CANVAS"]);
 const BLOCKS = new Set(["P", "H1", "H2", "H3", "H4", "UL", "OL", "LI", "TABLE", "BLOCKQUOTE", "DIV", "TR", "TD", "TH", "THEAD", "TBODY", "FIGURE"]);
@@ -285,6 +288,8 @@ function cleanNode(node) {
     const color = tag === "MARK" ? claseValida(child.getAttribute("class")) || (hasBackground(child) ? claseDeFondo(fondoDe(child)) : "") : "";
     for (const a of [...child.attributes]) if (!keep.includes(a.name.toLowerCase())) child.removeAttribute(a.name);
     if (color) child.className = color;
+    // Un versículo pegado debajo de una cita: <blockquote class="versiculo">; otras clases no
+    if (tag === "BLOCKQUOTE" && child.getAttribute("class") !== "versiculo") child.removeAttribute("class");
     if (tag === "IMG") {
       const src = child.getAttribute("src") || "";
       if (!/^data:image\/(png|jpe?g|gif|webp|bmp);base64,/i.test(src)) { child.remove(); continue; }
@@ -490,6 +495,7 @@ function actionSheet(title, actions) {
   for (const a of actions) {
     if (!a) continue;
     if (a.grupo) { actual = null; bloques.push(el("h3", { class: "menu-grupo", text: a.grupo })); continue; }
+    if (a.nota) { actual = null; bloques.push(el("p", { class: "small-print menu-nota", text: a.nota })); continue; }
     if (!actual) { actual = el("div", { class: "actions menu" }); bloques.push(actual); }
     const b = el("button", { class: "action" + (a.danger ? " danger" : ""), html: (a.icon ? icon(a.icon) : "") + `<span>${escapeHtml(a.label)}</span>` });
     b.addEventListener("click", () => { close(); a.run(); });
@@ -542,6 +548,15 @@ function busy(message) {
 /** Ofrece un archivo ya generado. El toque en el botón lanza "Compartir" (Guardar en Archivos, correo, etc.). */
 function offerFile(file, { title, onDone, nota, boton } = {}) {
   const hecho = () => { try { onDone && onDone(); } catch (e) { console.error(e); } };
+  // En el ordenador: la ventana «Guardar como» del sistema
+  if (escritorio.activo) {
+    escritorio.guardarComo(file.name, file).then((ruta) => {
+      if (!ruta) return;
+      hecho();
+      toast(`Guardado en «${String(ruta).split(/[\\/]/).pop()}».`, { action: "Ver carpeta", onAction: () => escritorio.mostrarEnCarpeta(ruta), ms: 5000 });
+    }).catch((e) => { console.error(e); toast("No se pudo guardar el archivo."); });
+    return;
+  }
   const canShare = !!(navigator.canShare && navigator.canShare({ files: [file] }));
   const { close } = openSheet([
     el("h2", { text: title || "Archivo listo" }),
@@ -717,6 +732,172 @@ function abrirCompartir(kind, item) {
 }
 
 /* ============================================================
+   Textos bíblicos debajo de las citas. Al tocar una cita se abre en JW Library o en jw.org;
+   el usuario copia el versículo y Atril lo pega debajo (no lo descarga: las condiciones de
+   jw.org no permiten que un programa saque textos del sitio).
+   <blockquote class="versiculo"><p>texto (Filipenses 4:4)</p></blockquote>, justo después del
+   párrafo de la cita (en una lista o tabla, al final de su elemento).
+   ============================================================ */
+const BLOQUE_CITA = "p, h1, h2, h3, h4, li, td, th";
+const VERSICULO_DENTRO = new Set(["LI", "TD", "TH"]);
+
+/** Abre la cita en JW Library («app») o en jw.org («web»). */
+function abrirCita(cita, modo) {
+  const url = enlaceCita(cita.bible, modo);
+  if (escritorio.activo) { escritorio.abrirEnlace(url); return; }
+  if (modo === "web") window.open(url, "_blank", "noopener");
+  else location.href = url;
+}
+
+/** El texto de un bloque sin los versículos que lleva dentro (en una lista o tabla van dentro del punto). */
+function textoPropio(b) {
+  if (!b.querySelector("blockquote.versiculo")) return b.textContent || "";
+  const c = b.cloneNode(true);
+  c.querySelectorAll("blockquote.versiculo").forEach((v) => v.remove());
+  return c.textContent || "";
+}
+
+/**
+ * El bloque al que va el versículo de una cita que está en el nodo n (dentro de raiz). Si la cita está
+ * dentro de un versículo ya pegado, es el párrafo (o el punto de la lista) al que pertenece ese versículo.
+ */
+function bloqueDeCita(n, raiz) {
+  const e = n && (n.nodeType === 1 ? n : n.parentElement);
+  let b = e && e.closest(BLOQUE_CITA);
+  if (!b || !raiz.contains(b) || b === raiz) return null;
+  const v = b.closest("blockquote.versiculo");
+  if (v && raiz.contains(v)) {
+    const padre = v.parentElement;
+    if (padre && padre !== raiz && VERSICULO_DENTRO.has(padre.tagName)) return padre;
+    b = v.previousElementSibling;
+    while (b && b.matches("blockquote.versiculo")) b = b.previousElementSibling;
+  }
+  return b && raiz.contains(b) && b !== raiz ? b : null;
+}
+/** Versículos ya pegados de ese bloque: los que van seguidos justo debajo (o al final, en una lista o tabla). */
+function versiculosDe(b) {
+  const res = [];
+  if (VERSICULO_DENTRO.has(b.tagName)) {
+    for (let x = b.lastElementChild; x && x.matches("blockquote.versiculo"); x = x.previousElementSibling) res.unshift(x);
+  } else {
+    for (let x = b.nextElementSibling; x && x.matches("blockquote.versiculo"); x = x.nextElementSibling) res.push(x);
+  }
+  return res;
+}
+const versiculoDe = (b, cita) => versiculosDe(b).find((v) => esDeLaCita(v.textContent, cita)) || null;
+
+/** Pone (o cambia) el versículo de la cita en el bloque b, en el orden de las citas del párrafo. Devuelve {nuevo, viejo}. */
+function ponerVersiculoEn(b, cita, texto) {
+  const nuevo = document.createElement("blockquote");
+  nuevo.className = "versiculo";
+  const lineas = texto.split(/\n+/).map((l) => l.trim()).filter(Boolean);
+  const ref = esDeLaCita(texto, cita) ? "" : ` (${citaCompleta(cita)})`;
+  lineas.forEach((l, i) => nuevo.append(el("p", { text: l + (i === lineas.length - 1 ? ref : "") })));
+  const viejo = versiculoDe(b, cita);
+  if (viejo) viejo.replaceWith(nuevo);
+  else colocarVersiculo(b, cita, nuevo);
+  return { nuevo, viejo };
+}
+/** Pone el versículo v en su sitio: con los demás de ese párrafo, en el orden de sus citas. */
+function colocarVersiculo(b, cita, v) {
+  const citas = buscarCitas(textoPropio(b));
+  const posDe = (x) => { const i = citas.findIndex((c) => esDeLaCita(x.textContent, c)); return i < 0 ? 999 : i; };
+  const yo = Math.max(0, citas.findIndex((c) => c.bible === cita.bible));
+  const ya = versiculosDe(b);
+  const despues = ya.find((x) => posDe(x) > yo);
+  if (despues) despues.before(v);
+  else if (VERSICULO_DENTRO.has(b.tagName)) b.append(v);
+  else (ya.length ? ya[ya.length - 1] : b).after(v);
+}
+
+/** Posición de un bloque como índices entre los bloques de cada nivel (no cuenta los enlaces y marcas que pone el lector). */
+const esBloque = (n) => BLOCKS.has(n.tagName);
+function rutaDeBloque(raiz, b) {
+  const ruta = [];
+  for (let n = b; n && n !== raiz; n = n.parentElement) {
+    const p = n.parentElement;
+    if (!p) return null;
+    ruta.unshift([...p.children].filter(esBloque).indexOf(n));
+  }
+  return ruta.includes(-1) ? null : ruta;
+}
+function bloqueEnRuta(raiz, ruta) {
+  let n = raiz;
+  for (const i of ruta || []) { n = [...n.children].filter(esBloque)[i]; if (!n) return null; }
+  return n === raiz ? null : n;
+}
+
+/** El versículo copiado: se lee del portapapeles (hay que llamarla dentro del toque); si no hay, se pega a mano. */
+function pedirVersiculo(cita) {
+  let leer;
+  try {
+    leer = escritorio.activo ? escritorio.leerPortapapeles()
+      : navigator.clipboard && navigator.clipboard.readText ? navigator.clipboard.readText() : Promise.resolve("");
+  } catch { leer = Promise.resolve(""); }
+  return Promise.resolve(leer).catch(() => "").then((t) => {
+    const limpio = limpiarVersiculo(t);
+    if (limpio.length >= 8 && !/^\S+:\/\/\S+$/.test(limpio)) return limpio;
+    return dialogoVersiculo(cita);
+  });
+}
+
+/** Hoja para pegar el versículo a mano (cuando el portapapeles está vacío o no deja leerlo). */
+function dialogoVersiculo(cita) {
+  return new Promise((resolve) => {
+    let hecho = false;
+    const ta = el("textarea", { class: "versiculo-input", rows: 6, placeholder: "Mantén pulsado aquí y elige «Pegar»", "aria-label": "Texto del versículo" });
+    const ok = () => {
+      const t = limpiarVersiculo(ta.value);
+      if (!t) { ta.focus(); toast("Pega primero el texto del versículo."); return; }
+      hecho = true; close(); resolve(t);
+    };
+    const { close } = openSheet([
+      el("h2", { text: citaCompleta(cita) }),
+      el("p", { class: "small-print", text: "Copia el versículo en JW Library o en jw.org y pégalo aquí. Se pondrá debajo de la cita." }),
+      ta,
+      el("div", { class: "chips" },
+        el("button", { class: "chip", html: icon("book") + "<span>Abrir en JW Library</span>", onclick: () => abrirCita(cita, "app") }),
+        el("button", { class: "chip", html: icon("globe") + "<span>Abrir en jw.org</span>", onclick: () => abrirCita(cita, "web") })),
+      el("div", { class: "actions" },
+        el("button", { class: "action primary", id: "versiculo-ok", html: icon("paste") + "<span>Ponerlo debajo</span>", onclick: ok }),
+        el("button", { class: "action plain", text: "Cancelar", onclick: () => close() })),
+    ], { onClose: () => { if (!hecho) resolve(null); } });
+  });
+}
+
+/** Al volver de JW Library o jw.org, ofrece pegar lo copiado debajo de la cita (una vez, en los 10 minutos siguientes). */
+let pegarAlVolver = null;
+function esperarVuelta(cita, aplicar) { pegarAlVolver = { cita, aplicar, t: Date.now(), fuera: false }; }
+function alVolverALaApp() {
+  const p = pegarAlVolver;
+  if (!p || !p.fuera) return;
+  pegarAlVolver = null;
+  if (Date.now() - p.t > 10 * 60 * 1000 || !$("#overlay").hidden) return;
+  toast(`¿Pegar el texto de ${citaCompleta(p.cita)} debajo de la cita?`, {
+    action: "Pegar", ms: 15000,
+    onAction: () => { pedirVersiculo(p.cita).then((t) => { if (t) p.aplicar(t); }); },
+  });
+}
+const salirDeLaApp = () => { if (pegarAlVolver) pegarAlVolver.fuera = true; };
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") salirDeLaApp(); else setTimeout(alVolverALaApp, 350); });
+window.addEventListener("blur", salirDeLaApp);
+window.addEventListener("focus", () => setTimeout(alVolverALaApp, 350));
+
+/** Menú de una cita: abrirla y, si se puede, pegar (o quitar) su texto debajo. */
+function menuDeCita(cita, { tiene = false, aplicar = null, quitar = null } = {}) {
+  const fuera = (modo) => () => { abrirCita(cita, modo); if (aplicar) esperarVuelta(cita, aplicar); };
+  const app = { label: "Abrir en JW Library", icon: "book", run: fuera("app") };
+  const web = { label: "Abrir en jw.org", icon: "globe", run: fuera("web") };
+  actionSheet(citaCompleta(cita), [
+    ...(settings.refLinks === "web" ? [web, app] : [app, web]),
+    aplicar ? { grupo: "Texto debajo de la cita" } : null,
+    aplicar ? { nota: tiene ? "Ya tiene su texto debajo. Puedes cambiarlo por otro que copies." : "Ábrelo, copia el versículo y vuelve a Atril: te ofrecerá pegarlo debajo." } : null,
+    aplicar ? { label: tiene ? "Cambiar por el que he copiado" : "Pegar el versículo copiado", icon: "paste", run: () => pedirVersiculo(cita).then((t) => { if (t) aplicar(t); }) } : null,
+    tiene && quitar ? { label: "Quitar el texto de debajo", icon: "trash", danger: true, run: quitar } : null,
+  ]);
+}
+
+/* ============================================================
    Importar documentos
    ============================================================ */
 /* ============================================================
@@ -797,6 +978,8 @@ function loadMammoth() {
 }
 
 const STYLE_MAP = [
+  // Textos bíblicos que Atril pegó debajo de las citas (estilo «Texto bíblico» de docx-export.js)
+  "p[style-name='Texto bíblico'] => blockquote.versiculo > p:fresh",
   "p[style-name='Title'] => h1:fresh",
   "p[style-name='Subtitle'] => h2:fresh",
   "p[style-name='Título'] => h1:fresh",
@@ -832,6 +1015,13 @@ async function docxToHtml(file) {
   return sanitize(colores ? colores.ponerColores(res.value) : res.value);
 }
 
+/** «Abrir Word»: en el ordenador, la ventana del sistema (así se sabe dónde está para guardarlo encima). */
+async function abrirWord() {
+  if (!escritorio.activo) { $("#file-input").click(); return; }
+  try { await importFiles(await escritorio.elegirWords()); }
+  catch (e) { console.error(e); toast("No se pudo abrir el archivo."); }
+}
+
 async function importFiles(files) {
   const list = [...files];
   if (!list.length) return;
@@ -841,9 +1031,13 @@ async function importFiles(files) {
     for (const f of list) {
       const name = f.name || "Documento";
       const lower = name.toLowerCase();
-      let html;
+      let html, datos = null;
       try {
-        if (lower.endsWith(".docx")) html = await docxToHtml(f);
+        if (lower.endsWith(".docx")) {
+          html = await docxToHtml(f);
+          // La duración, los ensayos y dónde se ha dado, si el Word lo guardó Atril
+          try { datos = await (await import("./datos-word.js")).leerDatosAtril(await f.arrayBuffer()); } catch (e) { console.warn(e); }
+        }
         else if (lower.endsWith(".txt") || f.type === "text/plain") html = textToHtml(await f.text());
         else if (lower.endsWith(".doc")) { toast("Los .doc antiguos no se pueden abrir. Ábrelo en Pages y expórtalo como Word (.docx)."); continue; }
         else { toast(`«${name}» no es un Word (.docx) ni un texto (.txt).`); continue; }
@@ -868,12 +1062,13 @@ async function importFiles(files) {
         if (sustituir) {
           const fresco = (await store.get("docs", previo.id)) || previo;
           await guardarVersion("docs", fresco, "Antes de cambiarlo por el Word nuevo");
-          await store.put("docs", { ...fresco, html, updated: now, source: name, alPC: now });
+          await store.put("docs", { ...mezclarDatos(fresco, datos), html, updated: now, source: name, alPC: now, ...(f.rutaPC ? { rutaPC: f.rutaPC } : {}) });
           done.push({ ...fresco, actualizado: true });
           continue;
         }
       }
-      const doc = { id: uid(), title, html, created: now, updated: now, source: name, alPC: now };
+      const doc = mezclarDatos({ id: uid(), title, html, created: now, updated: now, source: name, alPC: now }, datos);
+      if (f.rutaPC) doc.rutaPC = f.rutaPC; // Atril del ordenador: dónde está el Word, para guardarlo encima
       await store.put("docs", doc);
       done.push(doc);
     }
@@ -886,6 +1081,32 @@ async function importFiles(files) {
   } else if (done.length > 1) { toast(`${done.length} documentos abiertos.`); renderHome(); }
 }
 
+/**
+ * Junta con un discurso lo que traía su Word (datos-word.js): ensayos y «dónde lo he dado» se suman sin repetir;
+ * la duración del Word manda si es más reciente que lo que hay aquí (o si aquí no había).
+ */
+function mezclarDatos(item, datos) {
+  if (!datos) return item;
+  const res = { ...item };
+  const t = Number(datos.target);
+  if (t > 0 && t <= 240 && (!item.target || (datos.guardado || 0) > (item.updated || 0))) res.target = t;
+  const ens = limpiarEnsayos(datos.ensayos);
+  if (ens) {
+    const ya = new Set((item.ensayos || []).map((e) => e.id));
+    res.ensayos = [...(item.ensayos || []), ...ens.filter((e) => !ya.has(e.id))].sort((a, b) => b.fecha - a.fecha).slice(0, MAX_ENSAYOS);
+  }
+  const dado = limpiarDado(datos.dado);
+  if (dado) {
+    const clave = (d) => d.fecha + "|" + plegarTexto(d.lugar || "");
+    const ya = new Set((item.dado || []).flatMap((d) => [d.id, clave(d)]));
+    res.dado = ordenarDado([...(item.dado || []), ...dado.filter((d) => !ya.has(d.id) && !ya.has(clave(d)))]);
+  }
+  return res;
+}
+
+/** Lo de Atril que se guarda dentro del Word de un discurso (no en las notas, ni al compartirlo con otros). */
+const datosParaWord = (kind, item) => (kind === "docs" ? { target: item.target, ensayos: item.ensayos, dado: item.dado, guardado: Date.now() } : null);
+
 /** Cómo llevar el Word del PC al iPad. */
 function ayudaWord() {
   openSheet([
@@ -897,7 +1118,7 @@ function ayudaWord() {
       el("li", { text: "Si luego lo cambias en el PC, ábrelo otra vez: Atril te ofrecerá sustituir la versión anterior sin perder tus ensayos, la duración ni dónde lo has dado." })),
     el("p", { class: "small-print", text: "Para que OneDrive salga en Archivos, instala la app de OneDrive en el iPad e inicia sesión." }),
     el("div", { class: "actions" },
-      el("button", { class: "action primary", html: icon("open") + "<span>Abrir Word</span>", onclick: () => { closeSheet(); $("#file-input").click(); } }),
+      el("button", { class: "action primary", html: icon("open") + "<span>Abrir Word</span>", onclick: () => { closeSheet(); abrirWord(); } }),
       el("button", { class: "action plain", text: "Cerrar", onclick: () => closeSheet() })),
   ]);
 }
@@ -909,7 +1130,7 @@ async function abrirGuia(seccion) {
   if (aviso) aviso.hidden = true;
   try {
     const m = await import("./guia.js");
-    m.abrirGuia({ seccion, icon, alProbar: crearEjemplo, android: esAndroid() });
+    m.abrirGuia({ seccion, icon, alProbar: crearEjemplo, android: esAndroid(), escritorio: escritorio.activo });
   } catch (e) {
     console.error(e);
     toast("No se pudo abrir la guía. Inténtalo de nuevo.");
@@ -972,11 +1193,13 @@ async function exportWord(kind, item, { compartir = false } = {}) {
   try {
     const { buildDocx } = await import("./docx-export.js");
     const html = await htmlParaExportar(kind === "notes" ? htmlConTitulo(item) : item.html || "<p></p>");
-    const blob = await buildDocx(item.title || "Documento", html);
+    const blob = await buildDocx(item.title || "Documento", html, { datos: compartir ? null : datosParaWord(kind, item) });
     close();
     // Con el mismo nombre que el Word del PC, para poder sustituirlo
     const nombre = item.source && /\.docx$/i.test(item.source) ? item.source : safeFileName(item.title) + ".docx";
     const file = new File([blob], nombre, { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
+    // Atril del ordenador: encima del Word original (o donde diga, la primera vez)
+    if (escritorio.activo && !compartir) { await guardarWordEnPC(kind, item, file); return; }
     offerFile(file, compartir ? {
       title: "Word listo para compartir",
       boton: "Compartir",
@@ -991,6 +1214,46 @@ async function exportWord(kind, item, { compartir = false } = {}) {
     close();
     toast("No se pudo crear el Word. Inténtalo de nuevo.");
   }
+}
+
+const nombreDeRuta = (ruta) => String(ruta || "").split(/[\\/]/).pop();
+
+/**
+ * Atril del ordenador: guarda el Word encima del original (item.rutaPC) o, si no tiene, pregunta dónde.
+ * Si el Word del ordenador se cambió fuera de Atril después de abrirlo aquí, avisa antes de sustituirlo.
+ */
+async function guardarWordEnPC(kind, item, file, { preguntar = false } = {}) {
+  let ruta = preguntar ? null : item.rutaPC;
+  try {
+    if (ruta) {
+      const fecha = await escritorio.fechaArchivo(ruta).catch(() => null);
+      if (fecha === null) ruta = null; // ya no está ahí (se movió o se borró): se pregunta dónde
+      else if (fecha > (item.alPC || 0) + 2000) {
+        const sustituir = await confirmDialog({
+          title: "El Word ha cambiado en el ordenador",
+          message: `«${nombreDeRuta(ruta)}» se ha cambiado fuera de Atril después de abrirlo aquí. Si lo sustituyes, se perderán esos cambios.`,
+          ok: "Sustituirlo igualmente", cancel: "Guardar como otro", danger: true,
+        });
+        if (!sustituir) ruta = null;
+      }
+    }
+    if (ruta) await escritorio.guardar(ruta, file);
+    else {
+      ruta = await escritorio.guardarComo(file.name, file);
+      if (!ruta) return false;
+    }
+  } catch (e) {
+    console.warn(e);
+    toast("No se pudo guardar el Word. Si lo tienes abierto en Word, ciérralo y vuelve a intentarlo.", {
+      action: "Guardar como…", ms: 9000, onAction: () => guardarWordEnPC(kind, item, file, { preguntar: true }),
+    });
+    return false;
+  }
+  const it = await store.get(kind, item.id);
+  if (it) await store.put(kind, { ...it, rutaPC: ruta, source: nombreDeRuta(ruta), alPC: Math.max(Date.now(), it.updated || 0) });
+  if (currentView === "home") renderHome();
+  toast(`Guardado en «${nombreDeRuta(ruta)}».`, { action: "Ver carpeta", onAction: () => escritorio.mostrarEnCarpeta(ruta), ms: 5000 });
+  return true;
 }
 
 /* ============================================================
@@ -1367,7 +1630,7 @@ async function renderHome() {
   actions.replaceChildren();
   if (tab === "docs") {
     actions.append(
-      el("button", { class: "btn primary", html: icon("open") + "<span>Abrir Word</span>", onclick: () => $("#file-input").click() }),
+      el("button", { class: "btn primary", html: icon("open") + "<span>Abrir Word</span>", onclick: () => abrirWord() }),
       el("button", { class: "btn", html: icon("plus") + "<span>Nuevo discurso</span>", onclick: nuevoDiscurso }),
       el("button", { class: "text-btn ayuda-word", text: "¿Cómo paso el Word del PC?", onclick: ayudaWord })
     );
@@ -1465,7 +1728,7 @@ async function renderHome() {
         el("li", {}, el("span", { class: "bv-ic", html: icon("aa") }), el("b", { text: "Léelo a tu medida" }), el("span", { text: "Separa dos dedos para agrandar la letra; el texto se recoloca solo." })),
         el("li", {}, el("span", { class: "bv-ic", html: icon("play") }), el("b", { text: "Preséntalo" }), el("span", { text: "Pantalla bloqueada, cronómetro grande y aviso si vas retrasado." }))),
       el("div", { class: "bv-botones" },
-        el("button", { class: "btn primary", html: icon("open") + "<span>Abrir un Word</span>", onclick: () => $("#file-input").click() }),
+        el("button", { class: "btn primary", html: icon("open") + "<span>Abrir un Word</span>", onclick: () => abrirWord() }),
         el("button", { class: "btn", html: icon("book") + "<span>Probar con un ejemplo</span>", onclick: crearEjemplo })),
       el("div", { class: "bv-mas" },
         el("button", { class: "text-btn", id: "bv-guia", text: "Ver la guía: qué hace cada cosa", onclick: () => abrirGuia() }),
@@ -1683,8 +1946,8 @@ function openSettings() {
     puedeGrabar() ? el("label", { class: "switch-row" }, el("span", { text: "Grabar audio al ensayar con el cronómetro" }), grabar) : null,
     el("div", { class: "group" },
       el("span", { class: "label", text: "Citas bíblicas" }),
-      el("p", { class: "small-print", text: "Al leer, las citas como «Sal 37:4» se pueden tocar para abrir el versículo." }),
-      el("div", { class: "chips" }, [["app", "Abrir en JW Library"], ["web", "Abrir en jw.org"], ["off", "Sin enlaces"]].map(([val, label]) => {
+      el("p", { class: "small-print", text: "Al leer, toca una cita como «Sal 37:4» para abrirla y, si copias el versículo, pegarlo debajo. En el editor: Insertar → Texto bíblico. ¿Dónde se abre primero?" }),
+      el("div", { class: "chips" }, [["app", "JW Library"], ["web", "jw.org"], ["off", "Que no se puedan tocar"]].map(([val, label]) => {
         const b = el("button", { class: "chip", "aria-pressed": String(settings.refLinks === val), text: label });
         b.addEventListener("click", () => {
           settings.refLinks = val; saveSettings();
@@ -1715,6 +1978,7 @@ function openSettings() {
     el("div", { class: "actions" }, el("button", { class: "action plain", text: "Cerrar", onclick: () => closeSheet() })),
   ].filter(Boolean));
   pintarProteccion();
+  if (escritorio.activo) escritorio.version().then((v) => { $("#version-txt").textContent = `Atril para ${escritorio.mac ? "Mac" : "Windows"} ${v} · contenido ${fechaDeVersion(APP_VERSION)} (${APP_VERSION}).`; }).catch(() => {});
 }
 
 /* ============================================================
@@ -2222,10 +2486,7 @@ const reader = {
     const title = item.title || htmlToText(item.html).split("\n")[0].slice(0, 60) || "Sin título";
     $("#reader-title").textContent = title;
     document.title = title + " · Atril";
-    this.contentEl.innerHTML = item.html || "";
-    enlazarCitas(this.contentEl, settings.refLinks);
-    decorarMinutos(this.contentEl);
-    decorarPausas(this.contentEl);
+    this.pintarContenido(item.html);
     this.cargarAqui();
     this.setMode("texto", { keepScroll: true });
     this.buildPlan();
@@ -2250,6 +2511,78 @@ const reader = {
     requestAnimationFrame(() => { this.scrollEl.scrollTop = ratio * this.scrollEl.scrollHeight; this.paintProgress(); this.paintEstado(); this.paintPace(); this.lateral.pintarActual(); });
     if (aPresentar) presentar.comprobar({ desdeInicio: true });
     keepAwake(true);
+  },
+
+  /** El texto del documento en pantalla, con las citas que se pueden tocar y las marcas de minutos y pausas. */
+  pintarContenido(html) {
+    this.contentEl.innerHTML = html || "";
+    enlazarCitas(this.contentEl, settings.refLinks);
+    decorarMinutos(this.contentEl);
+    decorarPausas(this.contentEl);
+  },
+
+  /** Vuelve a pintar el documento tras cambiarlo desde el lector, sin moverse de donde se estaba leyendo. */
+  repintar(item) {
+    this.item = item;
+    this.conteo = null; this.partesCache = null;
+    mantenerSitio(this.scrollEl, this.contentEl, () => this.pintarContenido(item.html));
+    this.cargarAqui();
+    this.buildPlan();
+    if (this.mode === "esquema") this.renderOutline(this.outlineEl);
+    this.lateral.rellenar();
+    this.paintProgress(); this.paintEstado(); this.paintPace();
+  },
+
+  /** Toque en una cita: abrirla en JW Library o jw.org, o pegar su texto debajo. */
+  menuCita(a) {
+    const cita = buscarCitas(a.textContent || "")[0];
+    if (!cita) return;
+    const b = bloqueDeCita(a, this.contentEl);
+    // Una cita que no está en el texto del párrafo (p. ej. una referencia dentro de un versículo) solo se abre
+    const ruta = b && esDeLaCita(textoPropio(b), cita) ? rutaDeBloque(this.contentEl, b) : null;
+    const kind = this.kind, id = this.id;
+    menuDeCita(cita, ruta ? {
+      tiene: !!versiculoDe(b, cita),
+      aplicar: (texto) => this.cambiarVersiculo(kind, id, ruta, cita, texto),
+      quitar: () => this.cambiarVersiculo(kind, id, ruta, cita, null),
+    } : {});
+  },
+
+  /** Pone (texto) o quita (null) el versículo de una cita en el documento guardado. */
+  async cambiarVersiculo(kind, id, ruta, cita, texto) {
+    const item = await store.get(kind, id);
+    if (!item) return;
+    const box = document.createElement("div");
+    box.innerHTML = item.html || "";
+    const b = bloqueEnRuta(box, ruta);
+    if (!b || !esDeLaCita(textoPropio(b), cita)) {
+      toast("No encuentro esa cita en el texto. Ábrelo en el editor (Insertar → Texto bíblico).", { ms: 5000 });
+      return;
+    }
+    const antes = item.html;
+    let msg;
+    if (texto == null) {
+      const v = versiculoDe(b, cita);
+      if (!v) return;
+      v.remove();
+      msg = "Texto quitado.";
+    } else {
+      msg = ponerVersiculoEn(b, cita, texto).viejo ? `Texto de ${citaCompleta(cita)} cambiado.` : `Texto de ${citaCompleta(cita)} puesto debajo.`;
+    }
+    item.html = sanitize(box.innerHTML);
+    item.updated = Date.now();
+    await store.put(kind, item);
+    if (this.kind === kind && this.id === id && currentView === "reader") this.repintar(item);
+    toast(msg, {
+      action: "Deshacer", ms: 6000,
+      onAction: async () => {
+        const f = await store.get(kind, id);
+        if (!f) return;
+        f.html = antes; f.updated = Date.now();
+        await store.put(kind, f);
+        if (this.kind === kind && this.id === id && currentView === "reader") this.repintar(f);
+      },
+    });
   },
 
   leave() {
@@ -2766,6 +3099,8 @@ const reader = {
     this.contentEl.addEventListener("click", (e) => {
       // Presentando: los toques solo pasan página (y los enlaces no sacan de la app)
       if (presentar.activo) { e.preventDefault(); presentar.toque(e); return; }
+      const cita = e.target.closest("a.bref");
+      if (cita) { e.preventDefault(); this.menuCita(cita); return; }
       if (e.target.closest("a")) return;
       if (prompter.activo) { prompter.alternar(); return; }
       const now = Date.now();
@@ -3506,6 +3841,7 @@ const editor = {
       parte: () => this.parteNueva(),
       minutos: () => this.minutosParte(),
       pausa: () => this.insertarPausa(),
+      versiculo: () => this.textoBiblico(),
       versiones: () => this.abrirVersiones(),
     };
     if (otras[cmd]) { otras[cmd](); return; }
@@ -3631,7 +3967,15 @@ const editor = {
     else if (e.shiftKey && !e.altKey && c === "Digit8") cmd = "ul";
     else if (e.shiftKey && !e.altKey && c === "Digit7") cmd = "ol";
     else if (!e.shiftKey && !e.altKey && k === "f") cmd = "buscar";
-    else if (!e.shiftKey && !e.altKey && k === "s") { e.preventDefault(); this.flush().then(() => toast("Guardado.")); return; }
+    else if (!e.shiftKey && !e.altKey && k === "s") {
+      e.preventDefault();
+      // En el ordenador, con el Word abierto desde aquí, también se guarda en ese Word
+      this.flush().then(async () => {
+        const it = escritorio.activo && (await store.get(this.kind, this.id));
+        if (it && it.rutaPC) exportWord(this.kind, it); else toast("Guardado.");
+      });
+      return;
+    }
     if (!cmd) return;
     e.preventDefault();
     this.exec(cmd);
@@ -3755,6 +4099,40 @@ const editor = {
     const antes = n.nodeType === 3 ? n.data.slice(0, o) : "";
     document.execCommand("insertText", false, (antes && !/\s$/.test(antes) ? " " : "") + "‖ ");
     this.markDirty();
+  },
+  /** Insertar → Texto bíblico: la cita del párrafo del cursor, para abrirla y pegar su texto debajo. */
+  textoBiblico() {
+    const sel = window.getSelection();
+    const n = sel && sel.rangeCount ? sel.anchorNode : null;
+    const b = n && this.area.contains(n) ? bloqueDeCita(n, this.area) : null;
+    const citas = b ? buscarCitas(textoPropio(b)) : [];
+    if (!citas.length) { toast("Pon el cursor en el párrafo de la cita (por ejemplo, «Filip. 4:4»).", { ms: 4500 }); return; }
+    const cambiar = (cita, texto) => {
+      if (!b.isConnected) return;
+      let nuevo = null, viejo = versiculoDe(b, cita);
+      if (texto == null) { if (viejo) viejo.remove(); }
+      else ({ nuevo, viejo } = ponerVersiculoEn(b, cita, texto));
+      this.markDirty();
+      this.pintarTiempo();
+      if (nuevo) nuevo.scrollIntoView({ block: "nearest" });
+      toast(texto == null ? "Texto quitado." : viejo ? "Texto cambiado." : `Texto de ${citaCompleta(cita)} puesto debajo.`, {
+        action: "Deshacer", ms: 6000,
+        onAction: () => {
+          if (nuevo && viejo) nuevo.replaceWith(viejo);
+          else if (nuevo) nuevo.remove();
+          else if (viejo) colocarVersiculo(b, cita, viejo);
+          this.markDirty();
+          this.pintarTiempo();
+        },
+      });
+    };
+    const elegir = (cita) => menuDeCita(cita, {
+      tiene: !!versiculoDe(b, cita),
+      aplicar: (texto) => cambiar(cita, texto),
+      quitar: () => cambiar(cita, null),
+    });
+    if (citas.length === 1) elegir(citas[0]);
+    else actionSheet("¿Qué cita?", citas.map((c) => ({ label: citaCompleta(c), icon: "book", run: () => elegir(c) })));
   },
   /** Parte nueva: un título con sus minutos después del párrafo donde está el cursor. */
   parteNueva() {
@@ -4261,6 +4639,35 @@ function init() {
   }
   route();
   registerSW();
+  if (escritorio.activo) {
+    document.documentElement.classList.add("escritorio");
+    escritorio.seguirTitulo();
+    escritorio.alAbrirArchivos((files) => { if (files.length) importFiles(files); });
+    setTimeout(() => versionEscritorio(), 6000);
+  } else arrastrarWords();
+  atajosGenerales();
+}
+
+/** En el navegador del ordenador: soltar un Word encima de la ventana lo abre. */
+function arrastrarWords() {
+  const esWord = (e) => [...((e.dataTransfer && e.dataTransfer.items) || [])].some((i) => i.kind === "file");
+  document.addEventListener("dragover", (e) => { if (esWord(e)) { e.preventDefault(); e.dataTransfer.dropEffect = "copy"; } });
+  document.addEventListener("drop", (e) => {
+    const files = [...((e.dataTransfer && e.dataTransfer.files) || [])].filter((f) => /\.(docx|txt)$/i.test(f.name));
+    if (!files.length || (e.target.closest && e.target.closest("[contenteditable]"))) return;
+    e.preventDefault();
+    importFiles(files);
+  });
+}
+
+/** Atajos de teclado de cualquier pantalla (sobre todo para el ordenador): Ctrl+O abrir un Word, Ctrl+N discurso nuevo. */
+function atajosGenerales() {
+  document.addEventListener("keydown", (e) => {
+    if (!(e.metaKey || e.ctrlKey) || e.altKey || e.shiftKey || !$("#overlay").hidden || presentar.activo) return;
+    const k = (e.key || "").toLowerCase();
+    if (k === "o") { e.preventDefault(); abrirWord(); }
+    else if (k === "n" && currentView !== "editor") { e.preventDefault(); nuevoDiscurso(); }
+  });
 }
 
 /** «20261109-336d0a44» → «del 9 de noviembre de 2026». */
@@ -4276,6 +4683,7 @@ async function recargarConLoNuevo() { if (currentView === "editor") await editor
 /** Ajustes → «Buscar actualizaciones»: mira la versión publicada y, si es otra, la instala y recarga. */
 async function buscarActualizaciones(boton) {
   if (!navigator.onLine) { toast("Sin conexión. Conéctate a internet para buscar actualizaciones."); return; }
+  if (escritorio.activo) { versionEscritorio({ aMano: true }); return; }
   const span = boton && boton.querySelector("span");
   const poner = (t) => { if (span) span.textContent = t; };
   if (boton) boton.disabled = true;
@@ -4299,8 +4707,35 @@ async function buscarActualizaciones(boton) {
   }
 }
 
+/**
+ * Atril del ordenador: mira si hay un instalador más nuevo (en las publicaciones de GitHub) y lo ofrece.
+ * Solo, como mucho una vez al día; a mano, desde Ajustes.
+ */
+async function versionEscritorio({ aMano = false } = {}) {
+  if (!escritorio.activo) return;
+  if (!aMano && Date.now() - Number(lsGet("atril.escritorioMirado", "0")) < 20 * 3600 * 1000) return;
+  try {
+    const nueva = await escritorio.versionNueva();
+    lsSet("atril.escritorioMirado", String(Date.now()));
+    if (!nueva) { if (aMano) toast("Ya tienes la última versión de Atril para el ordenador."); return; }
+    const abrir = () => escritorio.abrirEnlace(nueva.url);
+    if (aMano) {
+      const ok = await confirmDialog({
+        title: `Atril ${nueva.version} para el ordenador`,
+        message: `Tienes la ${nueva.actual}. Descarga el instalador nuevo y ábrelo: se instala encima y conserva tus discursos y notas.`,
+        ok: "Descargar", cancel: "Ahora no",
+      });
+      if (ok) abrir();
+    } else toast(`Hay una versión nueva de Atril para el ordenador (${nueva.version}).`, { action: "Descargar", onAction: abrir, ms: 12000 });
+  } catch (e) {
+    console.warn(e);
+    if (aMano) toast("No se pudo comprobar. Inténtalo más tarde.");
+  }
+}
+
 function registerSW() {
-  if (!("serviceWorker" in navigator) || location.protocol === "file:") return;
+  // En Atril del ordenador la app va dentro del programa: no hace falta (y se actualiza con el instalador)
+  if (escritorio.activo || !("serviceWorker" in navigator) || location.protocol === "file:") return;
   // La primera vez que el service worker toma el control no hay nada que actualizar
   let hadController = !!navigator.serviceWorker.controller;
   navigator.serviceWorker.register("sw.js").catch((e) => console.warn("SW", e));

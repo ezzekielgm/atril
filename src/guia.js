@@ -12,6 +12,10 @@ const SECCIONES = (p) => [
         p.android ? "Chrome" : "Safari"],
       ["open", "Abre tu Word", "Elige un .docx de Archivos, iCloud, OneDrive o el correo. Se conservan los títulos, las negritas, los colores y los resaltados. Si luego lo cambias en el PC y lo vuelves a abrir, Atril te ofrece sustituirlo sin perder nada.", "Inicio → Abrir Word"],
       ["plus", "Escribe uno nuevo", "En blanco o con plantilla: pones el título, los minutos y los puntos, y Atril prepara la introducción, los puntos y la conclusión con el tiempo repartido.", "Inicio → Nuevo discurso"],
+      ["template", "Atril en el ordenador", p.escritorio
+        ? "Abre un Word con Ctrl+O (⌘O en el Mac), arrastrándolo a la ventana o con clic derecho → «Abrir con» → Atril. «Guardar como Word» lo guarda encima del mismo archivo (Ctrl+S en el editor). Tus Word del trabajo siguen abriéndose con Word."
+        : "Hay versión para Windows y Mac: abre tus Word con «Abrir con» o arrastrándolos, y los guarda encima del mismo archivo. La web también funciona en el ordenador: arrastra un Word a la ventana para abrirlo.",
+        p.escritorio ? "Inicio → Abrir Word" : "github.com/ezzekielgm/atril/releases"],
       ["pin", "Tu lista", "Arriba sale «Seguir donde lo dejaste». Con ⋯ puedes fijar un discurso arriba, renombrarlo, compartirlo, pasarlo a Notas o eliminarlo. El buscador encuentra por título, por texto o por el lugar donde lo diste.", "Inicio → ⋯ de cada discurso"],
     ],
   },
@@ -25,7 +29,8 @@ const SECCIONES = (p) => [
       ["bookmark", "Voy por aquí", "Dos toques en un párrafo lo marcan con una raya azul y se recuerda al volver. Un toque en el texto oculta las barras para tener toda la pantalla."],
       ["timer", "Cronómetro y ritmo", "Tócalo para empezar o pararlo. Con una duración puesta verás si vas adelantado o retrasado. Si un título termina en «(5 min)», el ritmo se calcula por partes. Abajo ves en qué parte vas y cuánto queda.", "Lector → arriba"],
       ["search", "Buscar, tarjetas y desplazamiento automático", "Busca una palabra (da igual tildes y mayúsculas), ve una parte por pantalla en tarjetas o deja que el texto suba solo a tu ritmo. «Más» está ordenado en Practicar, Documento, Compartir y guardar, y Ayuda.", "Lector → Más"],
-      ["book", "Citas bíblicas", "Las citas como «Sal 37:4» salen subrayadas: tócalas para abrir el versículo en JW Library o en jw.org.", "Ajustes → Citas bíblicas"],
+      ["book", "Citas bíblicas", "Las citas como «Sal 37:4» salen subrayadas: tócalas para abrir el versículo en JW Library o en jw.org.", "Toca la cita · Ajustes → Citas bíblicas"],
+      ["paste", "El versículo debajo de la cita", "Abre la cita, copia el versículo y vuelve a Atril: te ofrece pegarlo debajo (o toca la cita → «Pegar el versículo copiado»). Queda en el discurso, en otro color, y sale en el Word. Atril no lo descarga solo: lo copias tú.", "Toca la cita"],
     ],
   },
   {
@@ -58,7 +63,7 @@ const SECCIONES = (p) => [
     items: [
       ["edit", "Abrir el editor", "Desde el lector, o desde ⋯ en la lista.", "Lector → Editar"],
       ["marker", "Dar formato", "Estilos (Normal, Título 1, 2 y 3), negrita, cursiva, subrayado, tachado, resaltador de 4 colores, color de letra y listas. Selecciona el texto y toca el botón.", "Editor → Inicio"],
-      ["plus", "Insertar", "Una parte nueva con sus minutos, los minutos de una parte, una pausa «‖» (al leer sale destacada), un dibujo o escritura a mano, y dictar.", "Editor → Insertar"],
+      ["plus", "Insertar", "Una parte nueva con sus minutos, los minutos de una parte, una pausa «‖» (al leer sale destacada), el texto bíblico de la cita donde está el cursor, un dibujo o escritura a mano, y dictar.", "Editor → Insertar"],
       ["search", "Revisar", "Buscar y reemplazar, y cuánto dura. Si seleccionas texto, abajo dice cuántas palabras son y cuánto tardas en decirlas.", "Editor → Revisar"],
       ["panel", "Panel de navegación", "Con el iPad en horizontal sale a la izquierda: cada parte con lo que dura y flechas para subirla o bajarla entera.", "Editor → Vista"],
       ["history", "Versiones anteriores", "Atril guarda una copia cada vez que empiezas a editar. Si te equivocas, recupera la que quieras (se guardan las 10 últimas).", "Editor → Revisar → Versiones"],
@@ -89,9 +94,14 @@ const SECCIONES = (p) => [
       ["chat", "Mandar por WhatsApp", "Se abre WhatsApp con el texto escrito y eliges el chat. Sale con negritas y cursivas (*así*); si lo prefieres, quítalas con el interruptor.", "⋯ → Compartir, Lector → Más → Compartir, o el botón de compartir del editor"],
       ["share", "A otra app o copiado", "«Otra app» abre la lista del sistema: correo, Mensajes, Telegram, Notas, Claude… «Copiar el texto» lo deja listo para pegar donde quieras.", "⋯ → Compartir"],
       ["word", "Como archivo", "Word (se abre en Word, Pages o Google Docs) o PDF (para leerlo o imprimirlo tal cual, con letra normal, grande o muy grande y las mismas letras de Atril, con todas las tildes y comillas).", "⋯ → Compartir → Como archivo"],
-      ["word", "El Word del PC, al día", "Si un discurso vino de un Word y lo cambias aquí, su tarjeta dice «Cambiado en el iPad». «Guardar como Word» lo crea con el mismo nombre: Guardar en Archivos → la misma carpeta → «Reemplazar».", "⋯ → Guardar como Word"],
+      ["word", "El Word del PC, al día", p.escritorio
+        ? "«Guardar como Word» lo guarda encima del Word que abriste (si lo tienes abierto en Word, ciérralo antes). Si ese Word ha cambiado fuera de Atril, te avisa antes de sustituirlo."
+        : "Si un discurso vino de un Word y lo cambias aquí, su tarjeta dice «Cambiado en el iPad». «Guardar como Word» lo crea con el mismo nombre: Guardar en Archivos → la misma carpeta → «Reemplazar».", "⋯ → Guardar como Word"],
+      ["clock", "Tus tiempos van dentro del Word", "El Word que guarda Atril lleva dentro la duración, tus ensayos y dónde lo has dado (Word lo conserva aunque lo edites). Al abrirlo con Atril en otro dispositivo, llega con todo. Al compartirlo con otros no se pone.", "⋯ → Guardar como Word"],
       ["escudo", "Copia de seguridad", "Todo está solo en este dispositivo: si borras la app, se borra. Abajo en el inicio ves la «Protección»: cuándo fue la última copia y cuánto has cambiado desde entonces. Guarda la copia en OneDrive o iCloud; Atril te lo recuerda cada semana.", "Inicio, abajo; Ajustes → Hacer copia de seguridad"],
-      ["download", "Actualizaciones", "Atril se actualiza sola y tus datos no se tocan. Para mirarlo ahora mismo, «Buscar actualizaciones».", "Ajustes → Versión"],
+      ["download", "Actualizaciones", p.escritorio
+        ? "Cuando hay una versión nueva para el ordenador, Atril te avisa: descarga el instalador y ábrelo; se instala encima y conserva tus discursos y notas."
+        : "Atril se actualiza sola y tus datos no se tocan. Para mirarlo ahora mismo, «Buscar actualizaciones».", "Ajustes → Versión"],
     ],
   },
 ];
@@ -115,9 +125,9 @@ let abierta = null;
  * Abre la guía a pantalla completa.
  * @param {{seccion?: string, icon: (n: string) => string, alProbar?: () => void, ios?: boolean, android?: boolean}} op
  */
-export function abrirGuia({ seccion, icon, alProbar, android = false } = {}) {
+export function abrirGuia({ seccion, icon, alProbar, android = false, escritorio = false } = {}) {
   if (abierta) abierta.cerrar();
-  const secciones = SECCIONES({ android });
+  const secciones = SECCIONES({ android, escritorio });
   const chips = h("nav", { class: "guia-chips", "aria-label": "Apartados de la guía" });
   const cuerpo = h("div", { class: "guia-body" });
   const wrap = h("div", { class: "guia-wrap" });

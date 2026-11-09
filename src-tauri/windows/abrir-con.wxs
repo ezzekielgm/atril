@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Atril en «Abrir con» de los .docx (instalador .msi). No cambia el programa que abre los Word con
+  doble clic: los documentos de Word siguen abriéndose con Word. Se quita al desinstalar.
+-->
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+  <Fragment>
+    <DirectoryRef Id="INSTALLDIR">
+      <Component Id="AbrirConAtril" Guid="5B0D4B8E-7A1D-4A8E-9C55-2F6A7F3B9D11">
+        <RegistryValue Root="HKLM" Key="Software\Classes\Atril.docx" Type="string" Value="Documento de Word (Atril)" KeyPath="yes" />
+        <RegistryValue Root="HKLM" Key="Software\Classes\Atril.docx" Name="FriendlyTypeName" Type="string" Value="Documento de Word" />
+        <RegistryValue Root="HKLM" Key="Software\Classes\Atril.docx\DefaultIcon" Type="string" Value="[INSTALLDIR]Atril.exe,0" />
+        <RegistryValue Root="HKLM" Key="Software\Classes\Atril.docx\shell\open\command" Type="string" Value="&quot;[INSTALLDIR]Atril.exe&quot; &quot;%1&quot;" />
+        <RegistryValue Root="HKLM" Key="Software\Classes\.docx\OpenWithProgids" Name="Atril.docx" Type="string" Value="" />
+        <RegistryValue Root="HKLM" Key="Software\Classes\Applications\Atril.exe" Name="FriendlyAppName" Type="string" Value="Atril" />
+        <RegistryValue Root="HKLM" Key="Software\Classes\Applications\Atril.exe\SupportedTypes" Name=".docx" Type="string" Value="" />
+        <RegistryValue Root="HKLM" Key="Software\Classes\Applications\Atril.exe\shell\open\command" Type="string" Value="&quot;[INSTALLDIR]Atril.exe&quot; &quot;%1&quot;" />
+      </Component>
+    </DirectoryRef>
+  </Fragment>
+</Wix>

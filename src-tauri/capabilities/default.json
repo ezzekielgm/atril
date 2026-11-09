@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "La ventana de Atril: escuchar los avisos de la parte nativa (Words para abrir).",
+  "windows": ["main"],
+  "permissions": ["core:default"]
+}
