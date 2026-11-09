@@ -6,3 +6,10 @@ capturas/
 src-tauri/target/
 src-tauri/gen/
 __pycache__/
+reloj/.gradle/
+reloj/build/
+reloj/app/build/
+reloj/local.properties
+reloj/build.log
+*.jks
+*.keystore

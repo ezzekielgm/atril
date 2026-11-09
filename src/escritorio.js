@@ -102,9 +102,10 @@ export const escritorio = {
   /** ¿Hay una versión nueva para el ordenador? {version, url} o null. Mira las publicaciones de GitHub. */
   async versionNueva() {
     const actual = await this.version();
-    const r = await fetch(`https://api.github.com/repos/${REPO}/releases/latest`, { headers: { Accept: "application/vnd.github+json" }, cache: "no-store" });
+    // En las publicaciones también están las del reloj: solo cuentan las «escritorio-v…»
+    const r = await fetch(`https://api.github.com/repos/${REPO}/releases?per_page=30`, { headers: { Accept: "application/vnd.github+json" }, cache: "no-store" });
     if (!r.ok) throw new Error("GitHub " + r.status);
-    const j = await r.json();
+    const j = (await r.json()).find((x) => /^escritorio-v\d/.test(x.tag_name || "") && !x.draft && !x.prerelease) || {};
     const v = String(j.tag_name || "").replace(/^escritorio-v/, "");
     return v && esMasNueva(v, actual) ? { version: v, url: j.html_url || `https://github.com/${REPO}/releases/latest`, actual } : null;
   },

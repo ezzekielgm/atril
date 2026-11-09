@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Icono pequeño (una sola tinta) para el aviso «en marcha»: un atril -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M4,3h16l-1.5,6h-13z M10.5,9h3v10h-3z M6,19h12v2h-12z" />
+</vector>

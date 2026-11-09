@@ -1,0 +1,51 @@
+# Construye «Atril para el reloj» (Wear OS, Galaxy Watch) y publica el .apk en «Releases»
+# como versión de prueba (para que no tape la última de «Atril para el ordenador»).
+name: Atril para el reloj
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "reloj/**"
+      - ".github/workflows/reloj.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: reloj
+  cancel-in-progress: false
+
+jobs:
+  compilar:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: reloj
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.14.3"
+      - name: Compilar
+        run: |
+          set -o pipefail
+          gradle --no-daemon --stacktrace assembleDebug 2>&1 | tee build.log
+      - name: Errores (si falla, salen como anotaciones)
+        if: failure()
+        run: |
+          grep -E "^e: |error:|What went wrong|Could not|Cannot|Unresolved|> " build.log | grep -v "^> Task" | head -60 | while IFS= read -r l; do echo "::error::${l//%/%25}"; done
+      - name: Publicar
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          v="1.0.${{ github.run_number }}"
+          cp app/build/outputs/apk/debug/app-debug.apk "Atril-reloj-$v.apk"
+          gh release create "reloj-v$v" "Atril-reloj-$v.apk" --prerelease \
+            --title "Atril para el reloj $v" \
+            --notes "Avisos del discurso en la muñeca para Galaxy Watch (Wear OS). Se instala desde el ordenador o el móvil con la depuración por Wi-Fi del reloj: ver INSTRUCCIONES.md («Atril en el reloj»). Al actualizar, desinstala la anterior si no deja instalarla encima."
