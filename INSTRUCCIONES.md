@@ -108,6 +108,26 @@ Qué tiene además:
 
 La web (https://ezzekielgm.github.io/atril/) también funciona en el ordenador: en Edge o Chrome se puede instalar (icono de instalar en la barra de direcciones) y se puede **arrastrar un Word** a la ventana para abrirlo; lo que solo hace el programa es guardar encima del mismo Word y el «Abrir con».
 
+## Atril en el reloj (Galaxy Watch)
+
+Una app para el reloj que **vibra al pasar a la siguiente parte del discurso**, cuando **queda un minuto** y al **acabar el tiempo** (y si te pasas, cada minuto, tres veces), aunque la pantalla esté apagada. Así llevas el tiempo sin mirar.
+
+**Cómo se usa**
+- Al abrirla salen tus planes (de serie: 5, 10 y 30 minutos). Toca uno y pulsa ▶ cuando empieces a hablar.
+- **Editar** un plan o **Nuevo**: toca una parte y **gira el bisel** para cambiar sus minutos (de 30 en 30 segundos), o usa − y +. «Añadir parte» mete un punto antes de la conclusión.
+- En marcha: el anillo se pone **verde**, **ámbar** al final y **rojo** si te pasas, como en Atril. Para pausar, **mantén el dedo** en la pantalla (un roce de la manga no hace nada). Puedes salir de la app: sigue avisando y en la esfera sale el icono para volver.
+- Vibraciones: dos toques = parte siguiente · tres toques cortos = queda un minuto · uno largo = se acabó · dos largos = te estás pasando. Vibra aunque el reloj esté en «No molestar».
+
+**Instalarla** (se hace una vez; no está en la tienda)
+1. Descarga `Atril-reloj-….apk` de https://github.com/ezzekielgm/atril/releases (la de «Atril para el reloj»).
+2. En el reloj: *Ajustes → Información del reloj → Información del software* → toca **«Versión de software»** 5 veces. Sale *Opciones de desarrollador* al final de Ajustes: activa **Depuración ADB** y **Depurar por Wi-Fi**. El reloj y el PC, en la misma Wi-Fi (si no sale la dirección IP, apaga un momento el Bluetooth del reloj).
+3. En el PC: descarga «SDK Platform-Tools» para Windows (developer.android.com/tools/releases/platform-tools), descomprímelo y, en esa carpeta, abre PowerShell:
+   - En el reloj, *Depurar por Wi-Fi → Vincular dispositivo nuevo* te da una IP con puerto y un código: `.\adb pair IP:PUERTO` y escribe el código.
+   - Luego `.\adb connect IP:PUERTO` (el puerto que sale en *Depurar por Wi-Fi*) y `.\adb install Atril-reloj-1.0.1.apk`.
+4. Al terminar, desactiva *Depuración ADB* en el reloj.
+
+Si se lo pides a Claude con el PC encendido y el reloj a mano, lo puede hacer él en el PC. Para actualizarla, lo mismo con el .apk nuevo (si no deja instalar encima, desinstala la anterior; los planes se vuelven a crear en un momento).
+
 ## Apple Pencil y voz
 
 - **Escribir a mano y que se convierta en letra**: escribe con el Apple Pencil directamente sobre el texto del editor y el iPad lo pasa a letra. Tiene que estar activado en *Ajustes del iPad → Apple Pencil → Escribir a mano*. Funciona en español.
