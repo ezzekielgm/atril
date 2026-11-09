@@ -59,7 +59,10 @@ const ahora = Date.now();
 const DOCS = [
   { id: "alegria", title: "La alegría que no depende de las circunstancias", html: DISCURSO.replace("<h2>3.", figura + "<h2>3."), target: 15, created: ahora - 9 * dia, updated: ahora - 2 * 3600000, fijado: true,
     dado: [{ id: "d1", fecha: "2026-10-12", lugar: "Congregación Norte", notas: "Bien de tiempo" }],
-    ensayos: [{ id: "e1", fecha: ahora - 3 * dia, seg: 14 * 60 + 40, objetivoSeg: 900, partes: [] }] },
+    ensayos: [[905, 160, 245, 235, 150, 115], [930, 170, 250, 240, 155, 115], [890, 155, 240, 230, 150, 115]].map(([seg, ...p], k) => ({
+      id: "e" + k, fecha: ahora - (k + 1) * dia, seg, objetivoSeg: 900, audio: false,
+      partes: ["Introducción", "1. De dónde viene la alegría verdadera", "2. Cómo la protegemos en los días malos", "3. Cómo la contagiamos a otros", "Conclusión"]
+        .map((t, i) => ({ t, s: p[i], o: [120, 240, 240, 180, 120][i] })) })) },
   { id: "paciencia", title: "La paciencia", html: "<h1>La paciencia</h1><h2>Introducción (1 min)</h2><p>¿Le ha tocado alguna vez esperar en una cola que no avanza? A todos nos cuesta esperar.</p><h2>Por qué vale la pena (2 min)</h2><p><mark>La paciencia nos ayuda a mantener la calma</mark> cuando las cosas no salen como queremos.</p>", target: 5, created: ahora - 20 * dia, updated: ahora - 6 * dia },
   { id: "boda", title: "Boda de Ana y Pablo", source: "Boda de Ana y Pablo.docx", alPC: ahora - 4 * dia, html: "<h1>Boda de Ana y Pablo</h1><h2>El matrimonio, un regalo (5 min)</h2><p>Queridos Ana y Pablo, hoy empezáis una etapa preciosa.</p><h2>El cordón triple (5 min)</h2><p>Eclesiastés 4:12 habla de un cordón de tres hilos que no se rompe fácilmente.</p>", target: 20, created: ahora - 15 * dia, updated: ahora - 1 * dia },
   { id: "vecinos", title: "Cómo ser buenos vecinos", html: "<h1>Cómo ser buenos vecinos</h1><h2>Introducción (2 min)</h2><p>El vecino de al lado es la persona a la que más fácil nos resulta ayudar… o ignorar.</p>", target: 10, created: ahora - 30 * dia, updated: ahora - 12 * dia },
@@ -87,6 +90,7 @@ async function contexto(width, height, { datos = true } = {}) {
     localStorage.setItem("atril.prog.docs.alegria", "35");
     localStorage.setItem("atril.prog.docs.paciencia", "100");
     localStorage.setItem("atril.pos.docs.alegria", "0.22");
+    localStorage.setItem("atril.copia", String(Date.now() - 3 * 86400000));
     return Promise.all([...docs.map((d) => window.__atril.store.put("docs", { ...d, html: window.__atril.sanitize(d.html) })), ...notas.map((n) => window.__atril.store.put("notes", { ...n, html: window.__atril.sanitize(n.html) }))]);
   }, [DOCS, NOTAS, datos]);
   return { ctx, page };
@@ -114,7 +118,7 @@ const tema = (page, t) => page.evaluate((t) => { const s = JSON.parse(localStora
   const { ctx, page } = await contexto(1080, 810);
   await ir(page, "#/", "home");
   await page.reload(); await page.waitForSelector("#view-home:not([hidden])");
-  await captura(page, "inicio", "Inicio: lista de discursos con «Seguir donde lo dejaste»");
+  await captura(page, "inicio", "Inicio: «Seguir donde lo dejaste», lista y protección (copia) al final");
   await page.click(".segmented button[data-tab='notes']");
   await captura(page, "notas", "Inicio, pestaña Notas (nueva, a mano, dictar)");
   await page.click(".segmented button[data-tab='docs']");
@@ -126,11 +130,14 @@ const tema = (page, t) => page.evaluate((t) => { const s = JSON.parse(localStora
   await captura(page, "lector-letra", "Lector → Letra: tamaño, tema, tipo de letra, interlineado y duración");
   await cerrarHoja(page);
   await page.click("#reader-more");
-  await captura(page, "lector-mas", "Lector → Más: compartir, buscar, tarjetas, ensayos…");
+  await captura(page, "lector-mas", "Lector → Más, por grupos: Practicar, Documento, Compartir y guardar, Ayuda");
   await cerrarHoja(page);
 
-  // Presentar
+  // Presentar: primero la comprobación
   await page.click("#reader-presentar");
+  await page.waitForSelector("#pc-ya");
+  await captura(page, "antes-de-presentar", "Antes de presentar: tiempo, letra, desde dónde y pantalla");
+  await page.click("#pc-ya");
   await page.waitForSelector("#pres-bar:not([hidden])");
   await page.click("#pres-timer");
   await page.evaluate(() => { const t = window.__atril.timer; t.startedAt -= 6 * 60000 + 20000; t.paint(); window.__atril.reader.paintPace(); });
@@ -139,9 +146,15 @@ const tema = (page, t) => page.evaluate((t) => { const s = JSON.parse(localStora
   await page.evaluate(() => { const t = window.__atril.timer; t.startedAt -= 9 * 60000 + 30000; t.paint(); window.__atril.reader.paintPace(); window.__atril.presentar.mostrarSalir(); });
   await espera(1500);
   await captura(page, "presentar-pasado", "Presentar: pasado de tiempo (rojo) y la burbuja para salir");
-  await page.evaluate(() => { window.__atril.presentar.salir({ quitarPaso: true }); window.__atril.timer.reset(); });
+  // A cero sin guardar este «ensayo» de mentira
+  await page.evaluate(() => { window.__atril.presentar.salir({ quitarPaso: true }); window.__atril.ensayo.activo = false; window.__atril.timer.reset(); });
   await espera(400);
 
+  await page.click("#reader-more");
+  await page.click(".sheet >> text=Ensayos (3)");
+  await page.waitForSelector(".ens-analisis");
+  await captura(page, "ensayos", "Ensayos → Cómo vas: mediana, qué parte se pasa y practicar una parte");
+  await cerrarHoja(page);
   await page.evaluate(() => window.__atril.tarjetas.abrir());
   await captura(page, "tarjetas", "Tarjetas: una parte del discurso por pantalla");
   await page.evaluate(() => window.__atril.tarjetas.cerrar());
@@ -238,6 +251,7 @@ const tema = (page, t) => page.evaluate((t) => { const s = JSON.parse(localStora
   await ir(page, "#/leer/docs/alegria", "reader");
   await captura(page, "movil-lector", "Móvil: lector con los botones abajo");
   await page.click("#reader-presentar");
+  await page.click("#pc-ya");
   await page.waitForSelector("#pres-bar:not([hidden])");
   await page.click("#pres-timer");
   await espera(1200);

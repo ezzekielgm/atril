@@ -64,9 +64,9 @@ def lamina(nombre, titulo, subtitulo, filas, alto_tile):
     print("✔", nombre, lam.size)
 
 
-lamina("Atril-lamina-1-ipad.png", "Atril · capturas 1 de 3", "iPad 10,2\" en horizontal (1080 × 810): inicio, lector y presentar", [[1, 2, 3], [4, 5, 6], [7, 8, 9]], 540)
-lamina("Atril-lamina-2-ipad.png", "Atril · capturas 2 de 3", "iPad 10,2\" en horizontal: editor, dibujo, compartir, ajustes, guía y temas", [[10, 11, 12], [13, 14, 15], [16, 17, 18]], 540)
-lamina("Atril-lamina-3-vertical-movil.png", "Atril · capturas 3 de 3", "iPad en vertical (810 × 1080) y móvil (390 × 844)", [[19, 20, 21, 22, 23, 24]], 760)
+lamina("Atril-lamina-1-ipad.png", "Atril · capturas 1 de 3", "iPad 10,2\" en horizontal (1080 × 810): inicio, lector, presentar y ensayos", [[1, 2, 3], [4, 5, 6], [7, 8, 9]], 540)
+lamina("Atril-lamina-2-ipad.png", "Atril · capturas 2 de 3", "iPad 10,2\" en horizontal: tarjetas, editor, dibujo, compartir, ajustes, guía y temas", [[10, 11, 12, 13], [14, 15, 16, 17], [18, 19, 20]], 405)
+lamina("Atril-lamina-3-vertical-movil.png", "Atril · capturas 3 de 3", "iPad en vertical (810 × 1080) y móvil (390 × 844)", [[21, 22, 23, 24, 25, 26]], 760)
 
 with zipfile.ZipFile(RAIZ / "Atril-capturas.zip", "w", zipfile.ZIP_DEFLATED) as z:
     for c in lista:
