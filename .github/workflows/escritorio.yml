@@ -29,7 +29,9 @@ jobs:
         include:
           - sistema: windows-latest
             args: ""
-          - sistema: macos-latest
+          # Las máquinas Mac con Apple Silicon de GitHub a veces no tienen hueco: la Intel compila igual
+          # la versión universal (sirve para los Mac Intel y los Apple Silicon)
+          - sistema: macos-15-intel
             args: "--target universal-apple-darwin"
     runs-on: ${{ matrix.sistema }}
     steps:
@@ -40,7 +42,7 @@ jobs:
           cache: npm
       - uses: dtolnay/rust-toolchain@stable
         with:
-          targets: ${{ matrix.sistema == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+          targets: ${{ startsWith(matrix.sistema, 'macos') && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
       - uses: swatinem/rust-cache@v2
         with:
           workspaces: src-tauri -> target
