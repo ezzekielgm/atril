@@ -111,9 +111,15 @@ dist/                 lo que se sube a internet (se genera; no editar a mano)
 - **Navegación**: rutas en el hash (`#/`, `#/leer/docs/<id>`, `#/editar/notes/<id>`). `route()` ignora navegaciones viejas (`routeSeq`) para que siempre gane la última.
 - **Sin conexión**: `sw.js` precachea todos los archivos de `dist/` y sirve `index.html` en cualquier navegación. `_headers` (Netlify) evita que `sw.js` e `index.html` se queden en la caché del navegador.
 
-## Diseño (como Word, a petición de Ezequiel)
+## Diseño
 
-- Barra azul (`--bar`, #185abd en el tema claro) en el inicio y en el editor; el lector conserva una barra blanca (modo lectura). No uses el logo ni el nombre de Word: la app es Atril.
+- **Rediseño de noviembre de 2026** (de los bocetos que Ezequiel generó con ChatGPT siguiendo la auditoría): fondo cálido `--desk` #f8f4ee, tarjetas `--bg` #fffdfa con borde `--border` #e4dbcd y esquinas de 12–16 px, azul marino de marca `--accent` #1e3a8a, azul vivo `--accent-vivo` #1d4ed8 (con `--on-vivo`) para la acción principal (Presentar, «Presentar ahora», botones primarios de las hojas), títulos del texto `--heading` #1e40af, resaltados más suaves (`--mark` #fde68a…), franja cálida `--acento-calido` junto al nombre de la cabecera y al título de cada hoja, y letra redondeada del sistema (`--redondo`: ui-rounded) en los títulos de la interfaz. Todo está en la capa «REDISEÑO» al final de `styles.css` (solo aspecto); los temas sepia y oscuro tienen sus propios `--accent-vivo`, `--on-vivo` y `--acento-calido`.
+  - Lector (≥ 701 px): barra clara con botones con borde, icono y nombre; el texto, el esquema y la barra de estado como tarjetas. En el móvil la barra de abajo sigue igual (los botones con borde solo van en el iPad).
+  - Editor: barra marina con degradado, cinta sobre fondo cálido, la hoja y el panel como tarjetas, barra de estado en tarjeta.
+  - Presentar: la barra del cronómetro en tarjeta, cronómetro verde #2e7d32, rayas de progreso en azul vivo.
+  - Hojas: 20 px de radio, secciones en caja con iconos en baldosas, títulos de sección en azul marino.
+  - La cabecera con el atril grande solo va en el inicio: en lector, editor y presentar se ocupa ese alto para el texto (los bocetos la ponían en todas).
+- Barra azul marina (`--bar`) en el inicio y en el editor; el lector lleva una barra clara (modo lectura). No uses el logo ni el nombre de Word: la app es Atril.
 - Editor: cinta con pestañas **Inicio** (deshacer, galería de estilos Normal / Título 1 / Título 2 / Título 3, N K S abc, resaltador, **color de letra** «A», listas, borrar formato, buscar), **Insertar** (parte nueva con minutos, minutos de la parte, pausa «‖»), **Revisar** (buscar y reemplazar, palabras y tiempo, versiones anteriores) y **Vista** (modo lectura, panel de navegación, letra más grande o pequeña, letra y tema). Con ≤ 1000 px la cinta se compacta y «buscar» se quita de Inicio (`.solo-ancho`).
 - Color de letra (`editor.aplicarLetra`): usa `execCommand("foreColor")` con el color del tema (`--t-rojo`…; «Automático» = `--text`) para que deshacer funcione; al guardar, `sanitize` lo pasa a clases. En pantalla cada tema tiene su tono (`--t-*`), en Word y PDF el de `LETRAS`.
 - Insertar: «Parte nueva» mete un título del nivel de las partes (`nivelDeCorte`, H2 si no hay) con «(N min)» después del bloque del cursor; «Minutos de la parte» cambia el «(N min)» del título de la parte del cursor (`tituloDelCursor`); «Pausa» escribe «‖», que el lector destaca con `decorarPausas()` (solo en pantalla).
@@ -125,10 +131,10 @@ dist/                 lo que se sube a internet (se genera; no editar a mano)
 - Letras incluidas (sin conexión): Carlito, con las mismas medidas que Calibri («Como Word», la de por defecto) y Literata («Clásica»). Además Arial, Georgia y Verdana, que vienen en el iPad (`settings.font` = `arial` | `georgia` | `verdana`; en el PDF, Helvetica o Times según sea de palo o con remates). La interfaz usa la letra del sistema, como las apps de Office. `settings.estiloWord` marca que ya se cambió la letra a «Como Word» una vez.
 - Cabecera del inicio (`.home-hero`): el banner a la derecha (`icons/banner.jpg`, `banner-movil.jpg` en el móvil) a toda la altura, con el nombre en blanco sobre la parte azul; el resto del ancho se rellena con el azul del borde del banner (#0c306d). «Ajustes» va en la fila de las pestañas, no encima del banner.
 - Inicio: lista como los recientes de Office (icono de documento, título, duración a la derecha, «Dado el… en…», primera línea si el título es el nombre del archivo). Pestañas con subrayado azul.
-- Hojas: en el móvil salen desde abajo; en el iPad, centradas. Menús (`actionSheet`) en lista agrupada (`.menu`). Esquinas pequeñas (4–8 px), como Office.
+- Hojas: en el móvil salen desde abajo; en el iPad, centradas. Menús (`actionSheet`) en lista agrupada (`.menu`).
 
 - **Contraste**: `test/contraste.test.mjs` lee los `--*` de cada tema y exige WCAG AA (4,5:1 texto; 3:1 títulos grandes), también el texto sobre los resaltados y el cronómetro (blanco sobre el verde #1e7b34 y el rojo fijo #b42318 de `.pres-timer.over`, igual en los tres temas). Si cambias un color, pásala.
-- **Rediseño visual**: pendiente. Ezequiel se lo pide a otra IA de imágenes con el brief y los prompts del documento «Atril: qué incluye y brief de diseño» (y capturas de `scripts/capturas-diseno.mjs`). Las decisiones de la auditoría que guían el estilo: tokens (brand-primary #1F5FBF, surface-app #F5F6F8…), una misma barra para inicio, lector y editor, hojas laterales de 360–420 px en el iPad, radios 10–12 px, sombras casi nulas, iconos de trazo 1,75–2 px con nombre, y Presentar con el cronómetro como protagonista.
+- **Bocetos pendientes**: faltan los de «Más» y «Letra» como hojas laterales, «Antes de presentar», «Ensayos», temas, vertical/móvil, Notas/Ajustes/bienvenida y la especificación final (prompts 3, 4, 6 y 8–12 del documento «Atril: qué incluye y brief de diseño»). De momento usan el mismo estilo; cuando lleguen, ajustarlos.
 
 ## Reglas
 

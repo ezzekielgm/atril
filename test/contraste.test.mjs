@@ -24,7 +24,7 @@ const PARES = [
   ["text", "bg", 4.5, "texto del discurso"], ["text", "desk", 4.5, "texto sobre el fondo"], ["text", "surface", 4.5, "texto en paneles"],
   ["muted", "bg", 4.5, "texto secundario"], ["muted", "desk", 4.5, "texto secundario sobre el fondo"], ["muted", "surface", 4.5, "texto secundario en paneles"],
   ["heading", "bg", 3, "títulos (texto grande)"], ["accent", "bg", 4.5, "enlaces y botones de texto"], ["accent", "desk", 4.5, "enlaces sobre el fondo"],
-  ["accent-text", "accent", 4.5, "botón principal"], ["bar-text", "bar", 4.5, "barra de arriba"], ["text", "accent-soft", 4.5, "elementos seleccionados"],
+  ["accent-text", "accent", 4.5, "botón principal"], ["on-vivo", "accent-vivo", 4.5, "botón Presentar"], ["bar-text", "bar", 4.5, "barra de arriba"], ["text", "accent-soft", 4.5, "elementos seleccionados"],
   ["danger", "bg", 4.5, "avisos en rojo"], ["ok", "bg", 4.5, "«en tiempo» en verde"], ["warn", "bg", 4.5, "avisos en ámbar"], ["warn", "warn-bg", 4.5, "aviso sobre fondo ámbar"],
   ["t-rojo", "bg", 4.5, "letra roja"], ["t-azul", "bg", 4.5, "letra azul"], ["t-verde", "bg", 4.5, "letra verde"], ["t-naranja", "bg", 4.5, "letra naranja"],
 ];

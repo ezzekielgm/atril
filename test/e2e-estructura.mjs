@@ -130,7 +130,7 @@ const alFinal = (page) => page.evaluate(() => { const s = document.querySelector
   ok("Antes de empezar enseña el objetivo", (await page.textContent("#pres-quedan")) === "Objetivo 14:00");
   ok("La barra de estado no sale al presentar", await page.isHidden("#reader-estado"));
   await page.click("#pres-timer");
-  ok("En marcha: «Quedan» y semáforo en verde", (await page.textContent("#pres-quedan")).startsWith("Quedan 1") && (await page.$eval("#pres-timer", (b) => getComputedStyle(b).backgroundColor)) === "rgb(30, 123, 52)");
+  ok("En marcha: «Quedan» y semáforo en verde", (await page.textContent("#pres-quedan")).startsWith("Quedan 1") && (await page.$eval("#pres-timer", (b) => getComputedStyle(b).backgroundColor)) === "rgb(46, 125, 50)");
   // Pasar página tocando
   const top = () => page.evaluate(() => document.querySelector("#reader-scroll").scrollTop);
   const caja = await page.$eval("#reader-scroll", (s) => { const r = s.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top, h: r.height, ch: s.clientHeight }; });

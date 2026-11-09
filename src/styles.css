@@ -23,7 +23,8 @@
   --fs: 24px;            /* tamaño del texto de lectura (lo cambia el zoom) */
   --lh: 1.6;             /* interlineado */
   --topbar: 56px;
-  --radius: 8px;         /* esquinas discretas, como en Office */
+  --radius: 12px;        /* rediseño: tarjetas de 12 px, botones de 10 px, hojas de 20 px */
+  --redondo: ui-rounded, "SF Pro Rounded", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
   --col: 34em;           /* ancho máximo de la columna de lectura */
   --serif: "Literata", "Iowan Old Style", Georgia, serif;
   --word: "Carlito", "Calibri", "Segoe UI", -apple-system, Roboto, Arial, sans-serif;
@@ -33,17 +34,20 @@
 
 /* Temas. --bg = hoja; --desk = fondo gris; --bar = barra azul */
 [data-theme="claro"] {
-  --bg: #ffffff; --desk: #f3f2f1; --canvas: #e6e6e6; --surface: #f3f2f1; --surface-2: #e1dfdd; --text: #201f1e; --muted: #605e5c;
-  --border: #d2d0ce; --accent: #185abd; --accent-soft: #deecf9; --accent-text: #ffffff; --heading: #2f5496;
-  --bar: #185abd; --bar-text: #ffffff; --bar-soft: rgba(255,255,255,.16);
-  --danger: #c4314b; --ok: #107c10; --warn: #8a5300; --warn-bg: #fff4ce;
-  --mark: #fff176; --mark-text: inherit; --shadow: 0 10px 30px rgba(0,0,0,.22);
-  --mark-verde: #b9f6ca; --mark-azul: #b3e5fc; --mark-rosa: #f8bbd0;
+  /* Rediseño de noviembre de 2026: fondo cálido, azul marino de marca y tarjetas blancas */
+  --bg: #fffdfa; --desk: #f8f4ee; --canvas: #f1ebe2; --surface: #f3eee6; --surface-2: #e8e0d3; --text: #1b2033; --muted: #5b6474;
+  --border: #e4dbcd; --accent: #1e3a8a; --accent-soft: #e3ebfb; --accent-text: #ffffff; --heading: #1e40af;
+  --accent-vivo: #1d4ed8; --on-vivo: #ffffff; --acento-calido: #f2c194;
+  --bar: #1e2a5e; --bar-text: #ffffff; --bar-soft: rgba(255,255,255,.16);
+  --danger: #b42318; --ok: #1f7a4d; --warn: #8a5300; --warn-bg: #fef3c7;
+  --mark: #fde68a; --mark-text: inherit; --shadow: 0 14px 40px rgba(27,32,51,.20);
+  --mark-verde: #bbf7d0; --mark-azul: #bfdbfe; --mark-rosa: #fbcfe8;
   --t-rojo: #c00000; --t-azul: #0062b0; --t-verde: #00803a; --t-naranja: #b25000;
 }
 [data-theme="sepia"] {
   --bg: #f7efdd; --desk: #ece2c9; --canvas: #ddd0b1; --surface: #efe4ca; --surface-2: #e2d4b4; --text: #33271a; --muted: #6f604a;
   --border: #d4c4a0; --accent: #6b4520; --accent-soft: #eadbbd; --accent-text: #fffaf0; --heading: #6b4520;
+  --accent-vivo: #7a4f22; --on-vivo: #fffaf0; --acento-calido: #c98f4e;
   --bar: #6b4520; --bar-text: #fffaf0; --bar-soft: rgba(255,255,255,.16);
   --danger: #b3261e; --ok: #3f6b2a; --warn: #8a5200; --warn-bg: #f3dfb0;
   --mark: #f3d36b; --mark-text: inherit; --shadow: 0 10px 30px rgba(60,40,10,.25);
@@ -53,6 +57,7 @@
 [data-theme="oscuro"] {
   --bg: #1b1b1d; --desk: #252528; --canvas: #111113; --surface: #2b2b2e; --surface-2: #38383c; --text: #ecebe8; --muted: #a8a6a2;
   --border: #3b3b3f; --accent: #6ea4f4; --accent-soft: #1f2d45; --accent-text: #0b1830; --heading: #8ab4f8;
+  --accent-vivo: #82b4ff; --on-vivo: #0b1830; --acento-calido: #e0a56f;
   --bar: #1f2a3d; --bar-text: #ffffff; --bar-soft: rgba(255,255,255,.12);
   --danger: #f1707b; --ok: #6ccb5f; --warn: #f2b84b; --warn-bg: #3a2c10;
   --mark: #6b5d12; --mark-text: #fff7c2; --shadow: 0 10px 30px rgba(0,0,0,.6);
@@ -725,7 +730,7 @@ button:focus:not(:focus-visible) { outline: none; }
 }
 .pres-t { font-size: 46px; font-weight: 700; line-height: 1.05; font-variant-numeric: tabular-nums; letter-spacing: .01em; }
 .pres-hint { font-size: 13px; color: var(--muted); }
-.pres-timer.running { background: #1e7b34; color: #fff; } /* semáforo: verde mientras hay tiempo */
+.pres-timer.running { background: #2e7d32; color: #fff; } /* semáforo: verde mientras hay tiempo */
 .pres-timer.running .pres-hint { color: inherit; opacity: .85; }
 .pres-timer.warn { background: #f2a51a; color: #241600; }
 .pres-timer.over { background: #b42318; color: #fff; } /* el mismo rojo en los tres temas: en el oscuro, el --danger claro no deja leer el blanco */
@@ -1038,3 +1043,159 @@ button:focus:not(:focus-visible) { outline: none; }
 .pc-linea .pc-txt { margin: 0; }
 /* «Presentar ahora» siempre a la vista, abajo de la hoja */
 .sheet .pc-acciones { position: sticky; bottom: -20px; z-index: 1; background: var(--bg); margin: 0 -4px -6px; padding: 10px 4px 6px; box-shadow: 0 -10px 14px -12px rgba(0,0,0,.25); }
+
+
+/* =====================================================================
+   REDISEÑO (bocetos de noviembre de 2026)
+   Fondo cálido, azul marino de marca, tarjetas blancas con borde suave,
+   botones con borde, icono y nombre, y hojas muy redondeadas.
+   Solo aspecto: no cambia ninguna función. Va al final para mandar sobre lo anterior.
+   ===================================================================== */
+#view-home, #view-reader, #view-editor { background: var(--desk); }
+.brand, .sheet h2, .seg-titulo, .card-title, .empty h2, .guia-bar h2 { font-family: var(--redondo); }
+
+/* ---- Botones, chips y campos ---- */
+.btn { border-radius: 10px; min-height: 46px; padding: 0 18px; font-weight: 650; box-shadow: 0 1px 2px rgba(27,32,51,.05); }
+.btn.primary { box-shadow: 0 1px 2px rgba(27,32,51,.18); }
+.chip { border-radius: 10px; }
+.search { border-radius: 12px; height: 48px; background: var(--bg); box-shadow: 0 1px 2px rgba(27,32,51,.04); }
+.search:focus-within { box-shadow: 0 0 0 3px var(--accent-soft); border-color: var(--accent); }
+.text-btn { border-radius: 10px; }
+
+/* ---- Cabecera del inicio: azul marino, franja cálida junto al nombre y el atril a la derecha ---- */
+.home-hero { height: 104px; padding-left: max(26px, env(safe-area-inset-left)); }
+.hero-txt { position: relative; padding-left: 20px; }
+.hero-txt::before { content: ""; position: absolute; left: 0; top: 4px; bottom: 4px; width: 6px; border-radius: 3px; background: var(--acento-calido); }
+.brand { font-size: 38px; font-weight: 800; letter-spacing: -.01em; }
+.brand-sub { font-size: 16px; margin-top: 4px; opacity: .92; }
+@media (max-width: 700px) {
+  .home-hero { height: 84px; padding-left: 16px; }
+  .hero-txt { padding-left: 16px; }
+  .hero-txt::before { width: 5px; }
+  .brand { font-size: 30px; }
+  .brand-sub { font-size: 14px; }
+}
+.tabs-row { border-bottom-color: var(--border); }
+.segmented button { font-size: 17px; font-weight: 650; }
+.segmented button[aria-selected="true"] { color: var(--accent); }
+.segmented button[aria-selected="true"]::after { height: 4px; border-radius: 3px 3px 0 0; }
+
+/* ---- Tarjetas de discursos y notas ---- */
+.list { gap: 12px; }
+.card { background: var(--bg); border-color: var(--border); border-radius: 12px; box-shadow: 0 1px 2px rgba(27,32,51,.05); }
+.card-main { border-radius: 12px; padding: 16px 16px 14px 14px; }
+.card-title { font-size: 18px; font-weight: 700; }
+.card-icon.es-doc { color: var(--accent); }
+.card-dur b { font-size: 26px; font-weight: 750; color: var(--accent); }
+.card.fijado { border-color: color-mix(in srgb, var(--accent) 35%, var(--border)); box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 22%, transparent), 0 1px 2px rgba(27,32,51,.05); }
+.card-prog { height: 4px; border-radius: 3px; }
+.card-prog i { border-radius: 3px; }
+.card-more { border-radius: 10px; }
+.seguir { border-radius: 14px; border-left-width: 6px; padding: 18px 20px; box-shadow: 0 1px 3px rgba(27,32,51,.06); }
+.seg-label { letter-spacing: .04em; }
+.seg-titulo { font-size: 22px; font-weight: 750; }
+.seg-prog { height: 5px; border-radius: 3px; }
+.seg-btns .btn { min-height: 50px; border-radius: 12px; }
+.install-hint, .guia-hint { border-radius: 14px; }
+/* Protección: una línea discreta al final de la lista, como en los bocetos */
+#proteccion { margin: 6px 16px 28px; padding: 14px 2px; border: 0; border-top: 1px solid var(--border); border-radius: 0; background: transparent; color: var(--muted); }
+#proteccion b { font-weight: 650; color: var(--text); }
+#proteccion .text-btn { text-decoration: underline; text-underline-offset: 3px; padding: 0 8px; }
+#proteccion.riesgo { border-top-color: var(--danger); }
+
+/* ---- Lector: barra clara con botones con borde; el texto, en una tarjeta ---- */
+.reader-bar { height: 64px; background: var(--desk); border-bottom: 1px solid var(--border); gap: 8px; }
+.reader-bar .back-btn { color: var(--accent); font-size: 17px; padding-right: 14px; border-right: 1px solid var(--border); border-radius: 0; }
+.reader-bar .title { font-size: 17px; font-weight: 700; }
+.timer-btn { height: 42px; padding: 0 15px; border-radius: 21px; background: var(--bg); border: 1px solid var(--border); font-size: 18px; box-shadow: 0 1px 2px rgba(27,32,51,.04); }
+.timer.running .timer-btn { border-color: var(--accent); }
+.tool-presentar { background: var(--accent-vivo); color: var(--on-vivo); }
+.tool-presentar svg { color: var(--on-vivo); }
+.tool.active, .tool[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); }
+@media (min-width: 701px) {
+  .reader-tools { gap: 6px; }
+  .tool { height: 44px; padding: 0 14px; border-radius: 10px; background: var(--bg); border: 1px solid var(--border); font-size: 16px; font-weight: 650; box-shadow: 0 1px 2px rgba(27,32,51,.04); }
+  .tool svg { width: 20px; height: 20px; color: var(--accent); }
+  .tool.active, .tool[aria-pressed="true"] { background: var(--accent-soft); border-color: color-mix(in srgb, var(--accent) 25%, var(--accent-soft)); color: var(--accent); }
+  .tool-presentar { background: var(--accent-vivo); border-color: var(--accent-vivo); color: var(--on-vivo); padding: 0 18px; }
+  .tool-presentar svg { color: var(--on-vivo); }
+}
+@media (max-width: 700px) {
+  /* Móvil: barra de abajo como antes, con los colores nuevos */
+  .reader-tools { background: var(--bg); border-top-color: var(--border); }
+  .tool-presentar { border-radius: 12px; }
+  .reader-bar .back-btn { border-right: 0; }
+}
+@media (max-width: 1000px) and (min-width: 701px) {
+  .tool { padding: 0 10px; font-size: 15px; }
+  .reader-bar .back-btn { border-right: 0; padding-right: 6px; }
+}
+@media (min-width: 701px) {
+  /* El texto en una tarjeta blanca sobre el fondo cálido */
+  #reader-scroll { padding: 12px 14px 0 12px; }
+  #reader-content, #reader-outline { background: var(--bg); border: 1px solid var(--border); border-radius: 16px; min-height: calc(100% - 12px); box-shadow: 0 1px 3px rgba(27,32,51,.05); }
+  /* Esquema al lado, también como tarjeta */
+  .side-pane { margin: 12px 0 0 12px; border: 1px solid var(--border); border-radius: 16px; background: var(--bg); overflow: hidden; box-shadow: 0 1px 3px rgba(27,32,51,.05); }
+  .side-list.outline .o-filtro { background: var(--bg); }
+  /* Barra de estado como una tarjeta fina */
+  .reader-estado { margin: 10px 12px max(10px, env(safe-area-inset-bottom)) 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--bg); min-height: 40px; font-size: 14px; color: var(--muted); }
+  .reader-estado .re-parte { color: var(--text); }
+}
+.side-head { padding: 10px 8px 4px 18px; font-size: 14px; color: var(--text); letter-spacing: .04em; }
+.side-list .o-item.actual { background: var(--accent-soft); box-shadow: inset 4px 0 0 var(--accent); border-radius: 10px; }
+.side-list.outline .o-item { border-radius: 10px; }
+.side-list.outline .o-filtro .chip { border-radius: 999px; }
+.doc-content .h-min { border-radius: 8px; }
+.doc-content mark { border-radius: 4px; padding: 0 .08em; }
+
+/* ---- Editor: barra marina, cinta sobre fondo cálido y la hoja como tarjeta ---- */
+.word-bar { background: linear-gradient(90deg, var(--bar), color-mix(in srgb, var(--bar) 70%, var(--accent))); }
+.ribbon-tabs, .toolbar, .replacebar { background: var(--desk); }
+.ribbon-tabs button { font-size: 16px; }
+.toolbar { gap: 4px; padding: 6px 12px 8px; }
+.toolbar button { border-radius: 10px; }
+.toolbar .estilo { border-radius: 10px; background: var(--bg); }
+.toolbar button.active { background: var(--accent-soft); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 25%, var(--accent-soft)); }
+#view-editor .editor-scroll { background: var(--desk); }
+#view-editor .editor.doc-content { border-radius: 16px; border: 1px solid var(--border); box-shadow: 0 1px 3px rgba(27,32,51,.06); }
+@media (min-width: 701px) {
+  #view-editor .side-pane { margin: 12px 0 12px 12px; }
+  #view-editor .statusbar { margin: 0 12px max(10px, env(safe-area-inset-bottom)); border: 1px solid var(--border); border-radius: 12px; background: var(--bg); min-height: 44px; }
+}
+
+/* ---- Presentar: la barra del cronómetro y el texto, cada uno en su tarjeta ---- */
+@media (min-width: 701px) {
+  .pres-bar { margin: 12px 14px 0 12px; border: 1px solid var(--border); border-radius: 16px; box-shadow: 0 1px 3px rgba(27,32,51,.05); padding: 12px 16px; }
+}
+.pres-timer { border-radius: 14px; min-width: 190px; padding: 8px 18px 9px; }
+.pres-t { font-size: 52px; font-weight: 800; }
+.pres-quedan { border-radius: 999px; padding: 5px 12px; background: var(--surface); }
+.pres-parte { font-size: 21px; font-weight: 750; }
+.pres-prog { gap: 6px; }
+.pres-prog i { height: 6px; border-radius: 4px; }
+.pres-prog i.hecha { background: var(--accent-vivo); opacity: .35; }
+.pres-prog i.actual { background: var(--accent-vivo); }
+.pres-salir { border-radius: 999px; }
+.pace { border-radius: 999px; }
+
+/* ---- Hojas: muy redondeadas, título con franja cálida y secciones en caja ---- */
+.sheet { background: var(--bg); }
+@media (min-width: 700px) { .sheet { border-radius: 20px; padding: 24px 24px 20px; max-width: 500px; } }
+@media (max-width: 699px) { .sheet { border-radius: 20px 20px 0 0; } }
+.sheet h2 { position: relative; padding-left: 16px; font-size: 24px; font-weight: 800; color: var(--text); }
+.sheet h2::before { content: ""; position: absolute; left: 0; top: .12em; bottom: .12em; width: 5px; border-radius: 3px; background: var(--acento-calido); }
+.sheet .co-titulo { padding-left: 16px; margin-top: -8px; font-size: 16px; }
+.sheet .co-sec, .sheet .menu-grupo, .sheet .group > .label, .sheet .group > span.label { color: var(--accent); font-weight: 750; letter-spacing: .03em; }
+.sheet .menu { background: var(--bg); border: 1px solid var(--border); border-radius: 14px; }
+.sheet .menu .action { min-height: 58px; }
+.sheet .menu .action svg { box-sizing: content-box; width: 22px; height: 22px; padding: 9px; border-radius: 10px; background: var(--surface); }
+.sheet .action { border-radius: 12px; }
+.sheet .action.primary { background: var(--accent-vivo); color: var(--on-vivo); border-radius: 14px; min-height: 54px; font-size: 18px; }
+.sheet .action.primary svg { color: var(--on-vivo); }
+.sheet .action.plain { color: var(--accent); font-size: 18px; font-weight: 750; }
+.sheet .switch-row { border-radius: 12px; }
+.pc-fila, .ens-analisis { border-radius: 14px; }
+.pc-ic { border-radius: 10px; }
+.sheet .chips .chip { border-radius: 10px; }
+/* Los elementos del esquema y de la navegación no se aplastan: la lista se desplaza */
+.side-list > * { flex-shrink: 0; }
