@@ -42,6 +42,7 @@
         <button role="tab" data-tab="docs">Discursos</button>
         <button role="tab" data-tab="notes">Notas</button>
       </div>
+      <button class="tool tool-guia" id="btn-guia"><span data-icon="guia"></span><span class="lbl">Guía</span></button>
       <button class="tool tool-ajustes" id="btn-settings"><span data-icon="settings"></span><span class="lbl">Ajustes</span></button>
     </div>
     <label class="search">
@@ -53,6 +54,12 @@
     <div class="install-hint" id="install-hint" hidden>
       <p><strong>Instálala en el iPad:</strong> toca <span data-icon="share" class="inline-icon"></span> Compartir y luego <em>Añadir a pantalla de inicio</em>. Así se abre como una app y funciona sin internet.</p>
       <button class="text-btn" id="hide-install-hint">Entendido</button>
+    </div>
+    <div class="guia-hint" id="guia-hint" hidden>
+      <span data-icon="guia"></span>
+      <p><strong>¿Es la primera vez?</strong> Mira en dos minutos qué hace cada cosa.</p>
+      <button class="btn primary" id="guia-hint-ver"><span>Ver la guía</span></button>
+      <button class="text-btn" id="guia-hint-no">Ahora no</button>
     </div>
     <div class="install-hint backup-hint" id="backup-hint" role="status" hidden>
       <p id="backup-hint-text"></p>
@@ -84,6 +91,7 @@
       <button class="tool" id="reader-outline-btn" aria-pressed="false"><span data-icon="outline"></span><span class="lbl">Esquema</span></button>
       <button class="tool" id="reader-aa"><span data-icon="aa"></span><span class="lbl">Letra</span></button>
       <button class="tool tool-presentar" id="reader-presentar"><span data-icon="play"></span><span class="lbl">Presentar</span></button>
+      <button class="tool tool-compartir" id="reader-share"><span data-icon="share"></span><span class="lbl">Compartir</span></button>
       <button class="tool" id="reader-edit"><span data-icon="edit"></span><span class="lbl">Editar</span></button>
       <button class="tool" id="reader-more"><span data-icon="more"></span><span class="lbl">Más</span></button>
     </nav>
@@ -164,6 +172,7 @@
     <button class="icon-btn" id="editor-back" aria-label="Volver" data-icon="back"></button>
     <input class="title-input" id="editor-title" placeholder="Título" autocomplete="off">
     <span class="save-state" id="save-state"></span>
+    <button class="icon-btn" id="editor-share" aria-label="Compartir (WhatsApp, correo…)" data-icon="share"></button>
     <button class="icon-btn" id="editor-read" aria-label="Modo lectura" data-icon="book"></button>
     <button class="icon-btn" id="editor-more" aria-label="Archivo: guardar, compartir…" data-icon="more"></button>
   </header>

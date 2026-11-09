@@ -146,6 +146,8 @@ const P = {
   pluma: '<path d="M4 20c4-1 6-3 8-6l5-8a2 2 0 0 0-3-2l-6 9c-2 3-3 5-4 7z"/><path d="M12.5 14.5l-3-2"/>',
   goma: '<path d="M7 20h11"/><path d="M5.5 15.5l9-9a2 2 0 0 1 3 0l2 2a2 2 0 0 1 0 3l-8 8H9z"/><path d="M10 11l5 5"/>',
   rotulador: '<path d="M9 15l-3 3v2h4l3-3"/><path d="M9 15l6-9 4 3-6 8z"/><path d="M3 21h8"/>',
+  chat: '<path d="M21 11.5a8.5 8.5 0 0 1-12.4 7.6L3 20.5l1.5-5.2A8.5 8.5 0 1 1 21 11.5z"/>',
+  guia: '<circle cx="12" cy="12" r="9.5"/><path d="M9.3 9.2a2.8 2.8 0 0 1 5.4 1c0 1.9-2.7 2.6-2.7 4.2"/><path d="M12 17.6h.01" stroke-width="2.6"/>',
   pin: '<path d="M12 16v6"/><path d="M8.5 3h7l-1 6 3.5 3.5V16H6v-3.5L9.5 9z"/>',
   panel: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/><path d="M5.5 8h1.5M5.5 11h1.5"/>',
 };
@@ -532,7 +534,7 @@ function busy(message) {
 }
 
 /** Ofrece un archivo ya generado. El toque en el botón lanza "Compartir" (Guardar en Archivos, correo, etc.). */
-function offerFile(file, { title, onDone, nota } = {}) {
+function offerFile(file, { title, onDone, nota, boton } = {}) {
   const hecho = () => { try { onDone && onDone(); } catch (e) { console.error(e); } };
   const canShare = !!(navigator.canShare && navigator.canShare({ files: [file] }));
   const { close } = openSheet([
@@ -541,7 +543,7 @@ function offerFile(file, { title, onDone, nota } = {}) {
     el("div", { class: "actions" },
       el("button", {
         class: "action primary",
-        html: icon(canShare ? "share" : "download") + `<span>${canShare ? "Guardar en Archivos o compartir" : "Descargar"}</span>`,
+        html: icon(canShare ? "share" : "download") + `<span>${canShare ? boton || "Guardar en Archivos o compartir" : "Descargar"}</span>`,
         onclick: async () => {
           if (canShare) {
             try { await navigator.share({ files: [file], title: file.name }); close(); hecho(); }
@@ -587,6 +589,125 @@ async function shareText(title, text) {
     catch (e) { if (e && e.name === "AbortError") return; }
   }
   copyText(text);
+}
+
+/* ============================================================
+   Compartir (WhatsApp u otra app), como texto o como archivo
+   ============================================================ */
+/** Rodea un trozo con las marcas de WhatsApp (*negrita*, _cursiva_, ~tachado~), con los espacios por fuera y línea a línea. */
+function marcaWA(texto, m) {
+  return texto.split("\n").map((linea) => {
+    const r = /^(\s*)([\s\S]*?)(\s*)$/.exec(linea);
+    if (!r[2]) return linea;
+    if (r[2].startsWith(m) && r[2].endsWith(m) && r[2].length > 2) return linea; // ya lleva la marca
+    return r[1] + m + r[2] + m + r[3];
+  }).join("\n");
+}
+
+/** Texto para un mensaje: párrafos separados por una línea en blanco, listas con viñetas y,
+    con `marcas`, el formato que entiende WhatsApp (*negrita*, _cursiva_, ~tachado~, títulos en negrita). */
+function textoWA(html, { marcas = true } = {}) {
+  const box = document.createElement("div");
+  box.innerHTML = html;
+  const MARCA = marcas ? { STRONG: "*", B: "*", EM: "_", I: "_", S: "~", DEL: "~", STRIKE: "~" } : {};
+  const enLinea = (n) => {
+    if (n.nodeType === 3) return n.nodeValue.replace(/\s+/g, " ");
+    if (n.nodeType !== 1) return "";
+    if (n.tagName === "BR") return "\n";
+    if (n.tagName === "UL" || n.tagName === "OL") return ""; // las listas de dentro van aparte
+    const t = [...n.childNodes].map(enLinea).join("");
+    return MARCA[n.tagName] ? marcaWA(t, MARCA[n.tagName]) : t;
+  };
+  const limpio = (t) => t.replace(/ *\n */g, "\n").trim();
+  const lista = (ul, nivel, out) => {
+    let i = 0;
+    for (const li of ul.children) {
+      if (li.tagName !== "LI") continue;
+      i++;
+      const sangria = "   ".repeat(nivel);
+      const t = limpio(enLinea(li));
+      if (t) out.push(sangria + (ul.tagName === "OL" ? `${i}. ` : "• ") + t.replace(/\n/g, "\n" + sangria + "   "));
+      for (const sub of li.children) if (sub.tagName === "UL" || sub.tagName === "OL") lista(sub, nivel + 1, out);
+    }
+  };
+  const bloques = (nodos, out) => {
+    for (const n of nodos) {
+      if (n.nodeType === 3) { const t = n.nodeValue.trim(); if (t) out.push(t); continue; }
+      if (n.nodeType !== 1) continue;
+      const tag = n.tagName;
+      if (/^H[1-4]$/.test(tag)) { const t = n.textContent.replace(/\s+/g, " ").trim(); if (t) out.push(marcas ? "*" + t + "*" : t); }
+      else if (tag === "UL" || tag === "OL") { const l = []; lista(n, 0, l); if (l.length) out.push(l.join("\n")); }
+      else if (tag === "BLOCKQUOTE") { const d = []; bloques(n.childNodes, d); if (d.length) out.push(d.join("\n\n").split("\n").map((x) => "> " + x).join("\n")); }
+      else if (tag === "TABLE") {
+        const filas = [...n.querySelectorAll("tr")].map((tr) => [...tr.children].map((c) => limpio(enLinea(c)).replace(/\n/g, " ")).filter(Boolean).join(" | ")).filter(Boolean);
+        if (filas.length) out.push(filas.join("\n"));
+      }
+      else if (tag === "DIV") bloques(n.childNodes, out);
+      else { const t = limpio(enLinea(n)); if (t) out.push(t); }
+    }
+  };
+  const out = [];
+  bloques(box.childNodes, out);
+  return out.join("\n\n");
+}
+
+/** El texto que se manda: con formato de WhatsApp o plano. Las notas empiezan por su título; las pausas «‖» no se mandan. */
+function textoParaCompartir(kind, item, { formato = true } = {}) {
+  const box = document.createElement("div");
+  box.innerHTML = item.html || "";
+  box.querySelectorAll("figure").forEach((f) => f.replaceWith(Object.assign(document.createElement("p"), { textContent: "[Dibujo]" })));
+  let t = textoWA(box.innerHTML, { marcas: formato });
+  t = t.replace(/[ \t]*‖[ \t]*/g, " ").replace(/([^\s]) {2,}/g, "$1 ").replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
+  const titulo = (item.title || "").trim();
+  const sinMarcas = (x) => x.replace(/[*_~]/g, "").trim();
+  if (kind === "notes" && titulo && sinMarcas(t.split("\n")[0] || "") !== sinMarcas(titulo)) t = (formato ? `*${titulo}*` : titulo) + (t ? "\n\n" + t : "");
+  return t;
+}
+
+/** Abre WhatsApp con el texto escrito, para elegir el chat. Si no se abre (no está instalado), ofrece otra app. */
+function enviarWhatsApp(titulo, texto) {
+  const t = encodeURIComponent(texto);
+  if (!(esIOS() || esAndroid())) { window.open("https://wa.me/?text=" + t, "_blank", "noopener"); return; }
+  let salio = false;
+  const vigila = () => { if (document.hidden) salio = true; };
+  document.addEventListener("visibilitychange", vigila);
+  window.addEventListener("pagehide", vigila);
+  location.href = "whatsapp://send?text=" + t;
+  setTimeout(() => {
+    document.removeEventListener("visibilitychange", vigila);
+    window.removeEventListener("pagehide", vigila);
+    if (!salio && !document.hidden) toast("No se ha abierto WhatsApp. ¿Lo tienes instalado?", { action: "Otra app", onAction: () => shareText(titulo, texto), ms: 7000 });
+  }, 2500);
+}
+
+/** Compartir: a WhatsApp, a otra app o copiado (como texto), o como Word o PDF (como archivo). */
+function abrirCompartir(kind, item) {
+  if (!item) return;
+  if (!htmlToText(item.html || "").trim() && !/<figure/i.test(item.html || "")) { toast("Todavía no hay texto que compartir."); return; }
+  const texto = () => textoParaCompartir(kind, item, { formato: settings.formatoWA !== false });
+  const formato = el("input", { type: "checkbox", role: "switch", id: "compartir-formato" });
+  formato.checked = settings.formatoWA !== false;
+  formato.addEventListener("change", () => { settings.formatoWA = formato.checked; saveSettings(); });
+  const op = (ic, titulo, sub, run, extra = "") => el("button", {
+    class: "action co-op" + extra,
+    html: icon(ic) + `<span class="co-t"><span class="co-n">${escapeHtml(titulo)}</span><small>${escapeHtml(sub)}</small></span>`,
+    onclick: run,
+  });
+  const { close } = openSheet([
+    el("h2", { text: "Compartir" }),
+    el("p", { class: "co-titulo", text: item.title || "" }),
+    el("h3", { class: "co-sec", text: "Como texto (para leerlo en el mensaje)" }),
+    el("div", { class: "actions menu" },
+      op("chat", "WhatsApp", "Se abre WhatsApp con el texto y eliges el chat", () => { const t = texto(); close(); enviarWhatsApp(item.title, t); }, " co-wa"),
+      op("share", "Otra app", "Correo, Mensajes, Telegram, Notas, Claude…", () => { const t = texto(); close(); shareText(item.title, t); }, " co-otra"),
+      op("copy", "Copiar el texto", "Y lo pegas donde quieras", () => { const t = texto(); close(); copyText(t); }, " co-copiar")),
+    el("label", { class: "switch-row" }, el("span", { html: "Con negritas y cursivas de WhatsApp <small class=\"co-ej\">*así* y _así_</small>" }), formato),
+    el("h3", { class: "co-sec", text: "Como archivo (igual que se ve aquí)" }),
+    el("div", { class: "actions menu" },
+      op("word", "Word", "Se abre en Word, Pages o Google Docs", () => { close(); exportWord(kind, item, { compartir: true }); }, " co-word"),
+      op("pdf", "PDF", "Para leerlo o imprimirlo tal cual", () => { close(); exportPdf(kind, item); }, " co-pdf")),
+    el("div", { class: "actions" }, el("button", { class: "action plain", text: "Cerrar", onclick: () => close() })),
+  ]);
 }
 
 /* ============================================================
@@ -775,8 +896,24 @@ function ayudaWord() {
   ]);
 }
 
-/** Discurso de ejemplo para ver cómo funciona Atril. */
+/** Guía de Atril: qué hace cada función y dónde está (para quien la estrena). */
+async function abrirGuia(seccion) {
+  lsSet("atril.guiaVista", "1");
+  const aviso = $("#guia-hint");
+  if (aviso) aviso.hidden = true;
+  try {
+    const m = await import("./guia.js");
+    m.abrirGuia({ seccion, icon, alProbar: crearEjemplo, android: esAndroid() });
+  } catch (e) {
+    console.error(e);
+    toast("No se pudo abrir la guía. Inténtalo de nuevo.");
+  }
+}
+
+/** Discurso de ejemplo para ver cómo funciona Atril (si ya existe, lo abre). */
 async function crearEjemplo() {
+  const ya = (await store.all("docs").catch(() => [])).find((d) => d.title === "Ejemplo: la paciencia");
+  if (ya) { go(`#/leer/docs/${ya.id}`); return; }
   const now = Date.now();
   const html = `<h1>La paciencia</h1>
 <h2>Introducción (1 min)</h2><p>¿Le ha tocado alguna vez esperar en una cola que no avanza? A todos nos cuesta esperar. Pero la Biblia dice en Gálatas 5:22 que la paciencia forma parte del fruto del espíritu.</p>
@@ -824,7 +961,7 @@ async function htmlParaExportar(html) {
   return box.innerHTML;
 }
 
-async function exportWord(kind, item) {
+async function exportWord(kind, item, { compartir = false } = {}) {
   const close = busy("Preparando el Word…");
   try {
     const { buildDocx } = await import("./docx-export.js");
@@ -834,7 +971,11 @@ async function exportWord(kind, item) {
     // Con el mismo nombre que el Word del PC, para poder sustituirlo
     const nombre = item.source && /\.docx$/i.test(item.source) ? item.source : safeFileName(item.title) + ".docx";
     const file = new File([blob], nombre, { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
-    offerFile(file, {
+    offerFile(file, compartir ? {
+      title: "Word listo para compartir",
+      boton: "Compartir",
+      nota: "En la lista, elige WhatsApp, Correo o la app que quieras.",
+    } : {
       title: "Word listo",
       nota: item.source ? "Para que el del PC quede igual: Guardar en Archivos → la misma carpeta (OneDrive o iCloud) → «Reemplazar». Si lo tienes abierto en el PC, ciérralo antes." : "",
       onDone: () => marcarEnPC(kind, item.id),
@@ -1013,16 +1154,15 @@ const home = {
 
 function itemActions(kind, item) {
   const common = [
+    { label: "Compartir (WhatsApp, correo…)", icon: "share", run: () => abrirCompartir(kind, item) },
     { label: "Guardar como Word", icon: "word", run: () => exportWord(kind, item) },
-    { label: "Copiar el texto", icon: "copy", run: () => copyText(htmlToText(item.html)) },
-    { label: "Compartir el texto", icon: "share", run: () => shareText(item.title, htmlToText(item.html)) },
+    { label: "Guardar como PDF", icon: "pdf", run: () => exportPdf(kind, item) },
     { label: "Renombrar", icon: "edit", run: () => renameItem(kind, item) },
   ];
   const move = kind === "notes"
     ? { label: "Pasar a Discursos", icon: "move", run: () => moveItem("notes", "docs", item) }
     : { label: "Pasar a Notas", icon: "move", run: () => moveItem("docs", "notes", item) };
   const del = { label: "Eliminar", icon: "trash", danger: true, run: () => deleteItem(kind, item) };
-  common.splice(1, 0, { label: "Guardar como PDF", icon: "pdf", run: () => exportPdf(kind, item) });
   const fijar = { label: item.fijado ? "Quitar de arriba" : "Fijar arriba", icon: "pin", run: () => fijarItem(kind, item) };
   if (kind === "docs") {
     const n = (item.dado || []).length;
@@ -1319,16 +1459,19 @@ async function renderHome() {
         el("button", { class: "btn primary", html: icon("open") + "<span>Abrir un Word</span>", onclick: () => $("#file-input").click() }),
         el("button", { class: "btn", html: icon("book") + "<span>Probar con un ejemplo</span>", onclick: crearEjemplo })),
       el("div", { class: "bv-mas" },
+        el("button", { class: "text-btn", id: "bv-guia", text: "Ver la guía: qué hace cada cosa", onclick: () => abrirGuia() }),
         el("button", { class: "text-btn", text: "¿Cómo paso el Word del PC al iPad?", onclick: ayudaWord }),
         el("button", { class: "text-btn", text: "Escribir uno nuevo", onclick: nuevoDiscurso }))
     );
     else empty.replaceChildren(
       el("h2", { text: "Aún no hay notas" }),
-      el("p", { text: "Toca «Nueva nota» para empezar. Desde el menú ⋯ de cada nota puedes copiar el texto, compartirlo o guardarlo como Word." })
+      el("p", { text: "Toca «Nueva nota» para empezar. Desde el menú ⋯ de cada nota puedes compartirla (WhatsApp, correo…), copiarla o guardarla como Word." })
     );
   }
 
   pintarAvisoCopia();
+  // Primera vez con algo en la lista: invita a ver la guía (en la bienvenida ya hay un enlace)
+  $("#guia-hint").hidden = !items.length || !!q || lsGet("atril.guiaVista") === "1";
   const standalone = window.matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
   $("#install-hint").hidden = standalone || lsGet("atril.hideInstall") === "1";
 }
@@ -1504,6 +1647,9 @@ function openSettings() {
         return b;
       }))
     ),
+    el("div", { class: "group" },
+      el("span", { class: "label", text: "Ayuda" }),
+      el("div", { class: "actions" }, el("button", { class: "action", id: "ajustes-guia", html: icon("guia") + "<span>Guía de Atril: qué hace cada cosa</span>", onclick: () => { closeSheet(); abrirGuia(); } }))),
     el("div", { class: "group" },
       el("span", { class: "label", text: "Colores" }),
       el("div", { class: "actions" }, el("button", { class: "action", html: icon("marker") + "<span>Qué significa cada color</span>", onclick: () => abrirLeyenda() }))),
@@ -2352,6 +2498,7 @@ const reader = {
   openMenu() {
     const n = (this.item.ensayos || []).length;
     const acciones = [
+      { label: "Compartir (WhatsApp, correo…)", icon: "share", run: () => abrirCompartir(this.kind, this.item) },
       { label: "Buscar en el texto", icon: "search", run: () => buscador.abrir() },
       { label: "Tarjetas: una parte por pantalla", icon: "cards", run: () => tarjetas.abrir() },
       { label: "Desplazamiento automático", icon: "scroll", run: () => prompter.abrir() },
@@ -2365,6 +2512,7 @@ const reader = {
     acciones.push(
       { label: "Guardar como Word", icon: "word", run: () => exportWord(this.kind, this.item) },
       { label: "Guardar como PDF", icon: "pdf", run: () => exportPdf(this.kind, this.item) },
+      { label: "Guía de Atril", icon: "guia", run: () => abrirGuia("leer") },
     );
     actionSheet(null, acciones);
   },
@@ -2519,6 +2667,7 @@ const reader = {
     $("#reader-outline-btn").addEventListener("click", () => this.toggleOutline());
     $("#reader-presentar").addEventListener("click", () => presentar.entrar());
     $("#reader-more").addEventListener("click", () => this.openMenu());
+    $("#reader-share").addEventListener("click", () => abrirCompartir(this.kind, this.item));
     $("#float-timer").addEventListener("click", () => timer.toggle());
     $("#reader-back").addEventListener("click", () => go("#/"));
     $("#reader-edit").addEventListener("click", () => go(`#/editar/${this.kind}/${this.id}`));
@@ -2545,7 +2694,7 @@ const reader = {
         else if (k === "Escape") tarjetas.cerrar();
         return;
       }
-      if (k === "Escape") { if (buscador.abierto) buscador.cerrar(); else if (prompter.activo) prompter.cerrar(); else if (presentar.activo) presentar.salir(); return; }
+      if (k === "Escape") { if (buscador.abierto) buscador.cerrar(); else if (prompter.activo) prompter.cerrar(); else if (presentar.activo) presentar.mostrarSalir(); return; }
       if (this.mode === "texto" && (adelante || atras)) {
         e.preventDefault();
         this.scrollEl.scrollBy({ top: (adelante ? 1 : -1) * this.scrollEl.clientHeight * 0.85, behavior: "smooth" });
@@ -2573,8 +2722,11 @@ const presentar = {
       views.reader.classList.remove("immersive");
       views.reader.classList.add("presentando");
       $("#pres-bar").hidden = false;
-      $("#pres-salir").hidden = false;
+      $("#pres-salir").hidden = true;
     });
+    // El gesto o el botón de «atrás» (Android, o deslizar desde el borde) no sale: enseña cómo salir
+    this.hash = location.hash;
+    if (!(history.state && history.state.atril === "presentar")) history.pushState({ atril: "presentar" }, "");
     keepAwake(true);
     reader.paintPace();
     this.pintarReloj();
@@ -2582,16 +2734,19 @@ const presentar = {
     this.reloj = setInterval(() => this.pintarReloj(), 15000);
     sesion.guardar();
     const toques = settings.presToque !== false;
-    if (consejo && esIOS() && lsGet("atril.consejoAcceso") !== "1") this.consejo();
+    if (consejo && (esIOS() || esAndroid()) && lsGet("atril.consejoAcceso") !== "1") this.consejo();
     else if (consejo && toques && lsGet("atril.consejoToque") !== "1") {
       lsSet("atril.consejoToque", "1");
       toast("Toca la parte de abajo para avanzar una pantalla y la de arriba para volver.", { ms: 6000 });
     }
   },
-  salir({ guardar = true } = {}) {
+  salir({ guardar = true, quitarPaso = false } = {}) {
     if (!this.activo) return;
     this.activo = false;
     clearInterval(this.reloj);
+    clearTimeout(this.ocultarSalir);
+    // Se quita el paso que se puso al entrar (solo si se sale a mano; si se va a otra pantalla, ya no está)
+    if (quitarPaso && history.state && history.state.atril === "presentar") history.back();
     mantenerSitio(reader.scrollEl, reader.contentEl, () => {
       views.reader.classList.remove("presentando");
       $("#pres-bar").hidden = true;
@@ -2602,19 +2757,28 @@ const presentar = {
     reader.paintEstado();
     reader.lateral.pintarActual();
   },
+  /** Enseña «Mantén pulsado para salir» unos segundos (tras el gesto de atrás o un toque en el centro). */
+  mostrarSalir() {
+    if (!this.activo) return;
+    const s = $("#pres-salir");
+    s.hidden = false;
+    s.classList.remove("aparece"); void s.offsetWidth; s.classList.add("aparece");
+    clearTimeout(this.ocultarSalir);
+    this.ocultarSalir = setTimeout(() => { if (!s.classList.contains("cargando")) s.hidden = true; }, 5000);
+  },
   /** La hora, como en el modo «Predicar» de Logos: para saber cuándo hay que terminar. */
   pintarReloj() {
     $("#pres-reloj").innerHTML = icon("clock") + `<span>${new Date().toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })}</span>`;
   },
   /** Un toque abajo avanza una pantalla; arriba, vuelve (como pasar página en Kindle). */
   toque(e) {
-    if (settings.presToque === false) return;
     const s = reader.scrollEl, r = s.getBoundingClientRect();
     const y = (e.clientY - r.top) / r.height;
+    if (settings.presToque === false || (y >= 0.3 && y <= 0.55)) { this.mostrarSalir(); return; } // el centro enseña cómo salir
     const linea = settings.fontSize * settings.lineHeight;
     const salto = Math.max(linea * 2, s.clientHeight - linea * 2); // deja a la vista las dos últimas líneas
     if (y > 0.55) s.scrollBy({ top: salto, behavior: "smooth" });
-    else if (y < 0.3) s.scrollBy({ top: -salto, behavior: "smooth" });
+    else s.scrollBy({ top: -salto, behavior: "smooth" });
   },
   pintar({ estado, corto, largo, aviso, seg, started }) {
     const b = $("#pres-timer");
@@ -2649,13 +2813,23 @@ const presentar = {
     [...prog.children].forEach((x, i) => { x.className = i < k ? "hecha" : i === k ? "actual" : ""; });
   },
   consejo() {
+    const android = esAndroid();
     openSheet([
       el("h2", { text: "Para no salirte del discurso" }),
-      el("p", { text: "Atril ya no responde a toques sueltos mientras presentas. Para que el iPad tampoco pueda salir de la app (por un gesto o un aviso), usa «Acceso guiado» del iPad:" }),
-      el("ol", { class: "lista-pasos" },
-        el("li", { text: "Ajustes → Accesibilidad → Acceso guiado: actívalo y pon un código." }),
-        el("li", { text: "En Atril, pulsa tres veces el botón de inicio (o el botón superior si tu iPad no tiene) y toca Iniciar." }),
-        el("li", { text: "Al terminar, vuelve a pulsar tres veces, escribe el código y toca Finalizar." })),
+      el("p", { text: "Mientras presentas, Atril no sale con toques sueltos ni con el gesto de «atrás»." }),
+      el("p", { class: "consejo-salir", text: "Para salir: toca el centro de la pantalla y mantén pulsado «Salir» hasta que se llene." }),
+      el("p", { text: android
+        ? "El gesto de ir a la pantalla de inicio es del sistema y ninguna app lo puede bloquear. Para que tampoco funcione, usa «Fijar aplicaciones» de Android:"
+        : "El gesto de ir a la pantalla de inicio es del iPad y ninguna app lo puede bloquear. Para que tampoco funcione, usa «Acceso guiado»:" }),
+      android
+        ? el("ol", { class: "lista-pasos" },
+          el("li", { text: "Ajustes → Seguridad (o Seguridad y privacidad → Más ajustes) → Fijar aplicaciones: actívalo." }),
+          el("li", { text: "Abre Atril, toca el botón de aplicaciones recientes, toca el icono de Atril y elige «Fijar»." }),
+          el("li", { text: "Para soltarla, mantén pulsados a la vez «atrás» y «recientes» (o desliza hacia arriba y mantén)." }))
+        : el("ol", { class: "lista-pasos" },
+          el("li", { text: "Ajustes → Accesibilidad → Acceso guiado: actívalo y pon un código." }),
+          el("li", { text: "En Atril, pulsa tres veces el botón de inicio (o el botón superior si tu iPad no tiene) y toca Iniciar." }),
+          el("li", { text: "Al terminar, vuelve a pulsar tres veces, escribe el código y toca Finalizar." })),
       settings.presToque !== false ? el("p", { text: "Para pasar página, toca la parte de abajo de la pantalla; para volver, la de arriba. También puedes deslizar el dedo." }) : null,
       el("p", { class: "small-print", text: "Si aun así se cierra, al abrir Atril volverás al mismo sitio con el cronómetro en marcha." }),
       el("div", { class: "actions" }, el("button", { class: "action primary", text: "Entendido", onclick: () => { lsSet("atril.consejoAcceso", "1"); lsSet("atril.consejoToque", "1"); closeSheet(); } })),
@@ -2687,17 +2861,30 @@ const presentar = {
       e.preventDefault();
       s.classList.add("cargando");
       clearTimeout(salida);
-      salida = setTimeout(() => { s.classList.remove("cargando"); this.salir(); }, 800);
+      clearTimeout(this.ocultarSalir);
+      salida = setTimeout(() => { s.classList.remove("cargando"); this.salir({ quitarPaso: true }); }, 800);
     });
-    const cancelar = () => { clearTimeout(salida); s.classList.remove("cargando"); };
+    const cancelar = () => {
+      clearTimeout(salida);
+      if (!s.classList.contains("cargando")) return;
+      s.classList.remove("cargando");
+      this.ocultarSalir = setTimeout(() => { if (this.activo) s.hidden = true; }, 3000);
+    };
     s.addEventListener("pointerup", cancelar);
     s.addEventListener("pointercancel", cancelar);
     s.addEventListener("pointerleave", cancelar);
     s.addEventListener("contextmenu", (e) => e.preventDefault());
     s.addEventListener("click", () => { if (this.activo) toast("Mantén pulsado para salir."); });
+    // «Atrás» mientras se presenta: se vuelve a poner el paso y se enseña cómo salir
+    window.addEventListener("popstate", () => {
+      if (!this.activo || location.hash !== this.hash) return;
+      history.pushState({ atril: "presentar" }, "");
+      this.mostrarSalir();
+    });
   },
 };
 const esIOS = () => /iP(ad|hone|od)/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+const esAndroid = () => /Android/i.test(navigator.userAgent);
 
 /* ============================================================
    Buscar en el texto
@@ -3705,18 +3892,19 @@ const editor = {
       go(this.kind === "docs" ? `#/leer/docs/${this.id}` : "#/", { replace: true });
     });
     $("#editor-read").addEventListener("click", async () => { await this.flush(); go(`#/leer/${this.kind}/${this.id}`); });
+    $("#editor-share").addEventListener("click", async () => { await this.flush(); abrirCompartir(this.kind, this.item); });
     $("#editor-more").addEventListener("click", async () => {
       await this.flush();
       const item = this.item;
       actionSheet(item.title, [
+        { label: "Compartir (WhatsApp, correo…)", icon: "share", run: () => abrirCompartir(this.kind, item) },
         { label: "Guardar como Word", icon: "word", run: () => exportWord(this.kind, item) },
         { label: "Guardar como PDF", icon: "pdf", run: () => exportPdf(this.kind, item) },
-        { label: "Copiar el texto", icon: "copy", run: () => copyText(htmlToText(item.html)) },
-        { label: "Compartir el texto", icon: "share", run: () => shareText(item.title, htmlToText(item.html)) },
         { label: "Tamaño de letra y tema", icon: "aa", run: () => openAaSheet() },
         { label: "Versiones anteriores", icon: "history", run: () => this.abrirVersiones() },
         { label: "Qué significa cada color", icon: "marker", run: () => abrirLeyenda() },
         { label: "Atajos de teclado", icon: "template", run: () => this.atajosHoja() },
+        { label: "Guía de Atril", icon: "guia", run: () => abrirGuia("editar") },
         { label: "Eliminar", icon: "trash", danger: true, run: async () => { await deleteItem(this.kind, item); } },
       ]);
     });
@@ -3847,6 +4035,9 @@ function init() {
   $$(".segmented button").forEach((b) => b.addEventListener("click", () => { settings.tab = b.dataset.tab; saveSettings(); renderHome(); }));
   $("#search").addEventListener("input", debounce((e) => { home.query = e.target.value; renderHome(); }, 150));
   $("#btn-settings").addEventListener("click", openSettings);
+  $("#btn-guia").addEventListener("click", () => abrirGuia());
+  $("#guia-hint-ver").addEventListener("click", () => abrirGuia());
+  $("#guia-hint-no").addEventListener("click", () => { lsSet("atril.guiaVista", "1"); $("#guia-hint").hidden = true; });
   $("#hide-install-hint").addEventListener("click", () => { lsSet("atril.hideInstall", "1"); $("#install-hint").hidden = true; });
   $("#backup-now").addEventListener("click", () => exportBackup());
   $("#backup-later").addEventListener("click", () => { lsSet("atril.copiaLuego", String(Date.now() + 3 * DIA)); $("#backup-hint").hidden = true; });
@@ -3955,5 +4146,5 @@ init();
 // Exportado para las pruebas automáticas
 window.__atril = {
   sanitize, htmlToText, textToHtml, store, settings: () => settings, setFontSize, importFiles, exportWord, crearPdf,
-  timer, reader, editor, ensayo, buscador, tarjetas, prompter, crearPlantilla, abrirDado, pintarAvisoCopia, reemplazo, presentar, sesion,
+  timer, reader, editor, ensayo, buscador, tarjetas, prompter, crearPlantilla, abrirDado, pintarAvisoCopia, reemplazo, presentar, sesion, textoParaCompartir, abrirCompartir, abrirGuia,
 };

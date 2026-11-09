@@ -22,8 +22,8 @@ La dirección es pública, pero solo contiene la app vacía: tus discursos y not
 - **Abrir Word**: eliges un .docx desde Archivos, iCloud, OneDrive o el correo (guardado antes en Archivos). Lo más cómodo: prepáralo en el PC, guárdalo en OneDrive o iCloud Drive y ábrelo desde el iPad. Si lo cambias en el PC y lo abres otra vez, Atril te ofrece **sustituir la versión anterior** sin perder ensayos, duración ni dónde lo has dado.
 - **Seguir donde lo dejaste**: arriba de la lista sale el último discurso que abriste, con lo que llevas leído. «Seguir leyendo» vuelve al sitio; «Presentar» lo abre ya en modo Presentar, desde el principio. Cada discurso lleva abajo una rayita con lo leído.
 - **Fijar arriba** (botón ⋯ de un discurso o nota): lo deja el primero de la lista mientras lo preparas. «Quitar de arriba» lo devuelve a su sitio.
-- **Presentar** (el botón azul): para dar el discurso. Cronómetro grande, cuánto **queda** para tu objetivo, la **hora**, en qué parte vas y cuál sigue. El cronómetro va como un semáforo: **verde** mientras hay tiempo, **ámbar** en el último minuto y **rojo** si te pasas (la barra parpadea al cambiar de color). Toca el cronómetro para empezar; para pausarlo, mantenlo pulsado. **Para pasar página, toca la parte de abajo de la pantalla; para volver, la de arriba** (se puede quitar en Ajustes). Los demás toques no hacen nada (no te sacan del discurso) y para salir hay que **mantener pulsado** «Salir». Si aun así la app se cierra, al abrirla vuelves al mismo sitio con el cronómetro en marcha.
-- **Acceso guiado** (recomendado en el atril): Ajustes → Accesibilidad → Acceso guiado (actívalo y pon un código). En Atril, pulsa tres veces el botón de inicio (o el superior) e Iniciar. Así el iPad no puede salir de la app. Para terminar, pulsa tres veces y escribe el código.
+- **Presentar** (el botón azul): para dar el discurso. Cronómetro grande, cuánto **queda** para tu objetivo, la **hora**, en qué parte vas y cuál sigue. El cronómetro va como un semáforo: **verde** mientras hay tiempo, **ámbar** en el último minuto y **rojo** si te pasas (la barra parpadea al cambiar de color). Toca el cronómetro para empezar; para pausarlo, mantenlo pulsado. **Para pasar página, toca la parte de abajo de la pantalla; para volver, la de arriba** (se puede quitar en Ajustes). Los demás toques no hacen nada y el gesto o el botón de «atrás» tampoco te saca del discurso. **Para salir, toca el centro de la pantalla**: aparece «Mantén pulsado para salir»; mantén el dedo hasta que se llene. Si aun así la app se cierra, al abrirla vuelves al mismo sitio con el cronómetro en marcha.
+- **Acceso guiado** (recomendado en el atril): el gesto de ir a la pantalla de inicio es del iPad y ninguna app lo puede bloquear. Para eso: Ajustes → Accesibilidad → Acceso guiado (actívalo y pon un código). En Atril, pulsa tres veces el botón de inicio (o el superior) e Iniciar. Así el iPad no puede salir de la app. Para terminar, pulsa tres veces y escribe el código. En Android: «Fijar aplicaciones».
 - **Leer**: separa dos dedos sobre el texto para agrandar la letra y pellízcalo para achicarla. El texto se recoloca solo, como en una web de móvil.
 - **Un toque en el texto** oculta la barra de arriba para tener toda la pantalla. Otro toque la devuelve.
 - **Dos toques en un párrafo** lo marcan como «Voy por aquí» (una raya azul a la izquierda). Se recuerda al volver a abrir y sale en el esquema. Dos toques otra vez lo quitan.
@@ -48,6 +48,7 @@ La dirección es pública, pero solo contiene la app vacía: tus discursos y not
 - **Desplazamiento automático**: el texto sube solo, al ritmo de tu objetivo de tiempo (o a 130 palabras por minuto). Abajo tienes pausa, más despacio, más deprisa y terminar. Un toque en el texto también pausa.
 - **Ensayos**: cada vez que pones el cronómetro a cero después de al menos 30 segundos se guarda el ensayo, con el tiempo total y el de cada parte, comparado con tu objetivo. Si activas **Grabar audio al ensayar**, se graba tu voz mientras corre el cronómetro; luego puedes escucharla, saltar a cada parte y guardarla en Archivos. Se guardan las 5 últimas grabaciones de cada discurso, solo en el iPad.
 - **Apuntar que lo he dado**: fecha, lugar y notas. Si pones un lugar donde ya lo diste, te avisa. En la lista de discursos verás «Dado 2 veces · último…», y en el buscador del inicio puedes escribir un lugar para saber qué discursos has dado allí.
+- **Compartir**: ver más abajo.
 - **Guardar como Word** o **como PDF** (para imprimir; puedes elegir letra normal, grande o muy grande). Después, **Guardar en Archivos** o mandarlo por correo o WhatsApp.
 
 **Discurso nuevo con plantilla**
@@ -55,8 +56,15 @@ En **Nuevo discurso → Con plantilla** pones el título, los minutos y cuántos
 
 **Notas**
 - **Nueva nota**: título y texto. Se guarda sola.
-- Para pasármelas: **⋯ → Compartir el texto** y eliges la app de Claude, o **Copiar el texto** y lo pegas en el chat.
+- Para pasármelas: **⋯ → Compartir → Otra app** y eliges la app de Claude, o **Copiar el texto** y lo pegas en el chat.
 - También puedes guardarla como Word directamente.
+
+**Compartir** (⋯ de cada discurso o nota, «Compartir» en el lector, o el botón de compartir del editor)
+- **Como texto**: **WhatsApp** (se abre WhatsApp con el texto escrito y eliges el chat), **Otra app** (correo, Mensajes, Telegram, Notas, Claude…) o **Copiar el texto**. Sale con las negritas y cursivas de WhatsApp (\*así\*, \_así\_); el interruptor las quita.
+- **Como archivo**: **Word** o **PDF**, para mandarlo tal cual se ve.
+
+**Guía de Atril** (botón «Guía», al lado de Ajustes)
+Explica cada función y dónde está, por apartados. Pensada para quien la estrena: recomiéndasela a quien se la pases.
 
 **Copia de seguridad** (rueda dentada → Hacer copia de seguridad)
 Haz una de vez en cuando y guárdala en Archivos o iCloud. **Si borras el icono de la app, se borran sus datos**, y con la copia los recuperas (Restaurar una copia). Si pasan más de 14 días sin copia y has cambiado algo, Atril te lo recuerda al abrirla. La copia lleva los discursos, las notas, los objetivos de tiempo, el historial de ensayos y dónde los has dado; las grabaciones de audio no (guárdalas aparte si quieres conservarlas).

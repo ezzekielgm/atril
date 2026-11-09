@@ -43,7 +43,7 @@ ok("«Probar con un ejemplo» abre un discurso de muestra", ej.title === "Ejempl
 
 // ============ Botones con nombre ============
 const nombres = await page.$$eval(".reader-tools .tool .lbl", (xs) => xs.map((x) => x.textContent));
-ok("Los botones del lector llevan su nombre", nombres.join(",") === "Esquema,Letra,Presentar,Editar,Más", nombres.join(","));
+ok("Los botones del lector llevan su nombre", nombres.join(",") === "Esquema,Letra,Presentar,Compartir,Editar,Más", nombres.join(","));
 ok("«Volver» dice a dónde", (await page.textContent("#reader-back")).includes("Discursos"));
 await page.screenshot({ path: `${OUTDIR}/51-lector-botones.png` });
 
@@ -76,6 +76,8 @@ await pulsar(page, "#pres-timer", 900);
 ok("Mantener pulsado pausa el cronómetro", !(await page.evaluate(() => window.__atril.timer.running)));
 await page.click("#pres-timer");
 ok("Un toque lo reanuda", await page.evaluate(() => window.__atril.timer.running));
+const centro = async () => { const r = await page.$eval("#reader-scroll", (s) => { const b = s.getBoundingClientRect(); return { x: b.left + b.width / 2, y: b.top + b.height * 0.42 }; }); await page.touchscreen.tap(r.x, r.y); await page.waitForTimeout(150); };
+await centro();
 await page.click("#pres-salir");
 ok("Un toque en «Salir» no sale", await page.isVisible("#pres-bar"));
 
@@ -86,6 +88,7 @@ await page.waitForSelector("#view-reader:not([hidden])", { timeout: 5000 }).catc
 const vuelta = await page.evaluate(() => ({ vista: !document.querySelector("#view-reader").hidden, presentando: window.__atril.presentar.activo, corre: window.__atril.timer.running, ms: window.__atril.timer.ms(), titulo: window.__atril.reader.item && window.__atril.reader.item.title }));
 ok("Al volver a abrir Atril, está en el mismo discurso y presentando", vuelta.vista && vuelta.presentando && vuelta.titulo === "Ejemplo: la paciencia", JSON.stringify(vuelta));
 ok("El cronómetro no se ha parado", vuelta.corre && vuelta.ms >= antes, `${Math.round(antes / 1000)} s → ${Math.round(vuelta.ms / 1000)} s`);
+await centro();
 await pulsar(page, "#pres-salir", 1100);
 ok("Mantener pulsado «Salir» sale de presentar", (await page.isHidden("#pres-bar")) && (await page.isVisible(".reader-bar")));
 await page.click("#timer-toggle");
