@@ -24,6 +24,8 @@ self.addEventListener("fetch", (event) => {
   if (req.method !== "GET") return;
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
+  // «Buscar actualizaciones» pregunta a internet por sw.js: nunca desde la caché
+  if (url.pathname.endsWith("/sw.js")) return;
 
   // La app es una sola página: cualquier navegación sirve index.html desde la caché
   if (req.mode === "navigate") {

@@ -522,7 +522,7 @@ function busy(message) {
 }
 
 /** Ofrece un archivo ya generado. El toque en el botón lanza "Compartir" (Guardar en Archivos, correo, etc.). */
-function offerFile(file, { title, onDone } = {}) {
+function offerFile(file, { title, onDone, nota } = {}) {
   const hecho = () => { try { onDone && onDone(); } catch (e) { console.error(e); } };
   const canShare = !!(navigator.canShare && navigator.canShare({ files: [file] }));
   const { close } = openSheet([
@@ -541,7 +541,8 @@ function offerFile(file, { title, onDone } = {}) {
       }),
       el("button", { class: "action plain", text: "Cerrar", onclick: () => close() })
     ),
-    canShare ? el("p", { class: "small-print", text: "En el menú, elige «Guardar en Archivos» para guardarlo en el iPad o en iCloud." }) : null,
+    nota ? el("p", { class: "small-print nota-pc", text: nota })
+      : canShare ? el("p", { class: "small-print", text: "En el menú, elige «Guardar en Archivos» para guardarlo en el iPad o en iCloud." }) : null,
   ].filter(Boolean));
 }
 function downloadFile(file) {
@@ -722,19 +723,20 @@ async function importFiles(files) {
         close();
         const sustituir = await confirmDialog({
           title: `Ya tienes «${previo.title || title}»`,
-          message: "¿Lo cambias por esta versión? Se conservan tus ensayos, la duración y dónde lo has dado.",
+          message: (sinPasarAlPC(previo) ? `Ojo: lo cambiaste en el iPad (${fmtDate(previo.updated).toLowerCase()}) y esos cambios no están en este Word. Si lo sustituyes, quedarán en «Versiones anteriores». ` : "") +
+            "¿Lo cambias por esta versión? Se conservan tus ensayos, la duración y dónde lo has dado.",
           ok: "Sustituir por esta versión", cancel: "Añadir como otro discurso",
         });
         close = busy("Abriendo el documento…");
         if (sustituir) {
           const fresco = (await store.get("docs", previo.id)) || previo;
           await guardarVersion("docs", fresco, "Antes de cambiarlo por el Word nuevo");
-          await store.put("docs", { ...fresco, html, updated: now, source: name });
+          await store.put("docs", { ...fresco, html, updated: now, source: name, alPC: now });
           done.push({ ...fresco, actualizado: true });
           continue;
         }
       }
-      const doc = { id: uid(), title, html, created: now, updated: now, source: name };
+      const doc = { id: uid(), title, html, created: now, updated: now, source: name, alPC: now };
       await store.put("docs", doc);
       done.push(doc);
     }
@@ -795,8 +797,14 @@ async function exportWord(kind, item) {
     const html = kind === "notes" ? htmlConTitulo(item) : item.html || "<p></p>";
     const blob = await buildDocx(item.title || "Documento", html);
     close();
-    const file = new File([blob], safeFileName(item.title) + ".docx", { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
-    offerFile(file, { title: "Word listo" });
+    // Con el mismo nombre que el Word del PC, para poder sustituirlo
+    const nombre = item.source && /\.docx$/i.test(item.source) ? item.source : safeFileName(item.title) + ".docx";
+    const file = new File([blob], nombre, { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
+    offerFile(file, {
+      title: "Word listo",
+      nota: item.source ? "Para que el del PC quede igual: Guardar en Archivos → la misma carpeta (OneDrive o iCloud) → «Reemplazar». Si lo tienes abierto en el PC, ciérralo antes." : "",
+      onDone: () => marcarEnPC(kind, item.id),
+    });
   } catch (e) {
     console.error(e);
     close();
@@ -854,6 +862,7 @@ async function crearPdf(kind, item) {
    ============================================================ */
 async function exportBackup() {
   const data = { app: "atril", format: 1, exported: new Date().toISOString(), docs: await store.all("docs"), notes: await store.all("notes") };
+  if (!data.docs.length && !data.notes.length) { toast("No hay discursos ni notas que copiar."); return; }
   const d = new Date();
   const stamp = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   const file = new File([JSON.stringify(data)], `atril-copia-${stamp}.json`, { type: "application/json" });
@@ -933,7 +942,19 @@ async function route() {
   // Si llega otra navegación mientras esta espera, gana siempre la última
   const seq = ++routeSeq;
   const stale = () => seq !== routeSeq;
-  if (currentView === "editor") { reemplazo.cerrar(); await editor.flush(); }
+  if (currentView === "editor") {
+    reemplazo.cerrar();
+    await editor.flush();
+    // Si se ha cambiado un discurso que vino del PC, se ofrece pasarlo al Word del PC
+    const it = editor.item, k = editor.kind;
+    if (editor.versionHecha && it && it.source && !(location.hash || "").startsWith(`#/editar/${k}/${it.id}`)) {
+      editor.versionHecha = false;
+      toast("Cambios guardados en el iPad. ¿Los pasas también al Word del PC?", {
+        action: "Guardar Word", ms: 9000,
+        onAction: async () => { const f = await store.get(k, it.id); if (f) exportWord(k, f); },
+      });
+    }
+  }
   if (stale()) return;
   if (currentView === "reader") reader.leave();
   const parts = (location.hash || "#/").replace(/^#\/?/, "").split("/");
@@ -986,6 +1007,18 @@ function itemActions(kind, item) {
     fijar,
     ...common, move, del,
   ];
+}
+
+/**
+ * Word del PC al día: `item.alPC` = cuándo el discurso quedó igual que el Word del PC (al abrirlo o al guardarlo
+ * como Word). Si después se cambia en el iPad (`updated` posterior), está «sin pasar al PC».
+ */
+const sinPasarAlPC = (it) => !!(it && it.source && it.alPC && (it.updated || 0) > it.alPC);
+async function marcarEnPC(kind, id) {
+  const it = await store.get(kind, id);
+  if (!it || !it.source) return;
+  await store.put(kind, { ...it, alPC: Math.max(Date.now(), it.updated || 0) });
+  if (currentView === "home") renderHome();
 }
 
 /** Fijar arriba (como «Anclar» en Word): sale el primero de la lista. */
@@ -1167,6 +1200,7 @@ async function renderHome() {
         resumenDado(it),
         el("span", { class: "card-meta" },
           it.fijado ? el("span", { class: "card-pin", html: icon("pin") + "<span>Fijado</span>" }) : null,
+          sinPasarAlPC(it) ? el("span", { class: "card-sinpc", title: "Lo has cambiado en el iPad y el Word del PC aún no tiene esos cambios", text: "Cambiado en el iPad" }) : null,
           esDoc && it.target && est ? el("span", { text: `≈ ${est} min de lectura` }) : null,
           el("span", { text: `Editado ${editado.charAt(0).toLowerCase() + editado.slice(1)}` })),
         esDoc ? primeraLinea(title, text) : el("span", { class: "card-snippet", text: text.replace(/\s+/g, " ").slice(title === text.split("\n")[0] ? title.length : 0, 220).trim() })
@@ -1341,16 +1375,40 @@ async function pintarAvisoCopia() {
         if (copia) {
           const dias = Math.floor((ahora - copia) / DIA);
           const hayCambios = cambio > copia || todos.some((i) => (i.updated || 0) > copia);
-          if (dias >= 14 && hayCambios) texto = `Hace ${dias} días que no haces una copia de seguridad.`;
+          if (dias >= 7 && hayCambios) texto = `Hace ${dias} días que no haces una copia de seguridad.`;
         } else {
           const desde = Math.min(...todos.map((i) => i.created || ahora));
-          if (ahora - desde >= 7 * DIA) texto = "Aún no has hecho ninguna copia de seguridad.";
+          if (ahora - desde >= 2 * DIA) texto = "Aún no has hecho ninguna copia de seguridad.";
         }
       }
     } catch (e) { console.warn(e); }
   }
   hint.hidden = !texto;
-  if (texto) $("#backup-hint-text").replaceChildren(el("strong", { text: texto }), " Tus discursos y notas solo están en este dispositivo: guárdala en Archivos o en iCloud.");
+  if (texto) $("#backup-hint-text").replaceChildren(el("strong", { text: texto }), " Tus discursos y notas solo están en este dispositivo: guárdala en OneDrive o iCloud (en «Guardar en Archivos»).");
+}
+
+/* ---- Qué significa cada color (lo elige cada uno; se guarda en este dispositivo) ---- */
+const EJEMPLOS_LEYENDA = {
+  "m-amarillo": "Ideas clave", "m-verde": "Ejemplos", "m-azul": "Textos bíblicos", "m-rosa": "Preguntas",
+  "l-rojo": "No saltar", "l-azul": "Leer tal cual", "l-verde": "Al público", "l-naranja": "Ilustración",
+};
+const significado = (tipo, id) => ((settings.leyenda || {})[`${tipo}-${id}`] || "").trim();
+function abrirLeyenda() {
+  const guardar = debounce(() => saveSettings(), 300);
+  const fila = (tipo, c) => {
+    const clave = `${tipo}-${c.id}`;
+    const input = el("input", { type: "text", maxlength: 30, placeholder: `p. ej. ${EJEMPLOS_LEYENDA[clave]}`, value: significado(tipo, c.id), "aria-label": `Qué significa ${c.nombre.toLowerCase()}` });
+    input.addEventListener("input", () => { settings.leyenda = { ...(settings.leyenda || {}), [clave]: input.value }; guardar(); });
+    const muestra = tipo === "m" ? el("span", { class: `ley-muestra sw-${c.id}` }) : el("span", { class: `ley-muestra ley-letra l-${c.id}`, text: "A" });
+    return el("label", { class: "ley-fila" }, muestra, el("span", { class: "ley-nombre", text: c.nombre }), input);
+  };
+  openSheet([
+    el("h2", { text: "Qué significa cada color" }),
+    el("p", { class: "small-print", text: "Ponle a cada color lo que significa para ti. Sale al elegir el color en el editor y en el filtro del esquema. Se guarda solo en este dispositivo: cada uno puede tener los suyos." }),
+    el("div", { class: "group" }, el("span", { class: "label", text: "Resaltador" }), COLORES.map((c) => fila("m", c))),
+    el("div", { class: "group" }, el("span", { class: "label", text: "Color de letra" }), LETRAS.map((c) => fila("l", c))),
+    el("div", { class: "actions" }, el("button", { class: "action primary", text: "Hecho", onclick: () => closeSheet() })),
+  ], { onClose: () => { saveSettings(); if (currentView === "editor") editor.pintarLeyenda(); if (currentView === "reader" && reader.lateral) reader.lateral.rellenar(); } });
 }
 
 function openSettings() {
@@ -1381,15 +1439,21 @@ function openSettings() {
       }))
     ),
     el("div", { class: "group" },
+      el("span", { class: "label", text: "Colores" }),
+      el("div", { class: "actions" }, el("button", { class: "action", html: icon("marker") + "<span>Qué significa cada color</span>", onclick: () => abrirLeyenda() }))),
+    el("div", { class: "group" },
       el("span", { class: "label", text: "Copia de seguridad" }),
-      el("p", { class: "small-print", text: "Tus discursos y notas se guardan solo en este dispositivo. Haz una copia de vez en cuando y guárdala en Archivos o iCloud." }),
+      el("p", { class: "small-print", text: "Atril guarda solo cada cambio en este dispositivo, pero si se borra la app o se pierde el iPad, se pierde todo. La copia es un archivo con todos tus discursos y notas: guárdalo en OneDrive o iCloud. Te lo recordará cada semana si has cambiado algo." }),
       el("p", { class: "small-print", text: Number(lsGet("atril.copia", "0")) ? `Última copia: ${fmtDate(Number(lsGet("atril.copia", "0")))}.` : "Aún no has hecho ninguna copia." }),
       el("div", { class: "actions" },
         el("button", { class: "action", html: icon("download") + "<span>Hacer copia de seguridad</span>", onclick: () => { closeSheet(); exportBackup(); } }),
         el("button", { class: "action", html: icon("upload") + "<span>Restaurar una copia</span>", onclick: () => { closeSheet(); $("#backup-input").click(); } })
       )
     ),
-    el("p", { class: "small-print", text: `Atril · versión ${APP_VERSION}` }),
+    el("div", { class: "group" },
+      el("span", { class: "label", text: "Versión" }),
+      el("p", { class: "small-print", id: "version-txt", text: `Atril ${fechaDeVersion(APP_VERSION)} (${APP_VERSION}).` }),
+      el("div", { class: "actions" }, el("button", { class: "action", id: "buscar-act", html: icon("download") + "<span>Buscar actualizaciones</span>", onclick: (e) => buscarActualizaciones(e.currentTarget) }))),
     el("div", { class: "actions" }, el("button", { class: "action plain", text: "Cerrar", onclick: () => closeSheet() })),
   ].filter(Boolean));
 }
@@ -2122,7 +2186,7 @@ const reader = {
     // Filtro: todo, solo títulos o un color
     if (colores.size) {
       if (this.filtro !== "todo" && this.filtro !== "titulos" && !colores.has(this.filtro)) this.filtro = "todo";
-      const opciones = [["todo", "Todo"], ["titulos", "Títulos"], ...COLORES.filter((c) => colores.has(c.id)).map((c) => [c.id, c.nombre])];
+      const opciones = [["todo", "Todo"], ["titulos", "Títulos"], ...COLORES.filter((c) => colores.has(c.id)).map((c) => [c.id, significado("m", c.id) || c.nombre])];
       const fila = el("div", { class: "o-filtro", role: "toolbar", "aria-label": "Filtrar el esquema" },
         opciones.map(([val, label]) => el("button", {
           class: "chip" + (COLORES.some((c) => c.id === val) ? ` sw-${val}` : ""), "data-filtro": val,
@@ -2973,6 +3037,7 @@ const editor = {
     const item = { ...this.item, html, title: title || (this.kind === "notes" ? "Nota sin título" : "Sin título"), updated: Date.now() };
     if (!this.versionHecha && this.original && (html !== this.original.html || item.title !== this.original.title)) {
       this.versionHecha = true;
+      if (item.source && !item.alPC) item.alPC = this.original.updated || this.original.created || 1;
       await guardarVersion(this.kind, this.original, "Antes de editar");
     }
     this.item = item;
@@ -3168,7 +3233,7 @@ const editor = {
   togglePaletteLetra(force) {
     const p = $("#palette-letra");
     const show = force ?? p.hidden;
-    if (show) this.togglePalette(false);
+    if (show) { this.togglePalette(false); this.pintarLeyenda(); }
     p.hidden = !show;
     $('#toolbar button[data-cmd="letra"]').setAttribute("aria-expanded", String(show));
     if (show) this.paintPaletteLetra();
@@ -3343,7 +3408,7 @@ const editor = {
   togglePalette(force) {
     const p = $("#palette");
     const show = force ?? p.hidden;
-    if (show) this.togglePaletteLetra(false);
+    if (show) { this.togglePaletteLetra(false); this.pintarLeyenda(); }
     p.hidden = !show;
     $('#toolbar button[data-cmd="highlight"]').setAttribute("aria-expanded", String(show));
     if (show) this.paintPalette();
@@ -3358,6 +3423,24 @@ const editor = {
   paintPalette() {
     const actual = this.colorActual();
     $$("#palette [data-color]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.color === actual)));
+  },
+
+  /** Pone debajo de cada color de las paletas lo que significa (si se ha elegido). */
+  pintarLeyenda() {
+    for (const [sel, tipo, attr, lista] of [["#palette", "m", "color", COLORES], ["#palette-letra", "l", "letra", LETRAS]]) {
+      const pal = $(sel);
+      let alguno = false;
+      for (const c of lista) {
+        const b = pal.querySelector(`[data-${attr}="${c.id}"]`);
+        const nombre = significado(tipo, c.id);
+        if (nombre) alguno = true;
+        b.setAttribute("aria-label", nombre ? `${c.nombre}: ${nombre}` : c.nombre);
+        let cap = b.querySelector(".sw-nombre");
+        if (!cap) { cap = el("span", { class: "sw-nombre" }); b.append(cap); }
+        cap.textContent = nombre;
+      }
+      pal.classList.toggle("con-leyenda", alguno);
+    }
   },
 
   quitarResaltado(m) {
@@ -3496,6 +3579,7 @@ const editor = {
         { label: "Compartir el texto", icon: "share", run: () => shareText(item.title, htmlToText(item.html)) },
         { label: "Tamaño de letra y tema", icon: "aa", run: () => openAaSheet() },
         { label: "Versiones anteriores", icon: "history", run: () => this.abrirVersiones() },
+        { label: "Qué significa cada color", icon: "marker", run: () => abrirLeyenda() },
         { label: "Atajos de teclado", icon: "template", run: () => this.atajosHoja() },
         { label: "Eliminar", icon: "trash", danger: true, run: async () => { await deleteItem(this.kind, item); } },
       ]);
@@ -3675,6 +3759,42 @@ function init() {
   registerSW();
 }
 
+/** «20261109-336d0a44» → «del 9 de noviembre de 2026». */
+function fechaDeVersion(v) {
+  const m = /^(\d{4})(\d{2})(\d{2})/.exec(v || "");
+  if (!m) return "";
+  return "del " + new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])).toLocaleDateString("es-ES", { day: "numeric", month: "long", year: "numeric" });
+}
+
+let actualizandoAMano = false;
+async function recargarConLoNuevo() { if (currentView === "editor") await editor.flush(); location.reload(); }
+
+/** Ajustes → «Buscar actualizaciones»: mira la versión publicada y, si es otra, la instala y recarga. */
+async function buscarActualizaciones(boton) {
+  if (!navigator.onLine) { toast("Sin conexión. Conéctate a internet para buscar actualizaciones."); return; }
+  const span = boton && boton.querySelector("span");
+  const poner = (t) => { if (span) span.textContent = t; };
+  if (boton) boton.disabled = true;
+  poner("Buscando…");
+  try {
+    const sw = await fetch("sw.js?comprobar=" + Date.now(), { cache: "no-store" }).then((r) => r.text());
+    const publicada = (/const VERSION = "([^"]+)"/.exec(sw) || [])[1];
+    if (!publicada || publicada === APP_VERSION) { toast("Ya tienes la última versión de Atril."); return; }
+    poner("Actualizando…");
+    const reg = "serviceWorker" in navigator ? await navigator.serviceWorker.getRegistration() : null;
+    if (!reg) { await recargarConLoNuevo(); return; }
+    actualizandoAMano = true;
+    await reg.update();
+    // Cuando la versión nueva toma el control, se recarga (y si tarda, se recarga igual)
+    setTimeout(() => { if (actualizandoAMano) recargarConLoNuevo(); }, 15000);
+  } catch (e) {
+    console.warn(e);
+    toast("No se pudo comprobar. Inténtalo más tarde.");
+  } finally {
+    if (!actualizandoAMano) { if (boton) boton.disabled = false; poner("Buscar actualizaciones"); }
+  }
+}
+
 function registerSW() {
   if (!("serviceWorker" in navigator) || location.protocol === "file:") return;
   // La primera vez que el service worker toma el control no hay nada que actualizar
@@ -3682,7 +3802,15 @@ function registerSW() {
   navigator.serviceWorker.register("sw.js").catch((e) => console.warn("SW", e));
   navigator.serviceWorker.addEventListener("controllerchange", () => {
     if (!hadController) { hadController = true; return; }
-    toast("Hay una versión nueva de Atril.", { action: "Actualizar", onAction: async () => { if (currentView === "editor") await editor.flush(); location.reload(); }, ms: 10000 });
+    if (actualizandoAMano) { actualizandoAMano = false; recargarConLoNuevo(); return; }
+    toast("Hay una versión nueva de Atril.", { action: "Actualizar", onAction: recargarConLoNuevo, ms: 10000 });
+  });
+  // En el iPad la app se queda abierta días: al volver a ella, mira si hay versión nueva (como mucho cada 6 h)
+  let ultimaVez = Date.now();
+  document.addEventListener("visibilitychange", async () => {
+    if (document.visibilityState !== "visible" || Date.now() - ultimaVez < 6 * 3600 * 1000 || !navigator.onLine) return;
+    ultimaVez = Date.now();
+    try { const reg = await navigator.serviceWorker.getRegistration(); if (reg) await reg.update(); } catch {}
   });
 }
 

@@ -71,3 +71,11 @@ Cada cambio que se sube a GitHub se publica solo en unos minutos. Al abrir Atril
 2. En PowerShell, dentro de esa carpeta: `npm install` y luego `claude`.
 3. Pídele lo que quieras. El archivo CLAUDE.md le explica cómo está hecha.
 4. Cuando funcione, que lo suba a GitHub (`git push`) y se publica solo.
+
+## El Word del PC, la copia de seguridad y las actualizaciones
+
+- **El original está en el PC.** Cuando retocas en el iPad un discurso que vino de un Word, la tarjeta dice **«Cambiado en el iPad»** y, al salir del editor, Atril te ofrece **«Guardar Word»**. El Word sale **con el mismo nombre** que el del PC: en *Guardar en Archivos* elige la misma carpeta de OneDrive (o iCloud) y toca **«Reemplazar»**. Si lo tienes abierto en el PC, ciérralo antes. Si vuelves a abrir el Word del PC sin haber pasado los cambios, Atril te avisa, y lo del iPad queda en *Versiones anteriores*.
+- **Qué significa cada color** (Ajustes): ponle a cada color lo que significa para ti (p. ej. amarillo = ideas clave, rojo = no saltar). Sale en los colores del editor y en el filtro del esquema. Cada persona lo elige en su propio iPad.
+- **Copia de seguridad**: Atril guarda solo cada cambio en el iPad, pero si se borra la app se pierde todo. Te recuerda la copia **cada semana** si has cambiado algo. Guárdala en OneDrive o iCloud.
+- **Actualizaciones**: en Ajustes ves la versión que tienes y el botón **«Buscar actualizaciones»**. Además, Atril mira solo si hay una nueva cuando vuelves a la app después de unas horas.
+

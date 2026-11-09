@@ -842,3 +842,27 @@ button:focus:not(:focus-visible) { outline: none; }
 @media (max-width: 700px) {
   .toolbar.ribbon { -webkit-mask-image: linear-gradient(to right, #000 88%, transparent); mask-image: linear-gradient(to right, #000 88%, transparent); padding-right: 36px; }
 }
+
+/* ---------- Word del PC al día ---------- */
+.card-sinpc { display: inline-flex; align-items: center; padding: 1px 8px; border-radius: 10px; background: var(--warn-bg); color: var(--warn); font-weight: 650; }
+.sheet .nota-pc { background: var(--accent-soft); color: var(--text); padding: 10px 12px; border-radius: 6px; font-size: 14px; }
+
+/* ---------- Qué significa cada color ---------- */
+.palette.con-leyenda .sw { width: auto; min-width: 44px; padding: 0 14px; border-radius: 22px; }
+.palette .sw-nombre { font: 650 14px var(--ui); color: #201f1e; white-space: nowrap; }
+.palette .sw-nombre:empty { display: none; }
+.palette.con-leyenda .sw-letra { width: auto; padding: 0 12px; display: inline-flex; align-items: center; gap: 6px; }
+.palette .sw-letra .sw-nombre { color: inherit; }
+.ley-fila { display: grid; grid-template-columns: 34px 78px minmax(0, 1fr); align-items: center; gap: 10px; padding: 5px 0; }
+.ley-fila input { min-height: 44px; font-size: 16px; }
+.ley-nombre { font-size: 15px; color: var(--muted); }
+.ley-muestra { width: 30px; height: 30px; border-radius: 50%; box-shadow: 0 0 0 1px rgba(0,0,0,.2); }
+.ley-muestra.sw-amarillo { background: #fff176; }
+.ley-muestra.sw-verde { background: #b9f6ca; }
+.ley-muestra.sw-azul { background: #b3e5fc; }
+.ley-muestra.sw-rosa { background: #f8bbd0; }
+.ley-muestra.ley-letra { border-radius: 6px; box-shadow: none; border: 1px solid var(--border); display: inline-flex; align-items: center; justify-content: center; font: 800 18px var(--ui); background: var(--bg); }
+.ley-letra.l-rojo { color: var(--t-rojo); }
+.ley-letra.l-azul { color: var(--t-azul); }
+.ley-letra.l-verde { color: var(--t-verde); }
+.ley-letra.l-naranja { color: var(--t-naranja); }

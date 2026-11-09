@@ -138,7 +138,7 @@ await page.evaluate(() => { localStorage.setItem("atril.copia", String(Date.now(
 await page.reload();
 await page.waitForSelector("#view-home:not([hidden])");
 await page.waitForTimeout(300);
-ok("Avisa si hace más de 14 días de la última copia", (await page.isVisible("#backup-hint")) && (await page.textContent("#backup-hint")).includes("Hace 20 días"), (await page.textContent("#backup-hint-text")).slice(0, 60));
+ok("Avisa si hace más de una semana de la última copia", (await page.isVisible("#backup-hint")) && (await page.textContent("#backup-hint")).includes("Hace 20 días"), (await page.textContent("#backup-hint-text")).slice(0, 60));
 await page.screenshot({ path: `${OUTDIR}/32-aviso-copia.png` });
 await page.click("#backup-now");
 await page.waitForSelector(".sheet >> text=Copia de seguridad lista");
