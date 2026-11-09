@@ -3,6 +3,7 @@
 
 import { enlazarCitas } from "./biblia.js";
 import { crearPlan, tiempoPrevisto, palabraActual, mmss, contarPalabras, minutosEstimados, minutosDeTitulo, tituloSinMinutos, ritmoDeEnsayos, PALABRAS_POR_MINUTO } from "./tiempo.js";
+import { limpiarDibujo, figuraDibujo, svgDibujo } from "./dibujo-svg.js";
 import { COLORES, LETRAS, claseValida, claseDeFondo, colorDeMark, claseLetraValida, claseDeLetra, rgbDe } from "./colores.js";
 import { crearPlantilla, repartirMinutos } from "./plantilla.js";
 import { dividirEnTarjetas, nivelDeCorte, partesDelDiscurso, parteDeBloque, estimarPartes } from "./tarjetas.js";
@@ -142,6 +143,9 @@ const P = {
   nota: '<rect x="3.5" y="2" width="17" height="20" rx="2" fill="currentColor" stroke="none"/><path d="M7.5 8h9M7.5 12h9M7.5 16h5" stroke="#fff" stroke-width="1.6"/>',
   replace: '<path d="M4 7h11l-3-3"/><path d="M20 17H9l3 3"/>',
   lock: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
+  pluma: '<path d="M4 20c4-1 6-3 8-6l5-8a2 2 0 0 0-3-2l-6 9c-2 3-3 5-4 7z"/><path d="M12.5 14.5l-3-2"/>',
+  goma: '<path d="M7 20h11"/><path d="M5.5 15.5l9-9a2 2 0 0 1 3 0l2 2a2 2 0 0 1 0 3l-8 8H9z"/><path d="M10 11l5 5"/>',
+  rotulador: '<path d="M9 15l-3 3v2h4l3-3"/><path d="M9 15l6-9 4 3-6 8z"/><path d="M3 21h8"/>',
   pin: '<path d="M12 16v6"/><path d="M8.5 3h7l-1 6 3.5 3.5V16H6v-3.5L9.5 9z"/>',
   panel: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/><path d="M5.5 8h1.5M5.5 11h1.5"/>',
 };
@@ -160,7 +164,7 @@ const ALLOWED = {
   BLOCKQUOTE: [], IMG: ["src", "alt"], A: ["href"], SUB: [], SUP: [],
 };
 const DROP = new Set(["SCRIPT", "STYLE", "IFRAME", "OBJECT", "EMBED", "NOSCRIPT", "TEMPLATE", "SVG", "MATH", "LINK", "META", "TITLE", "HEAD", "FORM", "INPUT", "BUTTON", "SELECT", "TEXTAREA", "VIDEO", "AUDIO", "CANVAS"]);
-const BLOCKS = new Set(["P", "H1", "H2", "H3", "H4", "UL", "OL", "LI", "TABLE", "BLOCKQUOTE", "DIV", "TR", "TD", "TH", "THEAD", "TBODY"]);
+const BLOCKS = new Set(["P", "H1", "H2", "H3", "H4", "UL", "OL", "LI", "TABLE", "BLOCKQUOTE", "DIV", "TR", "TD", "TH", "THEAD", "TBODY", "FIGURE"]);
 const LETRA_EN = /^(P|H[1-4]|LI|TD|TH|STRONG|B|EM|I|U|S|STRIKE|DEL|MARK|SUB|SUP)$/; // etiquetas cuyo color de letra se conserva
 
 function fondoDe(node) {
@@ -184,6 +188,12 @@ function cleanNode(node) {
     if (child.nodeType !== Node.ELEMENT_NODE) continue;
     let tag = child.tagName.toUpperCase();
     if (DROP.has(tag)) { child.remove(); continue; }
+    // Dibujo: se vuelve a hacer entero a partir de sus datos (del SVG que llega no se guarda nada)
+    if (tag === "FIGURE") {
+      const d = /\bdibujo\b/.test(child.getAttribute("class") || "") ? limpiarDibujo(child.getAttribute("data-dibujo")) : null;
+      if (d && d.t.length) child.replaceWith(figuraDibujo(d)); else child.remove();
+      continue;
+    }
 
     // Color de letra aplicado como estilo sobre otra etiqueta (p. ej. <p style="color:red">, <b style="color:…">)
     if (tag !== "SPAN" && tag !== "FONT" && LETRA_EN.test(tag)) {
@@ -790,11 +800,35 @@ function htmlConTitulo(item) {
   return firstLine === item.title.trim() ? html : `<h1>${escapeHtml(item.title)}</h1>` + html;
 }
 
+/** Para Word y PDF: cada dibujo pasa a ser una imagen PNG (los dos la entienden). */
+async function htmlParaExportar(html) {
+  if (!html.includes("dibujo")) return html;
+  const box = document.createElement("div");
+  box.innerHTML = html;
+  for (const f of [...box.querySelectorAll("figure.dibujo")]) {
+    const d = limpiarDibujo(f.getAttribute("data-dibujo"));
+    if (!d) { f.remove(); continue; }
+    try {
+      const img = new Image();
+      img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svgDibujo(d, { colores: true }));
+      await img.decode();
+      const c = document.createElement("canvas");
+      const escala = 1.6;
+      c.width = Math.round(d.w * escala); c.height = Math.round(d.h * escala);
+      c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+      const p = document.createElement("p");
+      p.append(Object.assign(document.createElement("img"), { src: c.toDataURL("image/png"), alt: "Dibujo", width: 600, height: Math.round((600 * d.h) / d.w) }));
+      f.replaceWith(p);
+    } catch (e) { console.warn("Dibujo sin exportar", e); f.remove(); }
+  }
+  return box.innerHTML;
+}
+
 async function exportWord(kind, item) {
   const close = busy("Preparando el Word…");
   try {
     const { buildDocx } = await import("./docx-export.js");
-    const html = kind === "notes" ? htmlConTitulo(item) : item.html || "<p></p>";
+    const html = await htmlParaExportar(kind === "notes" ? htmlConTitulo(item) : item.html || "<p></p>");
     const blob = await buildDocx(item.title || "Documento", html);
     close();
     // Con el mismo nombre que el Word del PC, para poder sustituirlo
@@ -845,7 +879,7 @@ async function crearPdf(kind, item) {
   try {
     const { buildPdf } = await import("./pdf-export.js");
     const blob = await buildPdf({
-      title: item.title || "Documento", html: htmlConTitulo(item),
+      title: item.title || "Documento", html: await htmlParaExportar(htmlConTitulo(item)),
       size: Number(settings.pdfSize) || 12, family: ["sans", "arial", "verdana"].includes(settings.font) ? "sans" : "serif", highlights: settings.pdfMarks !== false,
     });
     close();
@@ -1082,6 +1116,35 @@ async function deleteItem(kind, item) {
   renderHome();
 }
 
+/** Nota a mano: se abre el lienzo y, al terminar, se guarda como nota. */
+async function notaAMano() {
+  try {
+    const { abrirLienzo } = await import("./lienzo.js");
+    abrirLienzo({
+      confirmar: confirmDialog, icono: icon, titulo: "Nota a mano",
+      alGuardar: async (d) => {
+        const now = Date.now();
+        const fecha = new Date(now).toLocaleDateString("es-ES", { day: "numeric", month: "short" });
+        const item = { id: uid(), title: `Nota a mano · ${fecha}`, html: sanitize(figuraDibujo(d).outerHTML + "<p><br></p>"), created: now, updated: now };
+        await store.put("notes", item);
+        go(`#/editar/notes/${item.id}`);
+      },
+    });
+  } catch (e) { console.error(e); toast("No se pudo abrir el dibujo. Inténtalo de nuevo."); }
+}
+/** Nota dictada: nota nueva con el teclado abierto (para tocar su micrófono). */
+let dictarAlAbrir = null;
+async function notaDictada() {
+  // En el iPad el teclado solo sale si algo coge el foco dentro del mismo toque
+  const f = $("#foco-teclado");
+  if (f) f.focus();
+  const now = Date.now();
+  const item = { id: uid(), title: "", html: "<p><br></p>", created: now, updated: now };
+  await store.put("notes", item);
+  dictarAlAbrir = "notes/" + item.id;
+  go(`#/editar/notes/${item.id}`);
+}
+
 async function newItem(kind, extra = {}) {
   const now = Date.now();
   const item = { id: uid(), title: "", html: "<p><br></p>", created: now, updated: now, ...extra };
@@ -1163,7 +1226,10 @@ async function renderHome() {
       el("button", { class: "text-btn ayuda-word", text: "¿Cómo paso el Word del PC?", onclick: ayudaWord })
     );
   } else {
-    actions.append(el("button", { class: "btn primary", html: icon("plus") + "<span>Nueva nota</span>", onclick: () => newItem("notes") }));
+    actions.append(
+      el("button", { class: "btn primary", html: icon("plus") + "<span>Nueva nota</span>", onclick: () => newItem("notes") }),
+      el("button", { class: "btn", id: "nota-mano", html: icon("pluma") + "<span>Nota a mano</span>", onclick: notaAMano }),
+      el("button", { class: "btn", id: "nota-dictar", html: icon("mic") + "<span>Dictar</span>", onclick: notaDictada }));
   }
 
   let items = [];
@@ -1890,22 +1956,23 @@ function bloqueEnLinea(scrollEl, contenido) {
    la pantalla ancha (iPad en horizontal). Marca la parte en la que se va.
    ============================================================ */
 const mqPanel = window.matchMedia("(min-width: 1024px)");
-function crearPanel({ aside, lista, ajuste, scrollEl, contenido, rellenar, alCambiar = () => {} }) {
+function crearPanel({ aside, lista, ajuste, scrollEl, contenido, rellenar, alCambiar = () => {}, util = () => true }) {
   return {
     abierto: false,
     cabe: () => mqPanel.matches,
-    /** Lo abre o lo cierra según el ajuste y el ancho de la pantalla. */
-    abrir() {
-      const v = this.cabe() && settings[ajuste] !== false;
+    /** Lo abre o lo cierra según el ajuste y el ancho de la pantalla (solo se abre solo si sirve: `util`). */
+    abrir({ forzar = false } = {}) {
+      const v = this.cabe() && (forzar || (settings[ajuste] !== false && util()));
       if (v !== this.abierto) mantenerSitio(scrollEl, contenido, () => { aside.hidden = !v; this.abierto = v; });
       if (v) { this.rellenar(); }
       alCambiar(v);
       return v;
     },
     alternar() {
-      settings[ajuste] = !this.abierto;
+      const abrir = !this.abierto;
+      settings[ajuste] = abrir;
       saveSettings();
-      this.abrir();
+      this.abrir({ forzar: abrir });
     },
     rellenar() {
       if (!this.abierto) return;
@@ -2405,6 +2472,8 @@ const reader = {
       aside: $("#reader-side"), lista: sideList, ajuste: "panel", scrollEl: this.scrollEl, contenido: this.contentEl,
       rellenar: (out) => this.renderOutline(out),
       alCambiar: () => this.pintarBotonEsquema(),
+      // En las notas sin títulos ni resaltados, el panel no se abre solo
+      util: () => this.kind === "docs" || !!this.contentEl.querySelector("h1, h2, h3, h4, mark"),
     });
     sideList.addEventListener("click", (e) => this.clicEsquema(e, sideList));
     $("#reader-side-close").addEventListener("click", () => this.lateral.alternar());
@@ -2913,11 +2982,12 @@ const editor = {
     this.original = item; this.versionHecha = false; // para «Versiones anteriores»
     this.titleInput.value = item.title || "";
     this.titleInput.placeholder = kind === "notes" ? "Título de la nota" : "Título del discurso";
-    this.area.innerHTML = item.html && item.html !== "<p><br></p>" ? item.html : "<p><br></p>";
+    this.ponerHtml(item.html && item.html !== "<p><br></p>" ? item.html : "<p><br></p>");
     $("#save-state").textContent = "";
     document.title = (item.title || "Editar") + " · Atril";
     this.togglePalette(false);
     this.togglePaletteLetra(false);
+    $("#dictado-ayuda").hidden = true;
     reemplazo.cerrar();
     this.cinta("inicio");
     this.pintarTiempo();
@@ -2925,8 +2995,9 @@ const editor = {
     this.scrollEl.scrollTop = 0;
     this.lateral.abrir();
     this.paintToolbar();
-    // Documento nuevo: el cursor empieza en el título
-    if (!item.title && (!item.html || item.html === "<p><br></p>")) this.titleInput.focus();
+    // Nota dictada: el cursor en el texto y la ayuda del micrófono; documento nuevo: el cursor en el título
+    if (dictarAlAbrir === kind + "/" + id) { dictarAlAbrir = null; this.dictar(); }
+    else if (!item.title && (!item.html || item.html === "<p><br></p>")) this.titleInput.focus();
   },
 
   markDirty() {
@@ -3065,6 +3136,8 @@ const editor = {
       mas: () => this.zoom(2),
       aspecto: () => openAaSheet(),
       navegacion: () => (this.lateral.cabe() ? this.lateral.alternar() : this.navegacionHoja()),
+      dibujo: () => this.nuevoDibujo(),
+      dictar: () => this.dictar(),
       letra: () => this.togglePaletteLetra(),
       parte: () => this.parteNueva(),
       minutos: () => this.minutosParte(),
@@ -3390,6 +3463,65 @@ const editor = {
     ]);
   },
 
+  /** Pone el HTML en el editor; los dibujos son bloques que no se editan como texto (se tocan para cambiarlos). */
+  ponerHtml(html) {
+    this.area.innerHTML = html;
+    this.area.querySelectorAll("figure.dibujo").forEach((f) => f.setAttribute("contenteditable", "false"));
+  },
+
+  /* ---- Dibujos y escritura a mano ---- */
+  async lienzo(opciones) {
+    try {
+      const { abrirLienzo } = await import("./lienzo.js");
+      abrirLienzo({ confirmar: confirmDialog, icono: icon, ...opciones });
+    } catch (e) { console.error(e); toast("No se pudo abrir el dibujo. Inténtalo de nuevo."); }
+  },
+  /** Dibujo nuevo: después del párrafo donde está el cursor (o al final). */
+  nuevoDibujo() {
+    const ref = this.bloqueDelCursor();
+    this.lienzo({
+      titulo: "Dibujo o escritura a mano",
+      alGuardar: (d) => {
+        const f = figuraDibujo(d);
+        f.setAttribute("contenteditable", "false");
+        if (ref && ref.parentNode === this.area) ref.after(f); else this.area.append(f);
+        if (!f.nextElementSibling) { const p = document.createElement("p"); p.innerHTML = "<br>"; f.after(p); }
+        // Si el párrafo donde estaba el cursor estaba vacío, el dibujo ocupa su sitio
+        if (ref && ref.tagName === "P" && !ref.textContent.trim() && !ref.querySelector("img")) ref.remove();
+        f.scrollIntoView({ block: "nearest" });
+        this.markDirty();
+      },
+    });
+  },
+  editarDibujo(f) {
+    const datos = limpiarDibujo(f.getAttribute("data-dibujo"));
+    if (!datos) return;
+    this.lienzo({
+      datos, titulo: "Dibujo o escritura a mano",
+      alGuardar: (d) => { const nf = figuraDibujo(d); nf.setAttribute("contenteditable", "false"); f.replaceWith(nf); this.markDirty(); },
+      alQuitar: () => {
+        const antes = this.area.innerHTML;
+        f.remove();
+        this.markDirty();
+        toast("Dibujo quitado.", { action: "Deshacer", ms: 6000, onAction: () => { this.area.innerHTML = antes; this.markDirty(); } });
+      },
+    });
+  },
+
+  /* ---- Dictar (con el micrófono del teclado del iPad) ---- */
+  dictar() {
+    const sel = window.getSelection();
+    if (!sel || !sel.rangeCount || !this.area.contains(sel.anchorNode)) {
+      // Cursor al final del texto
+      const ult = [...this.area.children].reverse().find((b) => b.tagName !== "FIGURE") || this.area;
+      const r = document.createRange();
+      r.selectNodeContents(ult); r.collapse(false);
+      sel.removeAllRanges(); sel.addRange(r);
+    }
+    this.area.focus();
+    $("#dictado-ayuda").hidden = false;
+  },
+
   /* ---- Versiones anteriores ---- */
   async abrirVersiones() {
     await this.flush();
@@ -3397,7 +3529,7 @@ const editor = {
       alRecuperar: async (nuevo) => {
         this.item = nuevo; this.original = nuevo; this.versionHecha = false;
         this.titleInput.value = nuevo.title || "";
-        this.area.innerHTML = nuevo.html;
+        this.ponerHtml(nuevo.html);
         this.pintarTiempo();
         this.lateral.rellenar();
       },
@@ -3514,6 +3646,7 @@ const editor = {
       aside: $("#editor-side"), lista: sideList, ajuste: "panelEditor", scrollEl: this.scrollEl, contenido: this.area,
       rellenar: (out) => this.rellenarNavegacion(out),
       alCambiar: (v) => { navBtn.setAttribute("aria-pressed", String(v)); navBtn.classList.toggle("active", v); },
+      util: () => this.kind === "docs" || !!this.area.querySelector("h1, h2, h3, h4"),
     });
     sideList.addEventListener("pointerdown", (e) => { if (e.target.closest(".o-item")) e.preventDefault(); }); // no quita el teclado
     sideList.addEventListener("click", (e) => {
@@ -3528,6 +3661,9 @@ const editor = {
     this.scrollEl.addEventListener("scroll", () => { if (!navRaf) navRaf = requestAnimationFrame(() => { navRaf = 0; this.lateral.pintarActual(); }); }, { passive: true });
     mqPanel.addEventListener("change", () => { if (currentView === "editor" && this.item) this.lateral.abrir(); });
     this.area.addEventListener("keydown", (e) => this.atajo(e));
+    // Tocar un dibujo lo abre para cambiarlo
+    this.area.addEventListener("click", (e) => { const f = e.target.closest && e.target.closest("figure.dibujo"); if (f && this.area.contains(f)) { e.preventDefault(); this.editarDibujo(f); } });
+    $("#dictado-ok").addEventListener("click", () => { $("#dictado-ayuda").hidden = true; this.area.focus(); });
     $("#editor-time").addEventListener("click", () => this.abrirTiempo());
     $$(".ribbon-tabs [data-rtab]").forEach((t) => t.addEventListener("click", () => this.cinta(t.dataset.rtab)));
     $("#ed-menos").addEventListener("click", () => this.zoom(-2));

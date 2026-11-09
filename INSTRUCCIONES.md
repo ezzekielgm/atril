@@ -79,3 +79,10 @@ Cada cambio que se sube a GitHub se publica solo en unos minutos. Al abrir Atril
 - **Copia de seguridad**: Atril guarda solo cada cambio en el iPad, pero si se borra la app se pierde todo. Te recuerda la copia **cada semana** si has cambiado algo. Guárdala en OneDrive o iCloud.
 - **Actualizaciones**: en Ajustes ves la versión que tienes y el botón **«Buscar actualizaciones»**. Además, Atril mira solo si hay una nueva cuando vuelves a la app después de unas horas.
 
+## Apple Pencil y voz
+
+- **Escribir a mano y que se convierta en letra**: escribe con el Apple Pencil directamente sobre el texto del editor y el iPad lo pasa a letra. Tiene que estar activado en *Ajustes del iPad → Apple Pencil → Escribir a mano*. Funciona en español.
+- **Dibujar o dejar la letra a mano**: en el editor, *Insertar → Dibujo o a mano*. Tienes bolígrafo (con el lápiz, engorda al apretar), rotulador, goma, 4 colores y 3 grosores, deshacer, «Más espacio» y «Borrar todo». En cuanto usas el lápiz, el dedo solo mueve la hoja, así que puedes apoyar la mano. Al tocar «Hecho» se mete en el texto; tócalo para cambiarlo o quitarlo. Sale también al leer, en Presentar, y en Word y PDF como imagen.
+- **Nota a mano**: en *Notas → Nota a mano* se abre directamente la hoja y se guarda como nota.
+- **Dictar**: en *Notas → Dictar* (o *Insertar → Dictar* en el editor) se abre el teclado: toca su **micrófono** y habla. Di «coma», «punto» o «nuevo párrafo». Con teclado físico, pulsa dos veces la tecla 🌐 o Fn. (Apple no deja que las apps web de la pantalla de inicio usen su propio botón de dictado, por eso se usa el del teclado.)
+

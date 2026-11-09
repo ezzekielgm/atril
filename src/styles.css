@@ -866,3 +866,78 @@ button:focus:not(:focus-visible) { outline: none; }
 .ley-letra.l-azul { color: var(--t-azul); }
 .ley-letra.l-verde { color: var(--t-verde); }
 .ley-letra.l-naranja { color: var(--t-naranja); }
+
+/* ---------- Dibujos y escritura a mano dentro del texto ---------- */
+.doc-content figure.dibujo { margin: .5em 0 .8em; }
+.doc-content figure.dibujo svg { display: block; width: 100%; height: auto; overflow: visible; }
+.k-negro { fill: var(--text); }
+.k-azul { fill: var(--t-azul); }
+.k-rojo { fill: var(--t-rojo); }
+.k-verde { fill: var(--t-verde); }
+.rotu { opacity: .45; }
+.rotu.k-amarillo { fill: #ffd400; }
+.rotu.k-verde { fill: #2fd36a; }
+.rotu.k-azul { fill: #34b4f5; }
+.rotu.k-rosa { fill: #ff6fae; }
+[data-theme="oscuro"] .rotu { opacity: .5; }
+/* En el editor: se ve que es un bloque y se toca para cambiarlo */
+.editor figure.dibujo { border-radius: 6px; outline: 1px dashed var(--border); outline-offset: 4px; cursor: pointer; -webkit-user-select: none; user-select: none; }
+.editor figure.dibujo:active { outline-color: var(--accent); }
+
+/* ---------- Lienzo (pantalla completa) ---------- */
+.con-lienzo, .con-lienzo body { overflow: hidden; }
+.lienzo {
+  position: fixed; inset: 0; z-index: 38; background: var(--desk); display: flex; flex-direction: column;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left); font-family: var(--ui);
+}
+.lz-barra { flex: none; display: flex; align-items: center; gap: 6px; padding: 6px 10px; background: var(--bar); color: var(--bar-text); min-height: 56px; }
+.lz-barra button { color: inherit; min-height: 44px; border-radius: 6px; }
+.lz-barra button:disabled { opacity: .4; }
+.lz-titulo { font-size: 18px; font-weight: 650; margin-left: 6px; }
+.lz-hueco { flex: 1; }
+.lz-txt { padding: 0 12px; font: 600 16px var(--ui); }
+.lz-ico { width: 44px; display: inline-flex; align-items: center; justify-content: center; }
+.lz-ico svg { width: 22px; height: 22px; }
+.lz-hecho { padding: 0 18px; font: 700 16px var(--ui); background: var(--bar-soft); }
+.lz-herramientas { flex: none; display: flex; align-items: center; gap: 6px 18px; flex-wrap: wrap; padding: 8px 12px; background: var(--bg); border-bottom: 1px solid var(--border); }
+.lz-grupo { display: flex; align-items: center; gap: 6px; }
+.lz-grupo [data-h] { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 12px; border-radius: 6px; font: 600 15px var(--ui); color: var(--text); border: 1px solid transparent; }
+.lz-grupo [data-h] svg { width: 22px; height: 22px; }
+.lz-grupo [data-h][aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+.lz-color { width: 40px; height: 40px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; border: 2px solid transparent; }
+.lz-color i { display: block; width: 26px; height: 26px; border-radius: 50%; background: currentColor; }
+.lz-color.k-negro { color: var(--text); }
+.lz-color.k-azul { color: var(--t-azul); }
+.lz-color.k-rojo { color: var(--t-rojo); }
+.lz-color.k-verde { color: var(--t-verde); }
+.lz-color.rotu { opacity: 1; }
+.lz-color.rotu.k-amarillo { color: #ffd400; }
+.lz-color.rotu.k-verde { color: #2fd36a; }
+.lz-color.rotu.k-azul { color: #34b4f5; }
+.lz-color.rotu.k-rosa { color: #ff6fae; }
+.lz-color[aria-pressed="true"] { border-color: var(--accent); }
+.lz-grosor { width: 40px; height: 40px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid transparent; }
+.lz-grosor i { display: block; border-radius: 50%; background: var(--text); }
+.lz-grosor[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); }
+.lz-grupo .lz-txt { min-height: 44px; border-radius: 6px; color: var(--accent); }
+.lz-grupo .lz-peligro { color: var(--danger); }
+.lz-hoja { flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 16px; }
+.lz-papel { max-width: 1100px; margin: 0 auto; background: var(--bg); border-radius: 6px; box-shadow: 0 1px 4px rgba(0,0,0,.15); }
+.lz-svg { display: block; width: 100%; touch-action: none; cursor: crosshair; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+.lz-hoja.con-lapiz .lz-svg { touch-action: pan-y; }
+.lz-hoja.con-goma .lz-svg { cursor: cell; }
+.lz-pauta line { stroke: var(--border); stroke-width: 1; opacity: .7; }
+.lz-ayuda { flex: none; margin: 0; padding: 6px 14px calc(8px + env(safe-area-inset-bottom)); font-size: 13px; color: var(--muted); text-align: center; background: var(--desk); }
+@media (max-width: 700px) {
+  .lz-grupo [data-h] span { display: none; }
+  .lz-herramientas { gap: 6px 10px; }
+  .lz-hoja { padding: 8px; }
+}
+
+/* ---------- Dictar ---------- */
+.dictado-ayuda { flex: none; display: flex; align-items: center; gap: 12px; padding: 8px 14px; background: var(--accent-soft); border-bottom: 1px solid var(--border); }
+.dictado-ayuda[hidden] { display: none; }
+.dictado-ayuda p { margin: 0; flex: 1; font-size: 15px; line-height: 1.35; }
+.dictado-ayuda .small-print { display: block; font-size: 13px; color: var(--muted); }
+.dict-ico svg { width: 26px; height: 26px; color: var(--accent); }
+.foco-teclado { position: fixed; top: 0; left: -1000px; width: 10px; height: 10px; opacity: 0; font-size: 16px; }

@@ -202,6 +202,9 @@
     <button data-cmd="minutos" class="grande"><span data-icon="clock"></span><span>Minutos de la parte</span></button>
     <span class="sep"></span>
     <button data-cmd="pausa" class="grande"><span class="ico-pausa">‖</span><span>Pausa</span></button>
+    <span class="sep"></span>
+    <button data-cmd="dibujo" class="grande"><span data-icon="pluma"></span><span>Dibujo o a mano</span></button>
+    <button data-cmd="dictar" class="grande"><span data-icon="mic"></span><span>Dictar</span></button>
   </div>
   <div class="toolbar ribbon" data-rpanel="revisar" hidden>
     <button data-cmd="buscar" class="grande"><span data-icon="search"></span><span>Buscar y reemplazar</span></button>
@@ -237,6 +240,11 @@
     <span class="spacer"></span>
     <button data-letra="cerrar" aria-label="Cerrar los colores" data-icon="close"></button>
   </div>
+  <div class="dictado-ayuda" id="dictado-ayuda" role="status" hidden>
+    <span class="dict-ico" data-icon="mic"></span>
+    <p><strong>Toca el micrófono del teclado y habla.</strong> Di «coma», «punto» o «nuevo párrafo». Para parar, vuelve a tocarlo. <span class="small-print">Con teclado físico: pulsa dos veces la tecla 🌐 o Fn.</span></p>
+    <button class="chip" id="dictado-ok">Entendido</button>
+  </div>
   <div class="replacebar" id="replacebar" role="search" hidden>
     <label class="search"><span data-icon="search"></span><input id="rep-buscar" type="search" placeholder="Buscar" autocomplete="off" enterkeyhint="search"></label>
     <span class="find-count" id="rep-count" role="status"></span>
@@ -267,6 +275,7 @@
 </section>
 
 <div class="zoom-toast" id="zoom-toast" hidden></div>
+<input id="foco-teclado" class="foco-teclado" type="text" aria-hidden="true" tabindex="-1" autocomplete="off">
 <div class="toast" id="toast" hidden></div>
 <div class="overlay" id="overlay" hidden></div>
 
