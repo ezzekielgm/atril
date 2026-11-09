@@ -62,6 +62,7 @@
       </div>
     </div>
     <div class="home-actions" id="home-actions"></div>
+    <div class="seguir" id="seguir" hidden></div>
     <ul class="list" id="list"></ul>
     <div class="empty" id="empty" hidden></div>
   </div></div>
@@ -90,7 +91,11 @@
   <div class="pres-bar" id="pres-bar" hidden>
     <button class="pres-timer" id="pres-timer" aria-label="Cronómetro"><span class="pres-t" id="pres-timer-text">00:00</span><span class="pres-hint" id="pres-hint">Toca para empezar</span></button>
     <div class="pres-info">
-      <span class="pace" id="pres-pace" role="status" hidden></span>
+      <div class="pres-fila">
+        <span class="pace" id="pres-pace" role="status" hidden></span>
+        <span class="pres-quedan" id="pres-quedan" hidden></span>
+        <span class="pres-reloj" id="pres-reloj" aria-label="Hora"></span>
+      </div>
       <div class="pres-parte" id="pres-parte"></div>
       <div class="pres-sigue" id="pres-sigue"></div>
     </div>
@@ -107,10 +112,21 @@
     <button class="icon-btn" id="find-close" aria-label="Cerrar la búsqueda" data-icon="close"></button>
   </div>
   <div class="progress"><div id="progress-bar"></div></div>
-  <div class="scroll reader-scroll" id="reader-scroll">
-    <article class="doc-content" id="reader-content"></article>
-    <div class="doc-content outline" id="reader-outline" hidden></div>
+  <div class="split-body">
+    <aside class="side-pane" id="reader-side" aria-label="Esquema" hidden>
+      <div class="side-head"><span>Esquema</span><button class="icon-btn small" id="reader-side-close" aria-label="Cerrar el esquema" data-icon="close"></button></div>
+      <div class="side-list outline" id="reader-side-list"></div>
+    </aside>
+    <div class="scroll reader-scroll" id="reader-scroll">
+      <article class="doc-content" id="reader-content"></article>
+      <div class="doc-content outline" id="reader-outline" hidden></div>
+    </div>
   </div>
+  <footer class="statusbar reader-estado" id="reader-estado">
+    <span class="re-parte" id="re-parte"></span>
+    <span class="spacer"></span>
+    <span class="re-quedan" id="re-quedan"></span>
+  </footer>
   <button class="float-timer" id="float-timer" aria-label="Cronómetro" hidden></button>
   <button class="pres-salir" id="pres-salir" hidden><span data-icon="lock"></span><span>Mantén pulsado para salir</span><i class="pres-carga"></i></button>
   <div class="tp-guide" id="tp-guide" aria-hidden="true" hidden></div>
@@ -185,6 +201,7 @@
   </div>
   <div class="toolbar ribbon" data-rpanel="vista" hidden>
     <button data-cmd="leer" class="grande"><span data-icon="book"></span><span>Modo lectura</span></button>
+    <button data-cmd="navegacion" class="grande" aria-pressed="false"><span data-icon="panel"></span><span>Panel de navegación</span></button>
     <span class="sep"></span>
     <button data-cmd="menos" class="txt" aria-label="Letra más pequeña">A−</button>
     <button data-cmd="mas" class="txt" aria-label="Letra más grande">A+</button>
@@ -211,8 +228,14 @@
     <button class="btn" id="rep-uno">Reemplazar</button>
     <button class="btn" id="rep-todo">Reemplazar todo</button>
   </div>
-  <div class="scroll editor-scroll" id="editor-scroll">
-    <div class="doc-content editor" id="editor" contenteditable="true" spellcheck="true" autocapitalize="sentences"></div>
+  <div class="split-body">
+    <aside class="side-pane" id="editor-side" aria-label="Navegación" hidden>
+      <div class="side-head"><span>Navegación</span><button class="icon-btn small" id="editor-side-close" aria-label="Cerrar el panel de navegación" data-icon="close"></button></div>
+      <div class="side-list outline" id="editor-side-list"></div>
+    </aside>
+    <div class="scroll editor-scroll" id="editor-scroll">
+      <div class="doc-content editor" id="editor" contenteditable="true" spellcheck="true" autocapitalize="sentences"></div>
+    </div>
   </div>
   <footer class="statusbar">
     <span id="ed-palabras"></span>

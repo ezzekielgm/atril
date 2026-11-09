@@ -175,6 +175,31 @@ button:focus:not(:focus-visible) { outline: none; }
 .card-snippet.una { -webkit-line-clamp: 1; grid-row: 2; }
 .card-more { position: absolute; right: 4px; bottom: 2px; width: 44px; height: 44px; border-radius: 6px; display: flex; align-items: center; justify-content: center; color: var(--muted); }
 .card-more svg { width: 22px; height: 22px; }
+/* Lo leído, abajo de la tarjeta (como en la biblioteca de Kindle) */
+.card-prog { position: absolute; left: 58px; right: 56px; bottom: 7px; height: 3px; border-radius: 2px; background: var(--surface-2); pointer-events: none; }
+.card-prog i { display: block; height: 100%; border-radius: 2px; background: var(--accent); }
+.card.con-prog .card-main { padding-bottom: 20px; }
+.card-pin { display: inline-flex; align-items: center; gap: 4px; color: var(--accent); font-weight: 600; }
+.card-pin svg { width: 14px; height: 14px; }
+.card.fijado { border-color: var(--accent); border-color: color-mix(in srgb, var(--accent) 45%, var(--border)); }
+/* «Seguir donde lo dejaste» */
+.seguir {
+  margin: 2px 16px 12px; padding: 16px 18px; border-radius: var(--radius); background: var(--bg); border: 1px solid var(--border);
+  border-left: 4px solid var(--accent); display: flex; align-items: center; gap: 14px 22px; flex-wrap: wrap;
+}
+.seg-txt { flex: 1 1 300px; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.seg-label { font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--accent); }
+.seg-titulo { font-size: 20px; font-weight: 650; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.seg-meta { font-size: 14px; color: var(--muted); }
+.seg-prog { display: block; height: 4px; border-radius: 2px; background: var(--surface-2); margin-top: 6px; max-width: 420px; }
+.seg-prog i { display: block; height: 100%; border-radius: 2px; background: var(--accent); }
+.seg-btns { display: flex; gap: 10px; flex-wrap: wrap; }
+.seg-btns .btn { min-height: 48px; padding: 0 18px; font-size: 16px; white-space: nowrap; }
+@media (max-width: 480px) {
+  .seguir { margin: 2px 12px 12px; padding: 14px; }
+  .seg-btns { width: 100%; gap: 8px; }
+  .seg-btns .btn { flex: 1 1 auto; padding: 0 10px; font-size: 15px; gap: 6px; }
+}
 .empty { text-align: center; color: var(--muted); padding: 56px 24px; max-width: 520px; margin: 0 auto; }
 .empty h2 { color: var(--text); font-size: 21px; font-weight: 650; margin: 0 0 10px; }
 .empty p { margin: 0; line-height: 1.5; }
@@ -237,6 +262,34 @@ button:focus:not(:focus-visible) { outline: none; }
 .progress { flex: none; height: 3px; background: transparent; }
 .progress div { height: 100%; width: 0; background: var(--accent); opacity: .5; border-radius: 0 2px 2px 0; }
 #view-reader.immersive .reader-bar { position: absolute; left: 0; right: 0; top: calc(-1 * var(--topbar) - 6px); z-index: 5; opacity: 0; pointer-events: none; }
+/* Texto con panel lateral (esquema en el lector, navegación en el editor) */
+.split-body { flex: 1; min-height: 0; display: flex; }
+.split-body > .scroll { flex: 1; min-width: 0; }
+.side-pane { flex: none; width: 290px; display: flex; flex-direction: column; background: var(--desk); border-right: 1px solid var(--border); }
+.side-head { flex: none; display: flex; align-items: center; justify-content: space-between; padding: 6px 6px 2px 18px; font-size: 13px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
+.side-head .icon-btn { width: 40px; height: 40px; }
+.side-list { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; padding: 2px 8px 40px; font: 16px/1.35 var(--ui); gap: 1px; }
+.side-list.outline .o-item { border-radius: 6px; padding: 9px 10px; min-height: 40px; }
+.side-list.outline .o-h { margin-top: 2px; }
+.side-list.outline .o-h1 { font-size: 17px; }
+.side-list.outline .o-h2 { font-size: 16px; }
+.side-list.outline .o-h3, .side-list.outline .o-h4 { font-size: 15px; padding-left: 22px; }
+.side-list.outline .o-m { font-size: 15px; color: var(--text); padding-left: 30px; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.side-list.outline .o-m::before { left: 13px; top: 15px; width: 8px; height: 8px; }
+.side-list.outline .o-min { font-size: 12px; }
+.side-list.outline .o-aqui { font-size: 14px; }
+.side-list.outline .o-filtro { position: sticky; top: 0; z-index: 1; background: var(--desk); padding: 4px 0 8px; margin: 0; }
+.side-list.outline .o-filtro .chip { min-height: 36px; padding: 0 12px; font-size: 14px; }
+.side-list.outline .o-empty { font-size: 15px; padding: 20px 8px; }
+.side-list.outline .o-empty h2 { font-size: 17px; }
+.side-list .o-item.actual { background: var(--accent-soft); box-shadow: inset 3px 0 0 var(--accent); }
+.side-list .o-item:active { background: var(--surface-2); }
+#view-reader.presentando .side-pane { display: none; }
+/* Barra de estado del lector (como el pie de Kindle): parte, lo leído y lo que queda */
+.reader-estado { min-height: 32px; font-size: 13px; gap: 8px; background: var(--bg); }
+.reader-estado .re-parte { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.reader-estado .re-quedan { flex: none; font-variant-numeric: tabular-nums; }
+#view-reader.immersive .reader-estado, #view-reader.presentando .reader-estado { display: none; }
 
 /* ---------- Editor: como Word ---------- */
 .title-input { flex: 1; min-width: 0; height: 40px; border: 0; outline: 0; background: transparent; font-size: 17px; font-weight: 600; padding: 0 6px; border-radius: 4px; }
@@ -651,13 +704,24 @@ button:focus:not(:focus-visible) { outline: none; }
 }
 .pres-t { font-size: 46px; font-weight: 700; line-height: 1.05; font-variant-numeric: tabular-nums; letter-spacing: .01em; }
 .pres-hint { font-size: 13px; color: var(--muted); }
-.pres-timer.running { background: var(--accent); color: var(--accent-text); }
+.pres-timer.running { background: #1e7b34; color: #fff; } /* semáforo: verde mientras hay tiempo */
 .pres-timer.running .pres-hint { color: inherit; opacity: .85; }
 .pres-timer.warn { background: #f2a51a; color: #241600; }
 .pres-timer.over { background: var(--danger); color: #fff; }
 .pres-timer.warn .pres-hint, .pres-timer.over .pres-hint { color: inherit; opacity: .85; }
-.pres-info { min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
+/* Raya de color arriba y destello al cambiar a ámbar o rojo: se ve con el rabillo del ojo */
+.pres-bar.warn { box-shadow: inset 0 5px 0 #f2a51a; }
+.pres-bar.over { box-shadow: inset 0 5px 0 var(--danger); }
+.pres-bar.destello { animation: destello 1.6s ease-out; }
+@keyframes destello { 0%, 30% { background: var(--warn-bg); } 15%, 45% { background: var(--bg); } 60% { background: var(--warn-bg); } 100% { background: var(--bg); } }
+.pres-bar.over.destello { animation-name: destelloRojo; }
+@keyframes destelloRojo { 0%, 30% { background: rgba(220, 40, 60, .22); } 15%, 45% { background: var(--bg); } 60% { background: rgba(220, 40, 60, .22); } 100% { background: var(--bg); } }
+.pres-info { min-width: 0; display: flex; flex-direction: column; align-items: stretch; gap: 4px; }
 .pres-info .pace { font-size: 15px; }
+.pres-fila { display: flex; align-items: center; gap: 8px; min-height: 30px; }
+.pres-quedan { font-size: 15px; font-weight: 650; padding: 4px 10px; border-radius: 15px; background: var(--surface); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.pres-reloj { margin-left: auto; display: inline-flex; align-items: center; gap: 5px; font-size: 17px; font-weight: 650; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.pres-reloj svg { width: 17px; height: 17px; }
 .pres-parte { max-width: 100%; font-size: 19px; font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pres-sigue { max-width: 100%; font-size: 15px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pres-prog { grid-column: 1 / -1; display: flex; gap: 4px; }
@@ -680,7 +744,11 @@ button:focus:not(:focus-visible) { outline: none; }
   .pres-t { font-size: 36px; }
   .pres-parte { font-size: 16px; }
   .pres-sigue { font-size: 13px; }
+  .pres-fila { flex-wrap: wrap; gap: 4px 6px; min-height: 0; }
+  .pres-quedan, .pres-info .pace { font-size: 13px; padding: 3px 8px; }
+  .pres-reloj { display: none; }
 }
+@media (prefers-reduced-motion: reduce) { .pres-bar.destello { animation: none; } }
 
 /* ---------- Bienvenida (sin discursos) ---------- */
 .empty.bienvenida { max-width: 560px; text-align: left; padding: 28px 20px 48px; color: var(--text); }
@@ -698,3 +766,10 @@ button:focus:not(:focus-visible) { outline: none; }
 .bv-mas { display: flex; gap: 4px 12px; flex-wrap: wrap; margin-top: 10px; margin-left: -12px; }
 .home-actions .ayuda-word { font-size: 15px; }
 .lista-pasos { margin: 0; padding-left: 1.3em; display: flex; flex-direction: column; gap: 8px; line-height: 1.45; }
+
+/* ---------- Atajos de teclado (editor) ---------- */
+.atajos { display: flex; flex-direction: column; gap: 2px; }
+.atajo { display: grid; grid-template-columns: minmax(130px, auto) 1fr; gap: 14px; align-items: center; padding: 7px 0; border-bottom: 1px solid var(--border); }
+.atajo:last-child { border-bottom: 0; }
+.atajo kbd { font: 600 14px var(--ui); background: var(--surface); border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 5px; padding: 3px 8px; white-space: nowrap; justify-self: start; }
+.atajo span { font-size: 15px; }

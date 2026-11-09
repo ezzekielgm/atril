@@ -142,6 +142,8 @@ const P = {
   nota: '<rect x="3.5" y="2" width="17" height="20" rx="2" fill="currentColor" stroke="none"/><path d="M7.5 8h9M7.5 12h9M7.5 16h5" stroke="#fff" stroke-width="1.6"/>',
   replace: '<path d="M4 7h11l-3-3"/><path d="M20 17H9l3 3"/>',
   lock: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
+  pin: '<path d="M12 16v6"/><path d="M8.5 3h7l-1 6 3.5 3.5V16H6v-3.5L9.5 9z"/>',
+  panel: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/><path d="M5.5 8h1.5M5.5 11h1.5"/>',
 };
 const icon = (name) =>
   `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${P[name] || ""}</svg>`;
@@ -354,6 +356,7 @@ const store = {
 const DEFAULTS = {
   fontSize: 26, theme: "claro", font: "sans", lineHeight: 1.6, wakeLock: true, tab: "docs", refLinks: "app",
   grabar: false, tpWpm: 130, pdfSize: 16, pdfMarks: true, markColor: "amarillo", ppm: PALABRAS_POR_MINUTO,
+  panel: true, panelEditor: true, presToque: true, // panel lateral (lector / editor) y pasar página tocando al presentar
 };
 const FS_MIN = 14, FS_MAX = 80;
 let settings = { ...DEFAULTS };
@@ -848,11 +851,14 @@ function itemActions(kind, item) {
     : { label: "Pasar a Notas", icon: "move", run: () => moveItem("docs", "notes", item) };
   const del = { label: "Eliminar", icon: "trash", danger: true, run: () => deleteItem(kind, item) };
   common.splice(1, 0, { label: "Guardar como PDF", icon: "pdf", run: () => exportPdf(kind, item) });
+  const fijar = { label: item.fijado ? "Quitar de arriba" : "Fijar arriba", icon: "pin", run: () => fijarItem(kind, item) };
   if (kind === "docs") {
     const n = (item.dado || []).length;
     return [
       { label: "Leer", icon: "book", run: () => go(`#/leer/docs/${item.id}`) },
+      { label: "Presentar", icon: "play", run: () => presentarDesdeInicio(item.id) },
       { label: "Editar", icon: "edit", run: () => go(`#/editar/docs/${item.id}`) },
+      fijar,
       { label: n ? `Dónde lo he dado (${n})` : "Apuntar que lo he dado", icon: "calendar", run: () => abrirDado("docs", item.id) },
       ...common, move, del,
     ];
@@ -860,8 +866,36 @@ function itemActions(kind, item) {
   return [
     { label: "Editar", icon: "edit", run: () => go(`#/editar/notes/${item.id}`) },
     { label: "Leer en grande", icon: "book", run: () => go(`#/leer/notes/${item.id}`) },
+    fijar,
     ...common, move, del,
   ];
+}
+
+/** Fijar arriba (como «Anclar» en Word): sale el primero de la lista. */
+async function fijarItem(kind, item) {
+  const fresco = (await store.get(kind, item.id)) || item;
+  if (fresco.fijado) delete fresco.fijado; else fresco.fijado = true;
+  await store.put(kind, fresco);
+  toast(fresco.fijado ? "Fijado arriba." : "Ya no está fijado.");
+  renderHome();
+}
+
+/** Abre el discurso y entra directamente en Presentar, desde el principio. */
+let presentarAlAbrir = null;
+function presentarDesdeInicio(id) {
+  presentarAlAbrir = "docs/" + id;
+  go(`#/leer/docs/${id}`);
+}
+
+/** Lo leído de un documento (0–100) o null si no se ha abierto. */
+function progresoDe(kind, id) {
+  const v = lsGet(`atril.prog.${kind}.${id}`, "");
+  return v === "" ? null : clamp(Number(v) || 0, 0, 100);
+}
+
+/** El último discurso abierto en el lector ({kind, id, t}) o null. */
+function ultimoAbierto() {
+  try { const u = JSON.parse(lsGet("atril.ultimo", "null")); return u && u.id ? u : null; } catch { return null; }
 }
 
 async function renameItem(kind, item) {
@@ -889,6 +923,7 @@ async function deleteItem(kind, item) {
   if (!ok) return;
   await store.del(kind, item.id);
   lsSet(`atril.pos.${kind}.${item.id}`, "");
+  lsSet(`atril.prog.${kind}.${item.id}`, "");
   toast("Eliminado.", {
     action: "Deshacer",
     onAction: async () => { await store.put(kind, item); renderHome(); },
@@ -983,7 +1018,9 @@ async function renderHome() {
 
   let items = [];
   try { items = await store.all(tab); } catch (e) { console.error(e); toast("No se pudo leer el almacenamiento del dispositivo."); }
-  items.sort((a, b) => (b.updated || 0) - (a.updated || 0));
+  // Los fijados primero; después, lo último editado
+  items.sort((a, b) => (b.fijado ? 1 : 0) - (a.fijado ? 1 : 0) || (b.updated || 0) - (a.updated || 0));
+  const total = items.length;
   const q = plegarTexto(home.query);
   const textCache = new Map();
   const textOf = (it) => { if (!textCache.has(it.id)) textCache.set(it.id, htmlToText(it.html || "")); return textCache.get(it.id); };
@@ -1005,20 +1042,45 @@ async function renderHome() {
         ? el("span", { class: "card-dur", title: it.target ? "Duración objetivo" : "Lectura estimada" },
             el("b", { text: String(it.target || est) }), el("small", { text: it.target ? "min" : "min aprox." }))
         : null;
+      const prog = esDoc ? progresoDe("docs", it.id) : null;
       const main = el("button", { class: "card-main", onclick: () => go(esDoc ? `#/leer/docs/${it.id}` : `#/editar/notes/${it.id}`) },
         el("span", { class: "card-icon " + (esDoc ? "es-doc" : "es-nota"), html: icon(esDoc ? "doc" : "nota") }),
         el("span", { class: "card-title", text: title }),
         dur,
         resumenDado(it),
         el("span", { class: "card-meta" },
+          it.fijado ? el("span", { class: "card-pin", html: icon("pin") + "<span>Fijado</span>" }) : null,
           esDoc && it.target && est ? el("span", { text: `≈ ${est} min de lectura` }) : null,
           el("span", { text: `Editado ${editado.charAt(0).toLowerCase() + editado.slice(1)}` })),
         esDoc ? primeraLinea(title, text) : el("span", { class: "card-snippet", text: text.replace(/\s+/g, " ").slice(title === text.split("\n")[0] ? title.length : 0, 220).trim() })
       );
       const more = el("button", { class: "card-more", "aria-label": "Opciones", html: icon("more"), onclick: () => actionSheet(title, itemActions(tab, it)) });
-      return el("li", { class: "card" }, main, more);
+      // Lo leído, como en la biblioteca de Kindle
+      const barra = prog ? el("span", { class: "card-prog", title: `Leído el ${prog} %`, "aria-label": `Leído el ${prog} %` }, el("i", { style: `width:${prog}%` })) : null;
+      return el("li", { class: "card" + (it.fijado ? " fijado" : "") + (barra ? " con-prog" : "") }, main, more, barra);
     })
   );
+
+  // «Seguir donde lo dejaste»: el último discurso abierto, con un toque para seguir o presentar
+  const seguir = $("#seguir");
+  const u = tab === "docs" && !q && total >= 2 ? ultimoAbierto() : null;
+  const ult = u && u.kind === "docs" ? items.find((x) => x.id === u.id) : null;
+  seguir.hidden = !ult;
+  if (ult) {
+    const t = ult.title || textOf(ult).split("\n")[0].slice(0, 60) || "Sin título";
+    const p = progresoDe("docs", ult.id) || 0;
+    const abierto = fmtDate(u.t || Date.now());
+    seguir.replaceChildren(
+      el("div", { class: "seg-txt" },
+        el("span", { class: "seg-label", text: "Seguir donde lo dejaste" }),
+        el("span", { class: "seg-titulo", text: t }),
+        el("span", { class: "seg-meta", text: [p ? `Leído el ${p} %` : "", `abierto ${abierto.charAt(0).toLowerCase() + abierto.slice(1)}`].filter(Boolean).join(" · ") }),
+        el("span", { class: "seg-prog", "aria-hidden": "true" }, el("i", { style: `width:${p}%` }))),
+      el("div", { class: "seg-btns" },
+        el("button", { class: "btn primary", id: "seguir-leer", html: icon("book") + "<span>Seguir leyendo</span>", onclick: () => go(`#/leer/docs/${ult.id}`) }),
+        el("button", { class: "btn", id: "seguir-presentar", html: icon("play") + "<span>Presentar</span>", onclick: () => presentarDesdeInicio(ult.id) }))
+    );
+  } else seguir.replaceChildren();
 
   const empty = $("#empty");
   const bienvenida = !items.length && !q && tab === "docs";
@@ -1181,9 +1243,13 @@ function openSettings() {
   const grabar = el("input", { type: "checkbox", role: "switch" });
   grabar.checked = !!settings.grabar;
   grabar.addEventListener("change", () => { settings.grabar = grabar.checked; saveSettings(); });
+  const toque = el("input", { type: "checkbox", role: "switch" });
+  toque.checked = settings.presToque !== false;
+  toque.addEventListener("change", () => { settings.presToque = toque.checked; saveSettings(); });
   openSheet([
     el("h2", { text: "Ajustes" }),
     el("label", { class: "switch-row" }, el("span", { text: "Mantener la pantalla encendida al leer" }), wake),
+    el("label", { class: "switch-row" }, el("span", { text: "Al presentar, tocar abajo pasa la página (y arriba vuelve)" }), toque),
     puedeGrabar() ? el("label", { class: "switch-row" }, el("span", { text: "Grabar audio al ensayar con el cronómetro" }), grabar) : null,
     el("div", { class: "group" },
       el("span", { class: "label", text: "Citas bíblicas" }),
@@ -1233,6 +1299,13 @@ function captureAnchor(scrollEl, contentEl) {
     return { node, y, frac: r.height ? (y - r.top) / r.height : 0 };
   }
   return { ratio: scrollEl.scrollHeight ? scrollEl.scrollTop / scrollEl.scrollHeight : 0 };
+}
+/** Hace un cambio de diseño (barras, panel) sin perder el párrafo que se estaba leyendo; arriba del todo, se queda arriba. */
+function mantenerSitio(scrollEl, contentEl, cambio) {
+  const arriba = scrollEl.scrollTop <= 4;
+  const a = arriba ? null : captureAnchor(scrollEl, contentEl);
+  cambio();
+  if (arriba) scrollEl.scrollTop = 0; else restoreAnchor(scrollEl, a);
 }
 function restoreAnchor(scrollEl, a) {
   if (!a) return;
@@ -1602,8 +1675,67 @@ function decorarMinutos(root) {
   }
 }
 
+/** Índice del bloque que cruza la línea a un tercio de la pantalla (0 si se está arriba del todo). */
+function bloqueEnLinea(scrollEl, contenido) {
+  if (scrollEl.scrollTop <= 4) return 0;
+  const r = scrollEl.getBoundingClientRect();
+  const y = r.top + r.height * 0.33;
+  const hijos = contenido.children;
+  let elegido = 0;
+  for (let i = 0; i < hijos.length; i++) {
+    if (hijos[i].getBoundingClientRect().top <= y) elegido = i; else break;
+  }
+  return elegido;
+}
+
+/* ============================================================
+   Panel lateral (como el panel de navegación de Word): solo con
+   la pantalla ancha (iPad en horizontal). Marca la parte en la que se va.
+   ============================================================ */
+const mqPanel = window.matchMedia("(min-width: 1024px)");
+function crearPanel({ aside, lista, ajuste, scrollEl, contenido, rellenar, alCambiar = () => {} }) {
+  return {
+    abierto: false,
+    cabe: () => mqPanel.matches,
+    /** Lo abre o lo cierra según el ajuste y el ancho de la pantalla. */
+    abrir() {
+      const v = this.cabe() && settings[ajuste] !== false;
+      if (v !== this.abierto) mantenerSitio(scrollEl, contenido, () => { aside.hidden = !v; this.abierto = v; });
+      if (v) { this.rellenar(); }
+      alCambiar(v);
+      return v;
+    },
+    alternar() {
+      settings[ajuste] = !this.abierto;
+      saveSettings();
+      this.abrir();
+    },
+    rellenar() {
+      if (!this.abierto) return;
+      rellenar(lista);
+      lista.querySelectorAll(".o-h.actual").forEach((x) => x.classList.remove("actual"));
+      this.pintarActual();
+    },
+    /** Resalta el título de la parte que se está leyendo y lo deja a la vista. */
+    pintarActual() {
+      if (!this.abierto) return;
+      const b = bloqueEnLinea(scrollEl, contenido);
+      let actual = null;
+      for (const it of lista.querySelectorAll(".o-h")) { if (Number(it.dataset.i) <= b) actual = it; else break; }
+      for (const x of lista.querySelectorAll(".o-h.actual")) if (x !== actual) { x.classList.remove("actual"); x.removeAttribute("aria-current"); }
+      if (actual && !actual.classList.contains("actual")) {
+        actual.classList.add("actual");
+        actual.setAttribute("aria-current", "true");
+        const r = actual.getBoundingClientRect(), lr = lista.getBoundingClientRect();
+        if (r.top < lr.top || r.bottom > lr.bottom) lista.scrollTop += r.top - lr.top - lr.height / 3;
+      }
+    },
+  };
+}
+
 const reader = {
   kind: null, id: null, item: null, plan: null, mode: "texto", lastPace: null, aqui: null, filtro: "todo", savedScroll: null,
+  conteo: null, partesCache: null,
   scrollEl: $("#reader-scroll"), contentEl: $("#reader-content"), outlineEl: $("#reader-outline"),
   posKey() { return `atril.pos.${this.kind}.${this.id}`; },
   aquiKey() { return `atril.aqui.${this.kind}.${this.id}`; },
@@ -1615,6 +1747,7 @@ const reader = {
     // El cronómetro era de otro discurso: se guarda ese ensayo y se empieza de cero
     if ((timer.running || timer.elapsed) && timer.docKey !== kind + "/" + id) timer.reset({ otroDoc: true });
     this.kind = kind; this.id = id; this.item = item; this.filtro = "todo"; this.savedScroll = null;
+    this.conteo = null; this.partesCache = null;
     const title = item.title || htmlToText(item.html).split("\n")[0].slice(0, 60) || "Sin título";
     $("#reader-title").textContent = title;
     document.title = title + " · Atril";
@@ -1635,9 +1768,15 @@ const reader = {
       if (vuelta.presentando) presentar.entrar({ consejo: false });
       toast(vuelta.timer && (vuelta.timer.running || vuelta.timer.elapsed) ? "Has vuelto donde estabas. El cronómetro no se ha parado." : "Has vuelto donde estabas.", { ms: 5000 });
     }
+    lsSet("atril.ultimo", JSON.stringify({ kind, id, t: Date.now() }));
+    // «Presentar» desde el inicio: empieza por arriba
+    const aPresentar = !vuelta && presentarAlAbrir === kind + "/" + id;
+    presentarAlAbrir = null;
     // Recupera la posición de lectura
-    const ratio = parseFloat(lsGet(this.posKey(), "0")) || 0;
-    requestAnimationFrame(() => { this.scrollEl.scrollTop = ratio * this.scrollEl.scrollHeight; this.paintProgress(); });
+    const ratio = aPresentar ? 0 : parseFloat(lsGet(this.posKey(), "0")) || 0;
+    this.lateral.abrir();
+    requestAnimationFrame(() => { this.scrollEl.scrollTop = ratio * this.scrollEl.scrollHeight; this.paintProgress(); this.paintEstado(); this.paintPace(); this.lateral.pintarActual(); });
+    if (aPresentar) presentar.entrar();
     keepAwake(true);
   },
 
@@ -1656,13 +1795,46 @@ const reader = {
 
   savePos() {
     if (!this.id || this.mode !== "texto") return;
-    const r = this.scrollEl.scrollHeight ? this.scrollEl.scrollTop / this.scrollEl.scrollHeight : 0;
+    const s = this.scrollEl;
+    const r = s.scrollHeight ? s.scrollTop / s.scrollHeight : 0;
     lsSet(this.posKey(), String(Math.round(r * 10000) / 10000));
+    lsSet(`atril.prog.${this.kind}.${this.id}`, String(this.porcentaje()));
+  },
+
+  /** Lo leído (0–100), según el desplazamiento. */
+  porcentaje() {
+    const s = this.scrollEl;
+    const max = s.scrollHeight - s.clientHeight;
+    return max > 4 ? Math.round(clamp(s.scrollTop / max, 0, 1) * 100) : 0;
   },
 
   buildPlan() {
-    this.plan = crearPlan([...this.contentEl.children], Number(this.item && this.item.target) || 0);
+    const bloques = [...this.contentEl.children];
+    this.plan = crearPlan(bloques, Number(this.item && this.item.target) || 0);
+    // Palabras de cada bloque (para «quedan ≈ N min» aunque no haya objetivo)
+    const palabras = bloques.map((b) => contarPalabras(b.textContent || ""));
+    let acc = 0;
+    const inicio = palabras.map((p) => { const x = acc; acc += p; return x; });
+    this.conteo = { inicioBloque: inicio, palabrasBloque: palabras, total: acc };
+    this.partesCache = null;
     this.paintPace();
+    this.paintEstado();
+  },
+
+  /** Barra de estado de abajo (como el pie de Kindle): parte, lo leído y lo que queda. */
+  paintEstado() {
+    const parte = $("#re-parte"), quedan = $("#re-quedan"), barra = $("#reader-estado");
+    barra.hidden = !this.item || this.mode !== "texto" || !this.conteo || !this.conteo.total;
+    if (barra.hidden) return;
+    const partes = this.partesCache || (this.partesCache = this.partesEnsayo());
+    const b = this.bloqueActual();
+    const k = partes.length > 1 && b != null ? parteDeBloque(partes, b) : -1;
+    parte.textContent = k >= 0 ? `Parte ${k + 1} de ${partes.length} · ${partes[k].titulo}` : "";
+    const pct = this.porcentaje();
+    const w = this.scrollEl.scrollTop <= 4 ? 0 : palabraActual(this.conteo, this.scrollEl, this.contentEl);
+    const seg = this.plan ? this.plan.objetivoSeg - tiempoPrevisto(this.plan, w) : ((this.conteo.total - w) / ppm()) * 60;
+    const min = Math.round(Math.max(0, seg) / 60);
+    quedan.textContent = pct >= 99 ? "100 % · final" : `${pct} % · quedan ≈ ${min < 1 ? "menos de 1" : min} min`;
   },
 
   /** Partes del discurso para los ensayos (según los minutos de los títulos o los títulos). */
@@ -1675,15 +1847,7 @@ const reader = {
   bloqueActual() {
     if (tarjetas.activo) { const t = tarjetas.lista[tarjetas.i]; return t ? t.inicio : null; }
     if (this.mode !== "texto") return null;
-    if (this.scrollEl.scrollTop <= 4) return 0; // al principio del todo se está en la primera parte
-    const r = this.scrollEl.getBoundingClientRect();
-    const y = r.top + r.height * 0.33;
-    const hijos = this.contentEl.children;
-    let elegido = 0;
-    for (let i = 0; i < hijos.length; i++) {
-      if (hijos[i].getBoundingClientRect().top <= y) elegido = i; else break;
-    }
-    return elegido;
+    return bloqueEnLinea(this.scrollEl, this.contentEl);
   },
 
   parteActual() {
@@ -1788,22 +1952,29 @@ const reader = {
     if (esquema) this.renderOutline();
     this.outlineEl.hidden = !esquema;
     this.contentEl.hidden = esquema;
-    const b = $("#reader-outline-btn");
-    b.classList.toggle("active", esquema);
-    b.setAttribute("aria-pressed", String(esquema));
+    this.pintarBotonEsquema();
     if (esquema) this.scrollEl.scrollTop = 0;
     else if (!keepScroll && this.savedScroll != null) this.scrollEl.scrollTop = this.savedScroll;
     this.paintProgress();
+    this.paintEstado();
   },
 
+  pintarBotonEsquema() {
+    const on = this.mode === "esquema" || this.lateral.abierto;
+    const b = $("#reader-outline-btn");
+    b.classList.toggle("active", on);
+    b.setAttribute("aria-pressed", String(on));
+  },
+
+  /** Esquema: con la pantalla ancha, panel al lado del texto; si no, a pantalla completa. */
   toggleOutline() {
+    if (this.lateral.cabe()) { if (this.mode !== "texto") this.setMode("texto"); this.lateral.alternar(); return; }
     if (this.mode === "texto") { buscador.cerrar(); prompter.cerrar(); this.savedScroll = this.scrollEl.scrollTop; this.setMode("esquema"); }
     else this.setMode("texto");
   },
 
   /** Esquema: títulos y frases resaltadas (con filtro por color). Tocar un punto lleva a su sitio en el texto. */
-  renderOutline() {
-    const out = this.outlineEl;
+  renderOutline(out = this.outlineEl) {
     out.replaceChildren();
     const bloques = [...this.contentEl.children];
     const items = [];
@@ -1847,9 +2018,18 @@ const reader = {
     if (!n) {
       out.append(el("div", { class: "o-empty" },
         el("h2", { text: "El esquema está vacío" }),
-        el("p", { text: "Aquí salen los títulos y las frases resaltadas. En el editor, usa «Título» o «Subtítulo» para las partes y el marcador para las ideas clave." })
+        el("p", { text: "Aquí salen los títulos y las frases resaltadas. En el editor, usa «Título 1» o «Título 2» para las partes y el resaltador para las ideas clave." })
       ));
     }
+  },
+
+  /** Toques en el esquema (a pantalla completa o en el panel). */
+  clicEsquema(e, out) {
+    if (e.target.closest("a")) return;
+    const f = e.target.closest("[data-filtro]");
+    if (f) { this.filtro = f.dataset.filtro; this.renderOutline(out); if (out !== this.outlineEl) this.lateral.pintarActual(); return; }
+    const it = e.target.closest(".o-item");
+    if (it) this.goToBlock(Number(it.dataset.i));
   },
 
   goToBlock(i, { flash = true } = {}) {
@@ -1898,6 +2078,7 @@ const reader = {
       lsSet(this.aquiKey(), JSON.stringify({ i, t: b.textContent.trim().slice(0, 40) }));
       toast("Marcado: voy por aquí. Toca dos veces otra vez para quitarlo.");
     }
+    this.lateral.rellenar();
   },
 
   irAqui() { if (this.aqui != null) this.goToBlock(this.aqui); },
@@ -2021,18 +2202,33 @@ const reader = {
 
   init() {
     attachPinch(this.scrollEl, this.contentEl);
+    const sideList = $("#reader-side-list");
+    this.lateral = crearPanel({
+      aside: $("#reader-side"), lista: sideList, ajuste: "panel", scrollEl: this.scrollEl, contenido: this.contentEl,
+      rellenar: (out) => this.renderOutline(out),
+      alCambiar: () => this.pintarBotonEsquema(),
+    });
+    sideList.addEventListener("click", (e) => this.clicEsquema(e, sideList));
+    $("#reader-side-close").addEventListener("click", () => this.lateral.alternar());
     const saveLater = debounce(() => { this.savePos(); if (presentar.activo) sesion.guardar(); }, 400);
-    let paceRaf = 0;
+    let paceRaf = 0, estadoRaf = 0;
     this.scrollEl.addEventListener("scroll", () => {
       this.paintProgress();
       if (this.mode === "texto") saveLater();
-      if (!paceRaf && (timer.running || timer.elapsed)) paceRaf = requestAnimationFrame(() => { paceRaf = 0; this.paintPace(); });
+      if (!paceRaf && (timer.running || timer.elapsed || presentar.activo)) paceRaf = requestAnimationFrame(() => { paceRaf = 0; this.paintPace(); });
+      if (!estadoRaf) estadoRaf = requestAnimationFrame(() => { estadoRaf = 0; this.paintEstado(); this.lateral.pintarActual(); });
     }, { passive: true });
+    // Al girar el iPad: el esquema pasa de pantalla completa a panel, o al revés
+    mqPanel.addEventListener("change", () => {
+      if (currentView !== "reader" || !this.item) return;
+      if (mqPanel.matches && this.mode === "esquema") this.setMode("texto");
+      this.lateral.abrir();
+    });
     // Un toque sobre el texto oculta o muestra la barra (modo atril); dos toques marcan «voy por aquí»
     let ultimoToque = { t: 0, x: 0, y: 0 }, esperaToque = 0;
     this.contentEl.addEventListener("click", (e) => {
-      // Presentando: los toques no hacen nada (ni enlaces que saquen de la app)
-      if (presentar.activo) { e.preventDefault(); return; }
+      // Presentando: los toques solo pasan página (y los enlaces no sacan de la app)
+      if (presentar.activo) { e.preventDefault(); presentar.toque(e); return; }
       if (e.target.closest("a")) return;
       if (prompter.activo) { prompter.alternar(); return; }
       const now = Date.now();
@@ -2052,13 +2248,7 @@ const reader = {
         this.paintPace();
       }, 300);
     });
-    this.outlineEl.addEventListener("click", (e) => {
-      if (e.target.closest("a")) return;
-      const f = e.target.closest("[data-filtro]");
-      if (f) { this.filtro = f.dataset.filtro; this.renderOutline(); return; }
-      const it = e.target.closest(".o-item");
-      if (it) this.goToBlock(Number(it.dataset.i));
-    });
+    this.outlineEl.addEventListener("click", (e) => this.clicEsquema(e, this.outlineEl));
     $("#reader-outline-btn").addEventListener("click", () => this.toggleOutline());
     $("#reader-presentar").addEventListener("click", () => presentar.entrar());
     $("#reader-more").addEventListener("click", () => this.openMenu());
@@ -2072,6 +2262,10 @@ const reader = {
     // Teclado, mando o pedal de pasar páginas
     document.addEventListener("keydown", (e) => {
       if (currentView !== "reader" || !$("#overlay").hidden) return;
+      // ⌘F / Ctrl+F: buscar en el texto (no mientras se presenta)
+      if ((e.metaKey || e.ctrlKey) && !e.altKey && e.key.toLowerCase() === "f" && !presentar.activo && !tarjetas.activo) {
+        e.preventDefault(); buscador.abrir(); return;
+      }
       if (e.target.closest && e.target.closest("input, textarea, [contenteditable]")) return;
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       const k = e.key;
@@ -2097,7 +2291,7 @@ const reader = {
    Presentar: pantalla bloqueada para dar el discurso
    ============================================================ */
 const presentar = {
-  activo: false, partes: [],
+  activo: false, partes: [], aviso: "", reloj: 0,
   entrar({ consejo = true } = {}) {
     if (!reader.item) return;
     buscador.cerrar();
@@ -2106,33 +2300,75 @@ const presentar = {
     if (reader.mode !== "texto") reader.setMode("texto", { keepScroll: true });
     this.activo = true;
     this.partes = reader.partesEnsayo();
-    views.reader.classList.remove("immersive");
-    views.reader.classList.add("presentando");
-    $("#pres-bar").hidden = false;
-    $("#pres-salir").hidden = false;
+    this.aviso = "";
+    // Sin barras ni panel lateral el texto se recoloca: se mantiene a la vista el mismo párrafo
+    mantenerSitio(reader.scrollEl, reader.contentEl, () => {
+      views.reader.classList.remove("immersive");
+      views.reader.classList.add("presentando");
+      $("#pres-bar").hidden = false;
+      $("#pres-salir").hidden = false;
+    });
     keepAwake(true);
     reader.paintPace();
+    this.pintarReloj();
+    clearInterval(this.reloj);
+    this.reloj = setInterval(() => this.pintarReloj(), 15000);
     sesion.guardar();
+    const toques = settings.presToque !== false;
     if (consejo && esIOS() && lsGet("atril.consejoAcceso") !== "1") this.consejo();
+    else if (consejo && toques && lsGet("atril.consejoToque") !== "1") {
+      lsSet("atril.consejoToque", "1");
+      toast("Toca la parte de abajo para avanzar una pantalla y la de arriba para volver.", { ms: 6000 });
+    }
   },
   salir({ guardar = true } = {}) {
     if (!this.activo) return;
     this.activo = false;
-    views.reader.classList.remove("presentando");
-    $("#pres-bar").hidden = true;
-    $("#pres-salir").hidden = true;
+    clearInterval(this.reloj);
+    mantenerSitio(reader.scrollEl, reader.contentEl, () => {
+      views.reader.classList.remove("presentando");
+      $("#pres-bar").hidden = true;
+      $("#pres-salir").hidden = true;
+    });
     if (guardar) sesion.guardar();
     reader.paintPace();
+    reader.paintEstado();
+    reader.lateral.pintarActual();
+  },
+  /** La hora, como en el modo «Predicar» de Logos: para saber cuándo hay que terminar. */
+  pintarReloj() {
+    $("#pres-reloj").innerHTML = icon("clock") + `<span>${new Date().toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })}</span>`;
+  },
+  /** Un toque abajo avanza una pantalla; arriba, vuelve (como pasar página en Kindle). */
+  toque(e) {
+    if (settings.presToque === false) return;
+    const s = reader.scrollEl, r = s.getBoundingClientRect();
+    const y = (e.clientY - r.top) / r.height;
+    const linea = settings.fontSize * settings.lineHeight;
+    const salto = Math.max(linea * 2, s.clientHeight - linea * 2); // deja a la vista las dos últimas líneas
+    if (y > 0.55) s.scrollBy({ top: salto, behavior: "smooth" });
+    else if (y < 0.3) s.scrollBy({ top: -salto, behavior: "smooth" });
   },
   pintar({ estado, corto, largo, aviso, seg, started }) {
     const b = $("#pres-timer");
     $("#pres-timer-text").textContent = mmss(seg);
+    // Colores de semáforo, como los cronómetros de oratoria: verde, ámbar (último minuto) y rojo
     b.className = "pres-timer" + (timer.running ? " running" : "") + (aviso ? " " + aviso : "");
+    const bar = $("#pres-bar");
+    bar.classList.toggle("warn", aviso === "warn");
+    bar.classList.toggle("over", aviso === "over");
+    if (aviso && aviso !== this.aviso) { bar.classList.remove("destello"); void bar.offsetWidth; bar.classList.add("destello"); }
+    this.aviso = aviso;
     $("#pres-hint").textContent = !started ? "Toca para empezar" : timer.running ? "Mantén pulsado para pausar" : "En pausa · toca para seguir";
     const chip = $("#pres-pace");
     chip.hidden = !estado;
     chip.className = "pace " + estado;
     chip.textContent = largo || "";
+    // Lo que queda hasta el tiempo objetivo
+    const plan = reader.plan, quedan = $("#pres-quedan");
+    const resta = plan ? plan.objetivoSeg - seg : 0;
+    quedan.hidden = !plan || resta <= 0;
+    quedan.textContent = !plan ? "" : started ? `Quedan ${mmss(resta)}` : `Objetivo ${mmss(plan.objetivoSeg)}`;
     // Parte actual y la siguiente
     const partes = this.partes;
     const b0 = reader.bloqueActual();
@@ -2153,9 +2389,10 @@ const presentar = {
         el("li", { text: "Ajustes → Accesibilidad → Acceso guiado: actívalo y pon un código." }),
         el("li", { text: "En Atril, pulsa tres veces el botón de inicio (o el botón superior si tu iPad no tiene) y toca Iniciar." }),
         el("li", { text: "Al terminar, vuelve a pulsar tres veces, escribe el código y toca Finalizar." })),
+      settings.presToque !== false ? el("p", { text: "Para pasar página, toca la parte de abajo de la pantalla; para volver, la de arriba. También puedes deslizar el dedo." }) : null,
       el("p", { class: "small-print", text: "Si aun así se cierra, al abrir Atril volverás al mismo sitio con el cronómetro en marcha." }),
-      el("div", { class: "actions" }, el("button", { class: "action primary", text: "Entendido", onclick: () => { lsSet("atril.consejoAcceso", "1"); closeSheet(); } })),
-    ]);
+      el("div", { class: "actions" }, el("button", { class: "action primary", text: "Entendido", onclick: () => { lsSet("atril.consejoAcceso", "1"); lsSet("atril.consejoToque", "1"); closeSheet(); } })),
+    ].filter(Boolean));
   },
   init() {
     // El cronómetro: un toque lo pone en marcha; para pausarlo hay que mantenerlo pulsado
@@ -2464,6 +2701,7 @@ const editor = {
     this.pintarTiempo();
     showView("editor");
     this.scrollEl.scrollTop = 0;
+    this.lateral.abrir();
     this.paintToolbar();
     // Documento nuevo: el cursor empieza en el título
     if (!item.title && (!item.html || item.html === "<p><br></p>")) this.titleInput.focus();
@@ -2583,6 +2821,7 @@ const editor = {
       menos: () => this.zoom(-2),
       mas: () => this.zoom(2),
       aspecto: () => openAaSheet(),
+      navegacion: () => (this.lateral.cabe() ? this.lateral.alternar() : this.navegacionHoja()),
     };
     if (otras[cmd]) { otras[cmd](); return; }
     this.area.focus();
@@ -2629,6 +2868,80 @@ const editor = {
     if (!sel || !sel.rangeCount) return;
     const range = sel.getRangeAt(0);
     $$("mark", this.area).forEach((m) => { if (range.intersectsNode(m)) m.replaceWith(...m.childNodes); });
+  },
+
+  /** Panel de navegación (como en Word): los títulos del documento. */
+  rellenarNavegacion(out) {
+    out.replaceChildren();
+    let n = 0;
+    [...this.area.children].forEach((b, i) => {
+      if (!/^H[1-4]$/.test(b.tagName)) return;
+      const txt = (b.textContent || "").trim();
+      if (!txt) return;
+      const min = minutosDeTitulo(txt);
+      const h = el("button", { class: `o-item o-h o-${b.tagName.toLowerCase()}`, "data-i": i, text: min ? tituloSinMinutos(txt) : txt });
+      if (min) h.append(el("span", { class: "o-min", text: `${String(min).replace(".", ",")} min` }));
+      out.append(h); n++;
+    });
+    if (!n) out.append(el("div", { class: "o-empty" },
+      el("h2", { text: "Sin títulos" }),
+      el("p", { text: "Usa «Título 1», «Título 2» o «Título 3» para las partes del discurso y aparecerán aquí." })));
+  },
+
+  /** Con la pantalla estrecha, la navegación sale en una hoja. */
+  navegacionHoja() {
+    const lista = el("div");
+    this.rellenarNavegacion(lista);
+    const titulos = [...lista.querySelectorAll(".o-item")];
+    if (!titulos.length) { toast("No hay títulos. Usa «Título 1» o «Título 2» para las partes."); return; }
+    actionSheet("Ir a", titulos.map((t) => ({ label: t.textContent, icon: "next", run: () => this.irABloque(Number(t.dataset.i)) })));
+  },
+
+  irABloque(i) {
+    const b = this.area.children[i];
+    if (!b) return;
+    const top = b.getBoundingClientRect().top - this.scrollEl.getBoundingClientRect().top;
+    this.scrollEl.scrollTop += top - 24;
+    this.lateral.pintarActual();
+  },
+
+  /** Atajos de teclado (iPad con teclado), los de Word y Google Docs. */
+  atajo(e) {
+    if (!(e.metaKey || e.ctrlKey)) return;
+    const k = (e.key || "").toLowerCase(), c = e.code || "";
+    let cmd = null;
+    if (e.altKey && /^Digit[0-3]$/.test(c)) cmd = c === "Digit0" ? "p" : "h" + c.slice(-1);
+    else if (e.altKey && c === "KeyH") { e.preventDefault(); this.aplicarColor(settings.markColor || "amarillo"); return; }
+    else if (e.shiftKey && !e.altKey && k === "x") cmd = "strike";
+    else if (e.shiftKey && !e.altKey && c === "Digit8") cmd = "ul";
+    else if (e.shiftKey && !e.altKey && c === "Digit7") cmd = "ol";
+    else if (!e.shiftKey && !e.altKey && k === "f") cmd = "buscar";
+    else if (!e.shiftKey && !e.altKey && k === "s") { e.preventDefault(); this.flush().then(() => toast("Guardado.")); return; }
+    if (!cmd) return;
+    e.preventDefault();
+    this.exec(cmd);
+  },
+
+  atajosHoja() {
+    const cmd = esIOS() || /Mac/.test(navigator.platform) ? "⌘" : "Ctrl+";
+    const alt = esIOS() || /Mac/.test(navigator.platform) ? "⌥" : "Alt+";
+    const filas = [
+      [`${cmd}B · ${cmd}I · ${cmd}U`, "Negrita, cursiva, subrayado"],
+      [`${cmd}⇧X`, "Tachado"],
+      [`${cmd}${alt}H`, "Resaltar"],
+      [`${cmd}${alt}1 · 2 · 3`, "Título 1, 2 o 3"],
+      [`${cmd}${alt}0`, "Texto normal"],
+      [`${cmd}⇧8 · ${cmd}⇧7`, "Viñetas · lista numerada"],
+      [`${cmd}F`, "Buscar y reemplazar"],
+      [`${cmd}Z · ${cmd}⇧Z`, "Deshacer · rehacer"],
+      [`${cmd}S`, "Guardar ahora (ya se guarda solo)"],
+    ];
+    openSheet([
+      el("h2", { text: "Atajos de teclado" }),
+      el("p", { class: "small-print", text: "Con un teclado conectado al iPad." }),
+      el("div", { class: "atajos" }, filas.map(([k, t]) => el("div", { class: "atajo" }, el("kbd", { text: k }), el("span", { text: t })))),
+      el("div", { class: "actions" }, el("button", { class: "action plain", text: "Cerrar", onclick: () => closeSheet() })),
+    ]);
   },
 
   /** Pestañas de la cinta: Inicio, Revisar y Vista. */
@@ -2717,7 +3030,22 @@ const editor = {
 
   init() {
     this.saveLater = debounce(() => this.save(), 700);
-    this.tiempoLater = debounce(() => this.pintarTiempo(), 400);
+    this.tiempoLater = debounce(() => { this.pintarTiempo(); this.lateral.rellenar(); }, 400);
+    // Panel de navegación (iPad en horizontal)
+    const sideList = $("#editor-side-list");
+    const navBtn = $('#view-editor [data-cmd="navegacion"]');
+    this.lateral = crearPanel({
+      aside: $("#editor-side"), lista: sideList, ajuste: "panelEditor", scrollEl: this.scrollEl, contenido: this.area,
+      rellenar: (out) => this.rellenarNavegacion(out),
+      alCambiar: (v) => { navBtn.setAttribute("aria-pressed", String(v)); navBtn.classList.toggle("active", v); },
+    });
+    sideList.addEventListener("pointerdown", (e) => { if (e.target.closest(".o-item")) e.preventDefault(); }); // no quita el teclado
+    sideList.addEventListener("click", (e) => { const it = e.target.closest(".o-item"); if (it) this.irABloque(Number(it.dataset.i)); });
+    $("#editor-side-close").addEventListener("click", () => this.lateral.alternar());
+    let navRaf = 0;
+    this.scrollEl.addEventListener("scroll", () => { if (!navRaf) navRaf = requestAnimationFrame(() => { navRaf = 0; this.lateral.pintarActual(); }); }, { passive: true });
+    mqPanel.addEventListener("change", () => { if (currentView === "editor" && this.item) this.lateral.abrir(); });
+    this.area.addEventListener("keydown", (e) => this.atajo(e));
     $("#editor-time").addEventListener("click", () => this.abrirTiempo());
     $$(".ribbon-tabs [data-rtab]").forEach((t) => t.addEventListener("click", () => this.cinta(t.dataset.rtab)));
     $("#ed-menos").addEventListener("click", () => this.zoom(-2));
@@ -2762,6 +3090,7 @@ const editor = {
         { label: "Copiar el texto", icon: "copy", run: () => copyText(htmlToText(item.html)) },
         { label: "Compartir el texto", icon: "share", run: () => shareText(item.title, htmlToText(item.html)) },
         { label: "Tamaño de letra y tema", icon: "aa", run: () => openAaSheet() },
+        { label: "Atajos de teclado", icon: "template", run: () => this.atajosHoja() },
         { label: "Eliminar", icon: "trash", danger: true, run: async () => { await deleteItem(this.kind, item); } },
       ]);
     });
