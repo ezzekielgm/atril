@@ -202,7 +202,7 @@ const alFinal = (page) => page.evaluate(() => { const s = document.querySelector
 
   // ---- Editor: panel de navegación y atajos ----
   await abrir(page, "#/editar/docs/p1", "editor");
-  ok("Editor en horizontal: panel de navegación con los títulos", (await page.isVisible("#editor-side")) && (await page.$$eval("#editor-side-list .o-h", (xs) => xs.map((x) => x.textContent))).join("|").startsWith("La paciencia|Introducción2 min"));
+  ok("Editor en horizontal: panel de navegación con los títulos", (await page.isVisible("#editor-side")) && (await page.$$eval("#editor-side-list .o-h .nav-ir", (xs) => xs.map((x) => x.textContent))).join("|").startsWith("La paciencia|Introducción|Por qué"));
   await page.click("#editor-side-list .o-h:has-text('Conclusión')");
   await page.waitForTimeout(250);
   ok("Tocar un título lleva a esa parte", (await page.textContent("#editor-side-list .o-h.actual")).startsWith("Conclusión"));

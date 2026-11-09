@@ -9,7 +9,10 @@ const COLOR_MARK = {
   azul: rgb(0.702, 0.898, 0.988), rosa: rgb(0.973, 0.733, 0.816),
 };
 const NEGRO = rgb(0.1, 0.1, 0.1), GRIS = rgb(0.45, 0.45, 0.45);
-const EQUIVALENCIAS = { "≈": "~", "→": "->", "←": "<-", "✓": "v", "✔": "v", "‐": "-", "‑": "-", "−": "-", " ": " ", " ": " ", " ": " ", "\t": " " };
+// Color de la letra (los mismos que en Word)
+const hexA = (h) => rgb(parseInt(h.slice(1, 3), 16) / 255, parseInt(h.slice(3, 5), 16) / 255, parseInt(h.slice(5, 7), 16) / 255);
+const COLOR_LETRA = { rojo: hexA("#C00000"), azul: hexA("#0070C0"), verde: hexA("#00873C"), naranja: hexA("#D86400") };
+const EQUIVALENCIAS = { "‖": "||", "≈": "~", "→": "->", "←": "<-", "✓": "v", "✔": "v", "‐": "-", "‑": "-", "−": "-", " ": " ", " ": " ", " ": " ", "\t": " " };
 const NIVEL = { H1: 1.6, H2: 1.3, H3: 1.12, H4: 1.12 };
 
 const colorDe = (m) => {
@@ -38,6 +41,7 @@ function bloquesDe(html) {
       if (t === "U") e.u = true;
       if (t === "S" || t === "DEL" || t === "STRIKE") e.s = true;
       if (t === "MARK") e.mark = colorDe(n);
+      if (t === "SPAN") { const c = (n.getAttribute("class") || "").match(/\bt-(rojo|azul|verde|naranja)\b/); if (c) e.letra = c[1]; }
       if (/^(P|H[1-4]|LI|BLOCKQUOTE|DIV)$/.test(t)) { b.runs.push({ texto: " ", estilo }); }
       enLinea(n, e, b, saltarListas);
     }
@@ -167,11 +171,11 @@ export async function buildPdf({ title = "Documento", html = "", size = 12, fami
     }
     for (const it of linea) {
       if (!it.texto.trim()) continue;
-      pagina.drawText(it.texto, { x: x0 + it.x, y: base, size: tam, font: fuente(it.estilo), color });
+      pagina.drawText(it.texto, { x: x0 + it.x, y: base, size: tam, font: fuente(it.estilo), color: COLOR_LETRA[it.estilo.letra] || color });
     }
     for (const it of linea) {
-      if (it.estilo.u) pagina.drawLine({ start: { x: x0 + it.x, y: base - tam * 0.12 }, end: { x: x0 + it.x + it.w, y: base - tam * 0.12 }, thickness: Math.max(0.5, tam / 18), color });
-      if (it.estilo.s) pagina.drawLine({ start: { x: x0 + it.x, y: base + tam * 0.3 }, end: { x: x0 + it.x + it.w, y: base + tam * 0.3 }, thickness: Math.max(0.5, tam / 18), color });
+      if (it.estilo.u) pagina.drawLine({ start: { x: x0 + it.x, y: base - tam * 0.12 }, end: { x: x0 + it.x + it.w, y: base - tam * 0.12 }, thickness: Math.max(0.5, tam / 18), color: COLOR_LETRA[it.estilo.letra] || color });
+      if (it.estilo.s) pagina.drawLine({ start: { x: x0 + it.x, y: base + tam * 0.3 }, end: { x: x0 + it.x + it.w, y: base + tam * 0.3 }, thickness: Math.max(0.5, tam / 18), color: COLOR_LETRA[it.estilo.letra] || color });
     }
   }
 

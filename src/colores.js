@@ -58,3 +58,41 @@ export function claseDeFondo(color) {
   if (h >= 170 && h < 260) return "c-azul";
   return "c-rosa";
 }
+
+/* ---- Color de la letra. En el HTML: <span class="t-rojo|t-azul|t-verde|t-naranja"> ---- */
+
+// hex = el que se usa en Word y en el PDF (en pantalla, cada tema tiene su tono para que se lea bien)
+export const LETRAS = [
+  { id: "rojo", nombre: "Rojo", clase: "t-rojo", hex: "#C00000" },
+  { id: "azul", nombre: "Azul", clase: "t-azul", hex: "#0070C0" },
+  { id: "verde", nombre: "Verde", clase: "t-verde", hex: "#00873C" },
+  { id: "naranja", nombre: "Naranja", clase: "t-naranja", hex: "#D86400" },
+];
+const CLASES_LETRA = new Set(LETRAS.map((l) => l.clase));
+
+/** Clase de color de letra válida de un elemento o "". */
+export function claseLetraValida(valor) {
+  for (const c of String(valor || "").split(/\s+/)) if (CLASES_LETRA.has(c)) return c;
+  return "";
+}
+
+/**
+ * Clase de color de letra que corresponde a un color cualquiera (por el tono), o "" si es negro, gris o blanco
+ * (la letra normal). Así un rojo oscuro de Word sale rojo y un gris casi negro, como texto normal.
+ */
+export function claseDeLetra(color) {
+  const rgb = rgbDe(color);
+  if (!rgb) return "";
+  const [r, g, b] = rgb.map((x) => x / 255);
+  const max = Math.max(r, g, b), min = Math.min(r, g, b), d = max - min;
+  if (d < 0.18 || max < 0.12) return "";
+  let h;
+  if (max === r) h = ((g - b) / d) % 6;
+  else if (max === g) h = (b - r) / d + 2;
+  else h = (r - g) / d + 4;
+  h = (h * 60 + 360) % 360;
+  if (h < 15 || h >= 300) return "t-rojo";
+  if (h < 70) return "t-naranja";
+  if (h < 165) return "t-verde";
+  return "t-azul";
+}

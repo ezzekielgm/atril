@@ -169,6 +169,7 @@
   </header>
   <div class="ribbon-tabs" role="tablist" aria-label="Cinta de opciones">
     <button role="tab" data-rtab="inicio" aria-selected="true">Inicio</button>
+    <button role="tab" data-rtab="insertar" aria-selected="false">Insertar</button>
     <button role="tab" data-rtab="revisar" aria-selected="false">Revisar</button>
     <button role="tab" data-rtab="vista" aria-selected="false">Vista</button>
   </div>
@@ -188,16 +189,24 @@
     <button data-cmd="underline" aria-label="Subrayado"><u>S</u></button>
     <button data-cmd="strike" aria-label="Tachado" class="txt"><s>abc</s></button>
     <button data-cmd="highlight" aria-label="Resaltar" aria-expanded="false" data-icon="marker"></button>
+    <button data-cmd="letra" aria-label="Color de letra" aria-expanded="false" class="btn-letra"><span class="a-letra">A</span><i class="barra-letra" id="barra-letra"></i></button>
     <span class="sep"></span>
     <button data-cmd="ul" aria-label="Viñetas" data-icon="list"></button>
     <button data-cmd="ol" aria-label="Lista numerada" data-icon="olist"></button>
     <button data-cmd="clear" aria-label="Borrar formato" data-icon="clear"></button>
+    <span class="sep solo-ancho"></span>
+    <button data-cmd="buscar" class="solo-ancho" aria-label="Buscar y reemplazar" data-icon="search"></button>
+  </div>
+  <div class="toolbar ribbon" data-rpanel="insertar" hidden>
+    <button data-cmd="parte" class="grande"><span data-icon="plus"></span><span>Parte nueva</span></button>
+    <button data-cmd="minutos" class="grande"><span data-icon="clock"></span><span>Minutos de la parte</span></button>
     <span class="sep"></span>
-    <button data-cmd="buscar" aria-label="Buscar y reemplazar" data-icon="search"></button>
+    <button data-cmd="pausa" class="grande"><span class="ico-pausa">‖</span><span>Pausa</span></button>
   </div>
   <div class="toolbar ribbon" data-rpanel="revisar" hidden>
     <button data-cmd="buscar" class="grande"><span data-icon="search"></span><span>Buscar y reemplazar</span></button>
     <button data-cmd="tiempo" class="grande"><span data-icon="clock"></span><span>Palabras y tiempo</span></button>
+    <button data-cmd="versiones" class="grande"><span data-icon="history"></span><span>Versiones anteriores</span></button>
   </div>
   <div class="toolbar ribbon" data-rpanel="vista" hidden>
     <button data-cmd="leer" class="grande"><span data-icon="book"></span><span>Modo lectura</span></button>
@@ -217,6 +226,16 @@
     <button data-color="quitar" class="txt">Quitar</button>
     <span class="spacer"></span>
     <button data-color="cerrar" aria-label="Cerrar los colores" data-icon="close"></button>
+  </div>
+  <div class="palette" id="palette-letra" role="toolbar" aria-label="Color de la letra" hidden>
+    <span class="palette-label">Color de letra</span>
+    <button data-letra="rojo" class="sw-letra l-rojo" aria-label="Rojo">A</button>
+    <button data-letra="azul" class="sw-letra l-azul" aria-label="Azul">A</button>
+    <button data-letra="verde" class="sw-letra l-verde" aria-label="Verde">A</button>
+    <button data-letra="naranja" class="sw-letra l-naranja" aria-label="Naranja">A</button>
+    <button data-letra="quitar" class="txt">Automático</button>
+    <span class="spacer"></span>
+    <button data-letra="cerrar" aria-label="Cerrar los colores" data-icon="close"></button>
   </div>
   <div class="replacebar" id="replacebar" role="search" hidden>
     <label class="search"><span data-icon="search"></span><input id="rep-buscar" type="search" placeholder="Buscar" autocomplete="off" enterkeyhint="search"></label>

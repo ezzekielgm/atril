@@ -3,7 +3,7 @@
 
 import { enlazarCitas } from "./biblia.js";
 import { crearPlan, tiempoPrevisto, palabraActual, mmss, contarPalabras, minutosEstimados, minutosDeTitulo, tituloSinMinutos, ritmoDeEnsayos, PALABRAS_POR_MINUTO } from "./tiempo.js";
-import { COLORES, claseValida, claseDeFondo, colorDeMark } from "./colores.js";
+import { COLORES, LETRAS, claseValida, claseDeFondo, colorDeMark, claseLetraValida, claseDeLetra, rgbDe } from "./colores.js";
 import { crearPlantilla, repartirMinutos } from "./plantilla.js";
 import { dividirEnTarjetas, nivelDeCorte, partesDelDiscurso, parteDeBloque, estimarPartes } from "./tarjetas.js";
 import { marcarCoincidencias, limpiarCoincidencias, plegarTexto, rangosCoincidencias } from "./buscar.js";
@@ -161,6 +161,7 @@ const ALLOWED = {
 };
 const DROP = new Set(["SCRIPT", "STYLE", "IFRAME", "OBJECT", "EMBED", "NOSCRIPT", "TEMPLATE", "SVG", "MATH", "LINK", "META", "TITLE", "HEAD", "FORM", "INPUT", "BUTTON", "SELECT", "TEXTAREA", "VIDEO", "AUDIO", "CANVAS"]);
 const BLOCKS = new Set(["P", "H1", "H2", "H3", "H4", "UL", "OL", "LI", "TABLE", "BLOCKQUOTE", "DIV", "TR", "TD", "TH", "THEAD", "TBODY"]);
+const LETRA_EN = /^(P|H[1-4]|LI|TD|TH|STRONG|B|EM|I|U|S|STRIKE|DEL|MARK|SUB|SUP)$/; // etiquetas cuyo color de letra se conserva
 
 function fondoDe(node) {
   return (node.style && (node.style.backgroundColor || node.style.background)) || "";
@@ -184,6 +185,12 @@ function cleanNode(node) {
     let tag = child.tagName.toUpperCase();
     if (DROP.has(tag)) { child.remove(); continue; }
 
+    // Color de letra aplicado como estilo sobre otra etiqueta (p. ej. <p style="color:red">, <b style="color:…">)
+    if (tag !== "SPAN" && tag !== "FONT" && LETRA_EN.test(tag)) {
+      const c = child.style && child.style.color;
+      const cl = c ? claseDeLetra(c) || "t-auto" : "";
+      if (cl) { const sp = document.createElement("span"); sp.className = cl; while (child.firstChild) sp.append(child.firstChild); child.append(sp); }
+    }
     // Resaltado aplicado como estilo sobre otra etiqueta (p. ej. <b style="background-color:…">)
     if (tag !== "SPAN" && tag !== "FONT" && tag !== "MARK" && !BLOCKS.has(tag) && hasBackground(child)) {
       const m = markDe(child);
@@ -202,11 +209,22 @@ function cleanNode(node) {
     // Spans con fondo (resaltado del editor) -> <mark>; negrita/cursiva por estilo -> etiquetas
     if (tag === "SPAN" || tag === "FONT") {
       const st = child.style || {};
+      // Color de la letra: <span class="t-rojo"> ya limpio se queda tal cual
+      const clase = child.getAttribute("class") || "";
+      const fontColor = tag === "FONT" ? child.getAttribute("color") : "";
+      const letra = st.color ? claseDeLetra(st.color) || "t-auto"
+        : fontColor ? claseDeLetra(fontColor) || "t-auto"
+        : claseLetraValida(clase) || (clase === "t-auto" ? "t-auto" : "");
+      if (tag === "SPAN" && letra && child.attributes.length === 1 && clase === letra) { cleanNode(child); continue; }
       const fw = st.fontWeight;
       const inner = document.createDocumentFragment();
       while (child.firstChild) inner.append(child.firstChild);
       let out = inner;
-      const wrap = (t) => { const w = t === "mark" ? markDe(child) : document.createElement(t); w.append(out); out = w; };
+      const wrap = (t) => {
+        const w = t === "mark" ? markDe(child) : t === "letra" ? Object.assign(document.createElement("span"), { className: letra }) : document.createElement(t);
+        w.append(out); out = w;
+      };
+      if (letra) wrap("letra");
       if (fw === "bold" || Number(fw) >= 600) wrap("strong");
       if (st.fontStyle === "italic") wrap("em");
       if ((st.textDecoration || st.textDecorationLine || "").includes("underline")) wrap("u");
@@ -267,6 +285,24 @@ function cleanNode(node) {
   }
 }
 
+/** El <span> de color de letra que envuelve a un nodo (sin salir de root) o null. */
+function colorDeFuera(n, root) {
+  for (let p = n.parentElement; p && p !== root; p = p.parentElement) if (p.tagName === "SPAN" && claseLetraValida(p.getAttribute("class"))) return p;
+  return null;
+}
+/** Parte `fuera` en tres: lo de antes de `dentro`, el trozo que lo lleva (ya sin `fuera`) y lo de después. */
+function partirAlrededor(fuera, dentro) {
+  const antes = document.createRange();
+  antes.setStart(fuera, 0); antes.setEndBefore(dentro);
+  const fa = antes.extractContents();
+  const despues = document.createRange();
+  despues.setStartAfter(dentro); despues.setEnd(fuera, fuera.childNodes.length);
+  const fd = despues.extractContents();
+  const copia = (frag) => { if (!frag.textContent) return null; const m = fuera.cloneNode(false); m.append(frag); return m; };
+  const a = copia(fa), d = copia(fd);
+  fuera.replaceWith(...[a, ...fuera.childNodes, d].filter(Boolean));
+}
+
 /** Un <mark> dentro de otro: se parte el de fuera para que cada trozo tenga un solo color. */
 function partirMarks(root) {
   let inner;
@@ -301,7 +337,14 @@ function sanitize(html) {
   }
   // Resaltados dentro de otros: el de dentro manda en su trozo
   partirMarks(out);
-  out.querySelectorAll("mark,strong,em,u,s,b,i").forEach((m) => { if (!m.textContent && !m.querySelector("img")) m.remove(); });
+  // «Automático» (color normal) dentro de un trozo de color: se parte el de fuera y se quita
+  let auto;
+  while ((auto = out.querySelector("span.t-auto"))) {
+    let fuera;
+    while ((fuera = colorDeFuera(auto, out))) partirAlrededor(fuera, auto);
+    auto.replaceWith(...auto.childNodes);
+  }
+  out.querySelectorAll("mark,strong,em,u,s,b,i,span").forEach((m) => { if (!m.textContent && !m.querySelector("img")) m.remove(); });
   const res = out.innerHTML.trim();
   return res || "<p><br></p>";
 }
@@ -313,12 +356,13 @@ const DB_NAME = "atril";
 let dbPromise;
 function openDb() {
   return (dbPromise ||= new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, 2);
+    const req = indexedDB.open(DB_NAME, 3);
     req.onupgradeneeded = () => {
       const d = req.result;
       if (!d.objectStoreNames.contains("docs")) d.createObjectStore("docs", { keyPath: "id" });
       if (!d.objectStoreNames.contains("notes")) d.createObjectStore("notes", { keyPath: "id" });
       if (!d.objectStoreNames.contains("grabaciones")) d.createObjectStore("grabaciones", { keyPath: "id" });
+      if (!d.objectStoreNames.contains("versiones")) d.createObjectStore("versiones", { keyPath: "id" });
     };
     req.onsuccess = () => {
       const d = req.result;
@@ -537,6 +581,72 @@ async function shareText(title, text) {
 /* ============================================================
    Importar documentos
    ============================================================ */
+/* ============================================================
+   Versiones anteriores (como el historial de versiones de Word):
+   copia al empezar a editar, al cambiar por un Word nuevo y al recuperar otra.
+   Almacén `versiones`: {id, kind, docId, fecha, title, html, motivo}. Las 10 últimas de cada documento.
+   ============================================================ */
+const MAX_VERSIONES = 10;
+async function versionesDe(kind, id) {
+  const todas = await store.all("versiones").catch(() => []);
+  return todas.filter((v) => v.kind === kind && v.docId === id).sort((a, b) => b.fecha - a.fecha);
+}
+async function guardarVersion(kind, item, motivo) {
+  if (!item || !item.id || !item.html) return;
+  try {
+    const lista = await versionesDe(kind, item.id);
+    if (lista[0] && lista[0].html === item.html && lista[0].title === item.title) return; // ya está guardada
+    await tx("versiones", "readwrite", (o) => o.put({ id: uid(), kind, docId: item.id, fecha: Date.now(), title: item.title || "", html: item.html, motivo }));
+    for (const v of lista.slice(MAX_VERSIONES - 1)) await tx("versiones", "readwrite", (o) => o.delete(v.id));
+  } catch (e) { console.warn("No se pudo guardar la versión", e); }
+}
+/** Al arrancar: quita las versiones de documentos que ya no existen. */
+async function limpiarVersiones() {
+  try {
+    const [v, docs, notes] = await Promise.all([store.all("versiones"), store.all("docs"), store.all("notes")]);
+    const hay = new Set([...docs.map((d) => "docs/" + d.id), ...notes.map((d) => "notes/" + d.id)]);
+    for (const x of v) if (!hay.has(x.kind + "/" + x.docId)) await tx("versiones", "readwrite", (o) => o.delete(x.id));
+  } catch {}
+}
+/** Hoja con las versiones anteriores; `alRecuperar(item)` se llama con el documento ya cambiado. */
+async function abrirVersiones(kind, id, { alRecuperar = () => {}, antes = async () => {} } = {}) {
+  const lista = await versionesDe(kind, id);
+  const recuperar = async (v) => {
+    await antes();
+    const actual = await store.get(kind, id);
+    if (!actual) return;
+    await guardarVersion(kind, actual, "Antes de recuperar otra versión");
+    const nuevo = { ...actual, html: sanitize(v.html), title: v.title || actual.title, updated: Date.now() };
+    await store.put(kind, nuevo);
+    closeSheet();
+    await alRecuperar(nuevo);
+    toast(`Recuperada la versión de ${fmtDate(v.fecha).toLowerCase()}. La que tenías queda en «Versiones anteriores».`, { ms: 6000 });
+  };
+  const ver = (v) => openSheet([
+    el("h2", { text: `${fmtDate(v.fecha)} · ${v.motivo || ""}` }),
+    el("div", { class: "doc-content ver-previa", html: sanitize(v.html) }),
+    el("div", { class: "actions" },
+      el("button", { class: "action primary", text: "Recuperar esta versión", onclick: () => recuperar(v) }),
+      el("button", { class: "action plain", text: "Volver", onclick: () => abrirVersiones(kind, id, { alRecuperar, antes }) })),
+  ]);
+  openSheet([
+    el("h2", { text: "Versiones anteriores" }),
+    el("p", { class: "small-print", text: `Atril guarda una copia al empezar a editar, al cambiarlo por un Word nuevo y al recuperar otra versión. Se quedan las ${MAX_VERSIONES} últimas, solo en este dispositivo.` }),
+    lista.length
+      ? el("div", { class: "versiones" }, lista.map((v) => {
+          const n = contarPalabras(htmlToText(v.html));
+          return el("div", { class: "version" },
+            el("div", { class: "v-txt" },
+              el("b", { text: fmtDate(v.fecha) }),
+              el("span", { text: `${v.motivo || ""} · ${n.toLocaleString("es-ES")} palabras` })),
+            el("button", { class: "chip", text: "Ver", onclick: () => ver(v) }),
+            el("button", { class: "chip", text: "Recuperar", onclick: () => recuperar(v) }));
+        }))
+      : el("p", { text: "Aún no hay versiones anteriores. La primera se guarda en cuanto cambies algo en el editor." }),
+    el("div", { class: "actions" }, el("button", { class: "action plain", text: "Cerrar", onclick: () => closeSheet() })),
+  ]);
+}
+
 let mammothPromise;
 function loadMammoth() {
   if (window.mammoth) return Promise.resolve(window.mammoth);
@@ -573,9 +683,15 @@ const STYLE_MAP = [
 
 async function docxToHtml(file) {
   const mammoth = await loadMammoth();
-  const arrayBuffer = await file.arrayBuffer();
+  let arrayBuffer = await file.arrayBuffer();
+  // El color de la letra no lo lee mammoth: se marca antes y se recupera después
+  let colores = null;
+  try {
+    colores = await import("./word-colores.js");
+    arrayBuffer = await colores.marcarColores(arrayBuffer);
+  } catch (e) { console.warn("Sin colores de letra:", e); colores = null; }
   const res = await mammoth.convertToHtml({ arrayBuffer }, { styleMap: STYLE_MAP });
-  return sanitize(res.value);
+  return sanitize(colores ? colores.ponerColores(res.value) : res.value);
 }
 
 async function importFiles(files) {
@@ -612,6 +728,7 @@ async function importFiles(files) {
         close = busy("Abriendo el documento…");
         if (sustituir) {
           const fresco = (await store.get("docs", previo.id)) || previo;
+          await guardarVersion("docs", fresco, "Antes de cambiarlo por el Word nuevo");
           await store.put("docs", { ...fresco, html, updated: now, source: name });
           done.push({ ...fresco, actualizado: true });
           continue;
@@ -721,7 +838,7 @@ async function crearPdf(kind, item) {
     const { buildPdf } = await import("./pdf-export.js");
     const blob = await buildPdf({
       title: item.title || "Documento", html: htmlConTitulo(item),
-      size: Number(settings.pdfSize) || 12, family: settings.font, highlights: settings.pdfMarks !== false,
+      size: Number(settings.pdfSize) || 12, family: ["sans", "arial", "verdana"].includes(settings.font) ? "sans" : "serif", highlights: settings.pdfMarks !== false,
     });
     close();
     offerFile(new File([blob], safeFileName(item.title) + ".pdf", { type: "application/pdf" }), { title: "PDF listo" });
@@ -1653,7 +1770,7 @@ function openAaSheet() {
     el("div", { class: "group" }, el("span", { class: "label", text: "Tema" }),
       chipGroup([["claro", "Claro"], ["sepia", "Sepia"], ["oscuro", "Oscuro"]], "theme", "t-")),
     el("div", { class: "group" }, el("span", { class: "label", text: "Letra" }),
-      chipGroup([["sans", "Como Word"], ["serif", "Clásica"]], "font")),
+      chipGroup([["sans", "Como Word"], ["serif", "Clásica"], ["arial", "Arial"], ["georgia", "Georgia"], ["verdana", "Verdana"]], "font", "f-")),
     el("div", { class: "group" }, el("span", { class: "label", text: "Interlineado" }),
       chipGroup([[1.35, "Junto"], [1.6, "Normal"], [1.9, "Amplio"]], "lineHeight")),
     currentView === "reader" ? reader.timeGroup() : null,
@@ -1672,6 +1789,22 @@ function decorarMinutos(root) {
     if (!m) continue;
     ultimo.textContent = ultimo.textContent.slice(0, m.index);
     ultimo.after(el("span", { class: "h-min" }, el("span", { class: "par", text: " (" }), `${m[1]} ${m[2]}`, el("span", { class: "par", text: ")" })));
+  }
+}
+
+/** Las pausas «‖» se ven destacadas al leer (solo en pantalla; el texto no cambia). */
+function decorarPausas(root) {
+  const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  const nodos = [];
+  for (let n = w.nextNode(); n; n = w.nextNode()) if (n.data.includes("‖")) nodos.push(n);
+  for (const n of nodos) {
+    const partes = n.data.split("‖");
+    const frag = document.createDocumentFragment();
+    partes.forEach((t, k) => {
+      if (k) frag.append(el("span", { class: "pausa", title: "Pausa", text: "‖" }));
+      if (t) frag.append(t);
+    });
+    n.replaceWith(frag);
   }
 }
 
@@ -1754,6 +1887,7 @@ const reader = {
     this.contentEl.innerHTML = item.html || "";
     enlazarCitas(this.contentEl, settings.refLinks);
     decorarMinutos(this.contentEl);
+    decorarPausas(this.contentEl);
     this.cargarAqui();
     this.setMode("texto", { keepScroll: true });
     this.buildPlan();
@@ -2681,6 +2815,28 @@ const prompter = {
 /* ============================================================
    Editor
    ============================================================ */
+/* ---- Partes del documento por títulos (panel de navegación del editor) ---- */
+const nivelDe = (b) => { const m = /^H([1-4])$/.exec(b && b.tagName); return m ? Number(m[1]) : 0; };
+/** Donde termina la parte que empieza en el título i: en el siguiente título de su nivel o superior. */
+function finDeSeccion(hijos, i) {
+  const n = nivelDe(hijos[i]);
+  let fin = i + 1;
+  while (fin < hijos.length && !(nivelDe(hijos[fin]) && nivelDe(hijos[fin]) <= n)) fin++;
+  return fin;
+}
+/** El título de la parte hermana anterior (dir -1) o siguiente (dir 1) del mismo nivel, o -1. */
+function hermanaDe(hijos, i, dir) {
+  const n = nivelDe(hijos[i]);
+  if (!n) return -1;
+  if (dir > 0) { const f = finDeSeccion(hijos, i); return f < hijos.length && nivelDe(hijos[f]) === n ? f : -1; }
+  for (let j = i - 1; j >= 0; j--) {
+    const k = nivelDe(hijos[j]);
+    if (k && k < n) return -1;
+    if (k === n) return j;
+  }
+  return -1;
+}
+
 const editor = {
   kind: null, id: null, item: null, dirty: false, saving: null,
   area: $("#editor"), titleInput: $("#editor-title"), scrollEl: $("#editor-scroll"),
@@ -2690,12 +2846,14 @@ const editor = {
     if (stale()) return;
     if (!item) { toast("Ese documento ya no existe."); throw new Error("no existe"); }
     this.kind = kind; this.id = id; this.item = item; this.dirty = false;
+    this.original = item; this.versionHecha = false; // para «Versiones anteriores»
     this.titleInput.value = item.title || "";
     this.titleInput.placeholder = kind === "notes" ? "Título de la nota" : "Título del discurso";
     this.area.innerHTML = item.html && item.html !== "<p><br></p>" ? item.html : "<p><br></p>";
     $("#save-state").textContent = "";
     document.title = (item.title || "Editar") + " · Atril";
     this.togglePalette(false);
+    this.togglePaletteLetra(false);
     reemplazo.cerrar();
     this.cinta("inicio");
     this.pintarTiempo();
@@ -2724,8 +2882,8 @@ const editor = {
 
   pintarTiempo() {
     const chip = $("#editor-time");
-    const n = contarPalabras(this.area.textContent || "");
-    $("#ed-palabras").textContent = `${n.toLocaleString("es-ES")} ${n === 1 ? "palabra" : "palabras"}`;
+    this.totalPalabras = contarPalabras(this.area.textContent || "");
+    this.pintarSeleccion();
     this.pintarZoom();
     if (this.kind !== "docs" || !this.item) { chip.hidden = true; this.estimacion = null; return; }
     const e = (this.estimacion = estimarPartes(this.area.children, this.item.target, ppm()));
@@ -2738,6 +2896,22 @@ const editor = {
       estado = e.seg > e.objetivoSeg + 30 ? "over" : e.partes.some((p) => p.objetivoSeg && p.seg > p.objetivoSeg + 20) ? "warn" : "ok";
     }
     chip.className = "time-chip" + (estado ? " " + estado : "");
+  },
+
+  /** Palabras del documento y, si hay texto seleccionado, cuántas y cuánto se tarda en decirlas (como Word). */
+  pintarSeleccion() {
+    const n = this.totalPalabras || 0;
+    let txt = `${n.toLocaleString("es-ES")} ${n === 1 ? "palabra" : "palabras"}`;
+    const sel = window.getSelection();
+    if (sel && sel.rangeCount && !sel.isCollapsed && this.area.contains(sel.anchorNode)) {
+      const k = contarPalabras(String(sel));
+      if (k) {
+        const seg = Math.max(1, Math.round((k / ppm()) * 60));
+        txt = `${k.toLocaleString("es-ES")} de ${txt} · ≈ ${seg < 60 ? seg + " s" : mmss(seg)}`;
+      }
+    }
+    const e = $("#ed-palabras");
+    if (e.textContent !== txt) e.textContent = txt;
   },
 
   /** Hoja con el tiempo estimado por partes, la duración objetivo y el ritmo al hablar. */
@@ -2797,6 +2971,10 @@ const editor = {
     let title = this.titleInput.value.trim();
     if (!title) title = htmlToText(html).split("\n")[0].trim().slice(0, 60);
     const item = { ...this.item, html, title: title || (this.kind === "notes" ? "Nota sin título" : "Sin título"), updated: Date.now() };
+    if (!this.versionHecha && this.original && (html !== this.original.html || item.title !== this.original.title)) {
+      this.versionHecha = true;
+      await guardarVersion(this.kind, this.original, "Antes de editar");
+    }
     this.item = item;
     const p = store.put(this.kind, item).then(
       () => { $("#save-state").textContent = "Guardado"; },
@@ -2822,6 +3000,11 @@ const editor = {
       mas: () => this.zoom(2),
       aspecto: () => openAaSheet(),
       navegacion: () => (this.lateral.cabe() ? this.lateral.alternar() : this.navegacionHoja()),
+      letra: () => this.togglePaletteLetra(),
+      parte: () => this.parteNueva(),
+      minutos: () => this.minutosParte(),
+      pausa: () => this.insertarPausa(),
+      versiones: () => this.abrirVersiones(),
     };
     if (otras[cmd]) { otras[cmd](); return; }
     this.area.focus();
@@ -2843,6 +3026,7 @@ const editor = {
       case "clear":
         d.execCommand("removeFormat");
         this.unwrapMarksInSelection();
+        this.quitarLetraEnSeleccion();
         d.execCommand("formatBlock", false, "<p>");
         break;
     }
@@ -2870,18 +3054,29 @@ const editor = {
     $$("mark", this.area).forEach((m) => { if (range.intersectsNode(m)) m.replaceWith(...m.childNodes); });
   },
 
-  /** Panel de navegación (como en Word): los títulos del documento. */
+  /** Panel de navegación (como en Word): los títulos, lo que dura cada parte y flechas para cambiarlas de sitio. */
   rellenarNavegacion(out) {
     out.replaceChildren();
+    const hijos = [...this.area.children];
+    const palabras = hijos.map((b) => contarPalabras(b.textContent || ""));
     let n = 0;
-    [...this.area.children].forEach((b, i) => {
-      if (!/^H[1-4]$/.test(b.tagName)) return;
+    hijos.forEach((b, i) => {
+      const nivel = nivelDe(b);
+      if (!nivel) return;
       const txt = (b.textContent || "").trim();
       if (!txt) return;
       const min = minutosDeTitulo(txt);
-      const h = el("button", { class: `o-item o-h o-${b.tagName.toLowerCase()}`, "data-i": i, text: min ? tituloSinMinutos(txt) : txt });
-      if (min) h.append(el("span", { class: "o-min", text: `${String(min).replace(".", ",")} min` }));
-      out.append(h); n++;
+      const fin = finDeSeccion(hijos, i);
+      const seg = Math.round((palabras.slice(i, fin).reduce((a, x) => a + x, 0) / ppm()) * 60);
+      const tono = !min ? "" : seg > min * 60 + 20 ? "over" : seg < min * 60 - 30 ? "corto" : "ok";
+      const sube = hermanaDe(hijos, i, -1) >= 0, baja = hermanaDe(hijos, i, 1) >= 0;
+      out.append(el("div", { class: `o-item o-h o-h${nivel} nav-item`, "data-i": i },
+        el("button", { class: "nav-ir", text: min ? tituloSinMinutos(txt) : txt }),
+        el("div", { class: "nav-pie" },
+          el("span", { class: "nav-t " + tono, text: min ? `≈ ${mmss(seg)} de ${String(min).replace(".", ",")} min` : `≈ ${mmss(seg)}` }),
+          sube ? el("button", { class: "nav-mover", "data-dir": "-1", "aria-label": "Subir esta parte", html: icon("up") }) : null,
+          baja ? el("button", { class: "nav-mover", "data-dir": "1", "aria-label": "Bajar esta parte", html: icon("down") }) : null)));
+      n++;
     });
     if (!n) out.append(el("div", { class: "o-empty" },
       el("h2", { text: "Sin títulos" }),
@@ -2894,7 +3089,25 @@ const editor = {
     this.rellenarNavegacion(lista);
     const titulos = [...lista.querySelectorAll(".o-item")];
     if (!titulos.length) { toast("No hay títulos. Usa «Título 1» o «Título 2» para las partes."); return; }
-    actionSheet("Ir a", titulos.map((t) => ({ label: t.textContent, icon: "next", run: () => this.irABloque(Number(t.dataset.i)) })));
+    actionSheet("Ir a", titulos.map((t) => ({ label: t.querySelector(".nav-ir").textContent, icon: "next", run: () => this.irABloque(Number(t.dataset.i)) })));
+  },
+
+  /** Cambia de sitio una parte entera (su título y todo lo que tiene debajo), como en el panel de navegación de Word. */
+  moverParte(i, dir) {
+    const hijos = [...this.area.children];
+    const otra = hermanaDe(hijos, i, dir);
+    if (otra < 0) return;
+    const antes = this.area.innerHTML;
+    const nodos = hijos.slice(i, finDeSeccion(hijos, i));
+    const ref = dir < 0 ? hijos[otra] : hijos[finDeSeccion(hijos, otra)] || null;
+    for (const n of nodos) this.area.insertBefore(n, ref);
+    this.markDirty();
+    this.lateral.rellenar();
+    this.irABloque([...this.area.children].indexOf(nodos[0]));
+    toast("Parte cambiada de sitio.", {
+      action: "Deshacer", ms: 6000,
+      onAction: () => { this.area.innerHTML = antes; this.markDirty(); this.lateral.rellenar(); this.pintarTiempo(); },
+    });
   },
 
   irABloque(i) {
@@ -2948,13 +3161,189 @@ const editor = {
   cinta(nombre) {
     $$(".ribbon-tabs [data-rtab]").forEach((t) => t.setAttribute("aria-selected", String(t.dataset.rtab === nombre)));
     $$("#view-editor [data-rpanel]").forEach((p) => { p.hidden = p.dataset.rpanel !== nombre; });
-    if (nombre !== "inicio") this.togglePalette(false);
+    if (nombre !== "inicio") { this.togglePalette(false); this.togglePaletteLetra(false); }
+  },
+
+  /* ---- Color de la letra (como el botón «A» de Word) ---- */
+  togglePaletteLetra(force) {
+    const p = $("#palette-letra");
+    const show = force ?? p.hidden;
+    if (show) this.togglePalette(false);
+    p.hidden = !show;
+    $('#toolbar button[data-cmd="letra"]').setAttribute("aria-expanded", String(show));
+    if (show) this.paintPaletteLetra();
+  },
+  /** Color de letra donde está el cursor: "rojo", "azul", "verde", "naranja" o null. */
+  letraActual() {
+    const sel = window.getSelection();
+    if (!sel || !sel.rangeCount) return null;
+    let n = sel.anchorNode;
+    if (n && n.nodeType === 3) n = n.parentElement;
+    for (; n && n !== this.area && this.area.contains(n); n = n.parentElement) {
+      let c;
+      if (n.style && n.style.color) c = claseDeLetra(n.style.color); // un color neutro explícito = sin color
+      else if (n.tagName === "FONT" && n.getAttribute("color")) c = claseDeLetra(n.getAttribute("color"));
+      else if (!(c = claseLetraValida(n.getAttribute("class")))) continue;
+      return c ? c.slice(2) : null;
+    }
+    return null;
+  },
+  paintPaletteLetra() {
+    const actual = this.letraActual();
+    $$("#palette-letra [data-letra]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.letra === actual)));
+  },
+  /** Pone el color con la orden del navegador (así «deshacer» funciona); al guardar pasa a <span class="t-…">. */
+  aplicarLetra(id) {
+    this.area.focus();
+    const sel = window.getSelection();
+    if (!sel || !sel.rangeCount) return;
+    if (sel.isCollapsed) { toast("Selecciona primero el texto que quieres poner de color."); return; }
+    const css = getComputedStyle(document.documentElement);
+    const color = (id === "quitar" ? css.getPropertyValue("--text") : css.getPropertyValue("--t-" + id)).trim();
+    if (!color) return;
+    document.execCommand("styleWithCSS", false, true);
+    document.execCommand("foreColor", false, color);
+    document.execCommand("styleWithCSS", false, false);
+    if (id !== "quitar") { settings.letraColor = id; saveSettings(); }
+    this.markDirty();
+    this.paintToolbar();
+  },
+  quitarLetraEnSeleccion() {
+    const sel = window.getSelection();
+    if (!sel || !sel.rangeCount) return;
+    const range = sel.getRangeAt(0);
+    $$("span, font", this.area).forEach((n) => {
+      if (!range.intersectsNode(n)) return;
+      if (n.style && n.style.color) n.style.color = "";
+      if (n.tagName === "FONT") n.removeAttribute("color");
+      const k = claseLetraValida(n.getAttribute("class"));
+      if (k) n.classList.remove(k);
+      if (!n.getAttribute("class")) n.removeAttribute("class");
+      if (!n.getAttribute("style")) n.removeAttribute("style");
+      if (!n.attributes.length) n.replaceWith(...n.childNodes);
+    });
+  },
+
+  /* ---- Insertar ---- */
+  /** El bloque de primer nivel donde está el cursor (o null). */
+  bloqueDelCursor() {
+    const sel = window.getSelection();
+    let n = sel && sel.rangeCount ? sel.anchorNode : null;
+    if (!n || !this.area.contains(n)) return null;
+    while (n && n.parentNode !== this.area) n = n.parentNode;
+    return n && n.nodeType === 1 ? n : null;
+  },
+  /** El título de la parte en la que está el cursor (el mismo bloque si es un título). */
+  tituloDelCursor() {
+    const b = this.bloqueDelCursor();
+    if (!b) return null;
+    if (/^H[1-4]$/.test(b.tagName)) return b;
+    const nivel = nivelDeCorte([...this.area.children].map((x) => ({ tag: x.tagName }))) || 2;
+    for (let p = b.previousElementSibling; p; p = p.previousElementSibling) {
+      const m = /^H([1-4])$/.exec(p.tagName);
+      if (m && Number(m[1]) <= nivel) return p;
+    }
+    return null;
+  },
+  insertarPausa() {
+    const sel = window.getSelection();
+    if (!sel || !sel.rangeCount || !this.area.contains(sel.anchorNode)) { toast("Pon el cursor donde quieres la pausa."); return; }
+    this.area.focus();
+    const n = sel.anchorNode, o = sel.anchorOffset;
+    const antes = n.nodeType === 3 ? n.data.slice(0, o) : "";
+    document.execCommand("insertText", false, (antes && !/\s$/.test(antes) ? " " : "") + "‖ ");
+    this.markDirty();
+  },
+  /** Parte nueva: un título con sus minutos después del párrafo donde está el cursor. */
+  parteNueva() {
+    const nivel = nivelDeCorte([...this.area.children].map((x) => ({ tag: x.tagName }))) || 2;
+    const tag = "H" + Math.max(2, nivel);
+    let minutos = 2;
+    const titulo = el("input", { type: "text", placeholder: "Título de la parte (p. ej. Punto 2)", autocomplete: "off" });
+    const chips = el("div", { class: "chips" }, [0, 1, 2, 3, 5, 8, 10].map((m) => {
+      const b = el("button", { class: "chip", "aria-pressed": String(m === minutos), text: m ? `${m} min` : "Sin minutos" });
+      b.addEventListener("click", () => { minutos = m; $$(".chip", chips).forEach((c) => c.setAttribute("aria-pressed", String(c === b))); });
+      return b;
+    }));
+    const ref = this.bloqueDelCursor();
+    const insertar = () => {
+      const t = titulo.value.trim() || "Nueva parte";
+      const h = document.createElement(tag);
+      h.textContent = minutos ? `${t} (${minutos} min)` : t;
+      const p = document.createElement("p");
+      p.innerHTML = "<br>";
+      if (ref && ref.parentNode === this.area) ref.after(h, p); else this.area.append(h, p);
+      closeSheet();
+      this.area.focus();
+      const r = document.createRange(); r.setStart(p, 0); r.collapse(true);
+      const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(r);
+      h.scrollIntoView({ block: "center" });
+      this.markDirty();
+    };
+    titulo.addEventListener("keydown", (e) => { if (e.key === "Enter") insertar(); });
+    openSheet([
+      el("h2", { text: "Parte nueva" }),
+      titulo,
+      el("div", { class: "group" }, el("span", { class: "label", text: "Minutos de esta parte" }), chips),
+      el("p", { class: "small-print", text: "Se añade después del párrafo donde tienes el cursor. Con los minutos, el cronómetro te dirá si vas adelantado o retrasado en cada parte." }),
+      el("div", { class: "actions" },
+        el("button", { class: "action primary", text: "Insertar", onclick: insertar }),
+        el("button", { class: "action plain", text: "Cancelar", onclick: () => closeSheet() })),
+    ]);
+    setTimeout(() => titulo.focus(), 60);
+  },
+  /** Pone o cambia los minutos «(N min)» del título de la parte donde está el cursor. */
+  minutosParte() {
+    const h = this.tituloDelCursor();
+    if (!h) { toast("Pon el cursor en una parte del discurso (en su título o en su texto)."); return; }
+    const nombre = tituloSinMinutos(h.textContent || "") || "esta parte";
+    const actual = minutosDeTitulo(h.textContent || "");
+    const poner = (n) => {
+      const w = document.createTreeWalker(h, NodeFilter.SHOW_TEXT);
+      let ult = null;
+      for (let t = w.nextNode(); t; t = w.nextNode()) if (t.textContent.trim()) ult = t;
+      const limpio = (x) => x.replace(/\s*\(\s*\d{1,3}(?:[.,]\d)?\s*(?:min|mins|minutos?)\.?\s*\)\s*$/i, "").replace(/\s*[—–-]\s*\d{1,3}(?:[.,]\d)?\s*(?:min|mins|minutos?)\.?\s*$/i, "");
+      if (ult) ult.textContent = limpio(ult.textContent).replace(/\s+$/, "") + (n ? ` (${n} min)` : "");
+      else if (n) h.append(` (${n} min)`);
+      closeSheet();
+      this.markDirty();
+      this.pintarTiempo();
+      this.lateral.rellenar();
+      toast(n ? `«${nombre}»: ${n} min.` : `«${nombre}» ya no tiene minutos.`);
+    };
+    const num = el("input", { type: "number", inputmode: "numeric", min: 1, max: 120, step: 1, class: "num-input", value: actual || "", placeholder: "—", "aria-label": "Minutos" });
+    num.addEventListener("keydown", (e) => { if (e.key === "Enter" && Number(num.value) > 0) poner(Math.round(Number(num.value))); });
+    openSheet([
+      el("h2", { text: `Minutos de «${nombre}»` }),
+      el("div", { class: "chips" }, [1, 2, 3, 4, 5, 8, 10, 15].map((m) =>
+        el("button", { class: "chip", "aria-pressed": String(actual === m), text: `${m} min`, onclick: () => poner(m) }))),
+      el("div", { class: "size-row" }, num, el("span", { class: "unit", text: "min" }),
+        el("button", { class: "chip", text: "Poner", onclick: () => { if (Number(num.value) > 0) poner(Math.round(Number(num.value))); } }),
+        actual ? el("button", { class: "chip", text: "Quitar", onclick: () => poner(0) }) : null),
+      el("p", { class: "small-print", text: "Se escribe al final del título, «(5 min)», como en el Word: así funciona también si lo abres en el PC." }),
+      el("div", { class: "actions" }, el("button", { class: "action plain", text: "Cancelar", onclick: () => closeSheet() })),
+    ]);
+  },
+
+  /* ---- Versiones anteriores ---- */
+  async abrirVersiones() {
+    await this.flush();
+    abrirVersiones(this.kind, this.id, {
+      alRecuperar: async (nuevo) => {
+        this.item = nuevo; this.original = nuevo; this.versionHecha = false;
+        this.titleInput.value = nuevo.title || "";
+        this.area.innerHTML = nuevo.html;
+        this.pintarTiempo();
+        this.lateral.rellenar();
+      },
+    });
   },
 
   /** Paleta del resaltador (debajo de la barra). */
   togglePalette(force) {
     const p = $("#palette");
     const show = force ?? p.hidden;
+    if (show) this.togglePaletteLetra(false);
     p.hidden = !show;
     $('#toolbar button[data-cmd="highlight"]').setAttribute("aria-expanded", String(show));
     if (show) this.paintPalette();
@@ -3023,9 +3412,13 @@ const editor = {
       ul: state("insertUnorderedList"), ol: state("insertOrderedList"),
       strike: state("strikeThrough"),
       h1: block === "h1", h2: block === "h2", h3: block === "h3", p: block === "p" || block === "div", highlight: !!this.selectionMark(),
+      letra: !!this.letraActual(),
     };
     $$("#toolbar button[data-cmd]").forEach((b) => b.classList.toggle("active", !!map[b.dataset.cmd]));
     if (!$("#palette").hidden) this.paintPalette();
+    if (!$("#palette-letra").hidden) this.paintPaletteLetra();
+    $("#barra-letra").className = "barra-letra l-" + (this.letraActual() || settings.letraColor || "rojo");
+    this.pintarSeleccion();
   },
 
   init() {
@@ -3040,7 +3433,13 @@ const editor = {
       alCambiar: (v) => { navBtn.setAttribute("aria-pressed", String(v)); navBtn.classList.toggle("active", v); },
     });
     sideList.addEventListener("pointerdown", (e) => { if (e.target.closest(".o-item")) e.preventDefault(); }); // no quita el teclado
-    sideList.addEventListener("click", (e) => { const it = e.target.closest(".o-item"); if (it) this.irABloque(Number(it.dataset.i)); });
+    sideList.addEventListener("click", (e) => {
+      const it = e.target.closest(".o-item");
+      if (!it) return;
+      const m = e.target.closest(".nav-mover");
+      if (m) this.moverParte(Number(it.dataset.i), Number(m.dataset.dir));
+      else this.irABloque(Number(it.dataset.i));
+    });
     $("#editor-side-close").addEventListener("click", () => this.lateral.alternar());
     let navRaf = 0;
     this.scrollEl.addEventListener("scroll", () => { if (!navRaf) navRaf = requestAnimationFrame(() => { navRaf = 0; this.lateral.pintarActual(); }); }, { passive: true });
@@ -3070,6 +3469,12 @@ const editor = {
       b.addEventListener("mousedown", (e) => e.preventDefault());
       b.addEventListener("click", () => this.exec(b.dataset.cmd));
     });
+    $$("#palette-letra button").forEach((b) => {
+      b.tabIndex = -1;
+      b.addEventListener("pointerdown", (e) => e.preventDefault());
+      b.addEventListener("mousedown", (e) => e.preventDefault());
+      b.addEventListener("click", () => { if (b.dataset.letra === "cerrar") this.togglePaletteLetra(false); else this.aplicarLetra(b.dataset.letra); });
+    });
     $$("#palette button").forEach((b) => {
       b.tabIndex = -1;
       b.addEventListener("pointerdown", (e) => e.preventDefault());
@@ -3090,6 +3495,7 @@ const editor = {
         { label: "Copiar el texto", icon: "copy", run: () => copyText(htmlToText(item.html)) },
         { label: "Compartir el texto", icon: "share", run: () => shareText(item.title, htmlToText(item.html)) },
         { label: "Tamaño de letra y tema", icon: "aa", run: () => openAaSheet() },
+        { label: "Versiones anteriores", icon: "history", run: () => this.abrirVersiones() },
         { label: "Atajos de teclado", icon: "template", run: () => this.atajosHoja() },
         { label: "Eliminar", icon: "trash", danger: true, run: async () => { await deleteItem(this.kind, item); } },
       ]);
@@ -3255,6 +3661,7 @@ function init() {
   if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
   // Limpieza de grabaciones sueltas, cuando la app ya está tranquila
   setTimeout(limpiarGrabaciones, 8000);
+  setTimeout(limpiarVersiones, 9000);
 
   // ¿Se cerró la app en medio de un discurso? Se vuelve directamente a él
   const pend = sesion.pendiente();

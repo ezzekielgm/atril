@@ -27,7 +27,7 @@ La dirección es pública, pero solo contiene la app vacía: tus discursos y not
 - **Leer**: separa dos dedos sobre el texto para agrandar la letra y pellízcalo para achicarla. El texto se recoloca solo, como en una web de móvil.
 - **Un toque en el texto** oculta la barra de arriba para tener toda la pantalla. Otro toque la devuelve.
 - **Dos toques en un párrafo** lo marcan como «Voy por aquí» (una raya azul a la izquierda). Se recuerda al volver a abrir y sale en el esquema. Dos toques otra vez lo quitan.
-- **T**: tamaño, tema (claro, sepia u oscuro), tipo de letra e interlineado.
+- **Letra**: tamaño, tema (claro, sepia u oscuro), tipo de letra (Como Word, Clásica, Arial, Georgia o Verdana) e interlineado.
 - **Cronómetro**: tócalo para empezar o pararlo. Con la flecha circular vuelve a cero.
 - La pantalla no se apaga mientras lees (se puede desactivar en Ajustes).
 - **Citas bíblicas**: las citas como «Sal 37:4» o «1 Cor. 13:4-7» salen subrayadas; tócalas para abrir el versículo en JW Library (en Ajustes puedes elegir jw.org o quitar los enlaces).
@@ -36,6 +36,11 @@ La dirección es pública, pero solo contiene la app vacía: tus discursos y not
 - **Duración del discurso** (en **T**): pon los minutos que tienes. Con el cronómetro en marcha verás «Adelantado», «En tiempo» o «Retrasado»; se pone naranja cuando queda poco y rojo si te pasas. Si un título termina en «(5 min)», calcula el ritmo por partes.
 - Con la barra oculta queda un cronómetro pequeño abajo a la derecha; tócalo para pausar.
 - **Lápiz**: editar, como en Word: arriba las pestañas **Inicio** (estilos Normal, Título 1, 2 y 3, negrita, cursiva, subrayado, tachado, resaltador y listas), **Revisar** (buscar y reemplazar) y **Vista** (modo lectura y tamaño de letra). Abajo, las palabras y el zoom. Se guarda solo mientras escribes. Con el iPad en horizontal, a la izquierda sale el **panel de navegación** con los títulos (Vista → Panel de navegación lo quita o lo pone). Con teclado: ⌘⌥1, 2 o 3 para los títulos, ⌘⌥0 texto normal, ⌘⇧X tachado, ⌘⌥H resaltar, ⌘F buscar (la lista completa en ⋯ → Atajos de teclado). Abajo verás también **≈ 7 / 10 min**: lo que durará al ritmo al que hablas y tu objetivo. Se pone naranja si una parte se pasa de sus minutos y rojo si te pasas en total. Tócalo para ver cada parte, cambiar el objetivo o ajustar tu ritmo (incluso el real, sacado de tus ensayos). El **marcador** abre los colores (amarillo, verde, azul y rosa): selecciona el texto y toca un color. Con el cursor dentro de un resaltado, otro color lo cambia y «Quitar» lo borra. Los colores se respetan al abrir y al guardar en Word.
+- **Color de letra** (la **A** con una raya de color, al lado del marcador): selecciona el texto y elige rojo, azul, verde o naranja; «Automático» lo devuelve al color normal. Si en el Word del PC pones palabras de color, en Atril salen igual, y al guardar como Word o PDF también.
+- **Insertar**: **Parte nueva** (un título con sus minutos, después del párrafo donde estás), **Minutos de la parte** (pone o cambia el «(5 min)» de la parte donde tienes el cursor) y **Pausa** (escribe ‖, que al leer sale destacada en azul).
+- **Seleccionar texto** dice abajo cuántas palabras son y cuánto tardas en decirlas («45 de 279 palabras · ≈ 21 s»).
+- **Panel de navegación** (iPad en horizontal): cada parte dice lo que dura (en verde si cuadra con sus minutos, en rojo si se pasa) y tiene flechas para **subirla o bajarla entera**. Si te equivocas, «Deshacer» en el aviso.
+- **Versiones anteriores** (Revisar, o ⋯): Atril guarda una copia cada vez que empiezas a editar un discurso, cuando lo cambias por un Word nuevo y cuando recuperas otra. Puedes verlas y recuperar la que quieras (la que tenías también se guarda). Se quedan las 10 últimas.
 
 **El botón ⋯ del lector**
 - **Buscar en el texto**: da igual mayúsculas o acentos («pasion» encuentra «pasión»). Las flechas van de una a otra.

@@ -39,6 +39,7 @@
   --danger: #c4314b; --ok: #107c10; --warn: #8a5300; --warn-bg: #fff4ce;
   --mark: #fff176; --mark-text: inherit; --shadow: 0 10px 30px rgba(0,0,0,.22);
   --mark-verde: #b9f6ca; --mark-azul: #b3e5fc; --mark-rosa: #f8bbd0;
+  --t-rojo: #c00000; --t-azul: #0062b0; --t-verde: #00803a; --t-naranja: #c55a00;
 }
 [data-theme="sepia"] {
   --bg: #f7efdd; --desk: #ece2c9; --canvas: #ddd0b1; --surface: #efe4ca; --surface-2: #e2d4b4; --text: #33271a; --muted: #6f604a;
@@ -47,6 +48,7 @@
   --danger: #b3261e; --ok: #3f6b2a; --warn: #8a5200; --warn-bg: #f3dfb0;
   --mark: #f3d36b; --mark-text: inherit; --shadow: 0 10px 30px rgba(60,40,10,.25);
   --mark-verde: #c8e6a8; --mark-azul: #b5d9ea; --mark-rosa: #f0bcc8;
+  --t-rojo: #b0141a; --t-azul: #1b5a96; --t-verde: #2e6b2a; --t-naranja: #b35400;
 }
 [data-theme="oscuro"] {
   --bg: #1b1b1d; --desk: #252528; --canvas: #111113; --surface: #2b2b2e; --surface-2: #38383c; --text: #ecebe8; --muted: #a8a6a2;
@@ -55,9 +57,19 @@
   --danger: #f1707b; --ok: #6ccb5f; --warn: #f2b84b; --warn-bg: #3a2c10;
   --mark: #6b5d12; --mark-text: #fff7c2; --shadow: 0 10px 30px rgba(0,0,0,.6);
   --mark-verde: #1e5a35; --mark-azul: #174a66; --mark-rosa: #6b2445;
+  --t-rojo: #ff7b7b; --t-azul: #6fb3ff; --t-verde: #5ad18a; --t-naranja: #ffab5c;
 }
 [data-font="serif"] { --read-font: var(--serif); }
 [data-font="sans"]  { --read-font: var(--word); }
+/* Letras del sistema (vienen en el iPad; funcionan sin conexión) */
+[data-font="arial"] { --read-font: Arial, "Helvetica Neue", Helvetica, sans-serif; }
+[data-font="georgia"] { --read-font: Georgia, "Times New Roman", serif; }
+[data-font="verdana"] { --read-font: Verdana, Geneva, Tahoma, sans-serif; }
+.chip.f-sans { font-family: var(--word); }
+.chip.f-serif { font-family: var(--serif); }
+.chip.f-arial { font-family: Arial, Helvetica, sans-serif; }
+.chip.f-georgia { font-family: Georgia, serif; }
+.chip.f-verdana { font-family: Verdana, Geneva, sans-serif; }
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); }
@@ -237,6 +249,13 @@ button:focus:not(:focus-visible) { outline: none; }
 .doc-content mark.c-verde { background: var(--mark-verde); }
 .doc-content mark.c-azul { background: var(--mark-azul); }
 .doc-content mark.c-rosa { background: var(--mark-rosa); }
+/* Color de la letra */
+.doc-content .t-rojo { color: var(--t-rojo); }
+.doc-content .t-azul { color: var(--t-azul); }
+.doc-content .t-verde { color: var(--t-verde); }
+.doc-content .t-naranja { color: var(--t-naranja); }
+/* Pausa «‖» (solo se destaca al leer) */
+.doc-content .pausa { color: var(--accent); font-weight: 800; padding: 0 .12em; }
 .doc-content img { max-width: 100%; height: auto; border-radius: 6px; }
 .doc-content table { border-collapse: collapse; margin: 0 0 .8em; max-width: 100%; font-size: .85em; }
 .doc-content td, .doc-content th { border: 1px solid var(--border); padding: .3em .5em; vertical-align: top; }
@@ -773,3 +792,53 @@ button:focus:not(:focus-visible) { outline: none; }
 .atajo:last-child { border-bottom: 0; }
 .atajo kbd { font: 600 14px var(--ui); background: var(--surface); border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 5px; padding: 3px 8px; white-space: nowrap; justify-self: start; }
 .atajo span { font-size: 15px; }
+
+/* ---------- Editor: color de letra, Insertar, versiones ---------- */
+.toolbar .btn-letra { flex-direction: column; gap: 2px; }
+.btn-letra .a-letra { font: 700 19px/1 var(--ui); }
+.barra-letra { display: block; width: 20px; height: 4px; border-radius: 1px; background: var(--t-rojo); }
+.barra-letra.l-azul { background: var(--t-azul); }
+.barra-letra.l-verde { background: var(--t-verde); }
+.barra-letra.l-naranja { background: var(--t-naranja); }
+.palette .sw-letra { width: 44px; height: 44px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); font: 800 22px var(--ui); flex: none; }
+.palette .sw-letra[aria-pressed="true"] { box-shadow: 0 0 0 3px var(--accent); }
+.sw-letra.l-rojo { color: var(--t-rojo); }
+.sw-letra.l-azul { color: var(--t-azul); }
+.sw-letra.l-verde { color: var(--t-verde); }
+.sw-letra.l-naranja { color: var(--t-naranja); }
+.palette [data-letra="cerrar"] { width: 44px; height: 44px; display: inline-flex; align-items: center; justify-content: center; color: var(--muted); flex: none; }
+.palette [data-letra="cerrar"] svg { width: 22px; height: 22px; }
+.ico-pausa { font: 800 20px/1 var(--ui); color: var(--accent); width: 22px; text-align: center; }
+/* Panel de navegación del editor: título, duración de la parte y flechas para moverla */
+.side-list .nav-item { display: flex; flex-direction: column; align-items: stretch; gap: 1px; padding: 6px 4px 4px 10px; cursor: default; }
+.nav-ir { text-align: left; font: inherit; color: inherit; font-weight: 700; padding: 3px 0; min-height: 30px; }
+.nav-pie { display: flex; align-items: center; gap: 2px; min-height: 30px; }
+.nav-t { font: 600 12.5px var(--ui); color: var(--muted); margin-right: auto; font-variant-numeric: tabular-nums; }
+.nav-t.ok { color: var(--ok); }
+.nav-t.over { color: var(--danger); }
+.nav-mover { width: 38px; height: 32px; border-radius: 6px; color: var(--muted); display: inline-flex; align-items: center; justify-content: center; }
+.nav-mover svg { width: 18px; height: 18px; }
+.nav-mover:active { background: var(--surface-2); color: var(--accent); }
+/* Versiones anteriores */
+.versiones { display: flex; flex-direction: column; max-height: 46vh; overflow-y: auto; }
+.version { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px; align-items: center; padding: 9px 0; border-bottom: 1px solid var(--border); }
+.version:last-child { border-bottom: 0; }
+.v-txt { display: flex; flex-direction: column; min-width: 0; }
+.v-txt b { font-size: 15px; }
+.v-txt span { font-size: 13px; color: var(--muted); }
+.version .chip { min-height: 40px; padding: 0 12px; }
+.sheet .ver-previa { max-height: 55vh; overflow-y: auto; border: 1px solid var(--border); border-radius: 6px; padding: 14px 16px; font-size: 17px; }
+/* iPad en vertical y móvil: la cinta «Inicio» más compacta para que quepa (buscar sigue en Revisar y con ⌘F) */
+@media (max-width: 1000px) {
+  .toolbar .estilo { width: 66px; }
+  .estilo .muestra { font-size: 13px; }
+  .estilo.e-h1 .muestra { font-size: 15px; }
+  .estilo.e-h2 .muestra { font-size: 14px; }
+  .toolbar button { min-width: 40px; }
+  .toolbar .sep { margin: 0 3px; }
+  .toolbar .solo-ancho { display: none; }
+}
+/* En el móvil la cinta se desliza: un degradado a la derecha avisa de que hay más */
+@media (max-width: 700px) {
+  .toolbar.ribbon { -webkit-mask-image: linear-gradient(to right, #000 88%, transparent); mask-image: linear-gradient(to right, #000 88%, transparent); padding-right: 36px; }
+}
