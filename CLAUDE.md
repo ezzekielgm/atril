@@ -133,7 +133,7 @@ dist/                 lo que se sube a internet (se genera; no editar a mano)
 - Inicio: lista como los recientes de Office (icono de documento, título, duración a la derecha, «Dado el… en…», primera línea si el título es el nombre del archivo). Pestañas con subrayado azul.
 - Hojas: en el móvil salen desde abajo; en el iPad, centradas. Menús (`actionSheet`) en lista agrupada (`.menu`).
 
-- **Contraste**: `test/contraste.test.mjs` lee los `--*` de cada tema y exige WCAG AA (4,5:1 texto; 3:1 títulos grandes), también el texto sobre los resaltados y el cronómetro (blanco sobre el verde #1e7b34 y el rojo fijo #b42318 de `.pres-timer.over`, igual en los tres temas). Si cambias un color, pásala.
+- **Contraste**: `test/contraste.test.mjs` lee los `--*` de cada tema y exige WCAG AA (4,5:1 texto; 3:1 títulos grandes), también el texto sobre los resaltados y el cronómetro (blanco sobre el verde #2e7d32 y el rojo fijo #b42318 de `.pres-timer.over`, igual en los tres temas). Si cambias un color, pásala.
 - **Bocetos pendientes**: faltan los de «Más» y «Letra» como hojas laterales, «Antes de presentar», «Ensayos», temas, vertical/móvil, Notas/Ajustes/bienvenida y la especificación final (prompts 3, 4, 6 y 8–12 del documento «Atril: qué incluye y brief de diseño»). De momento usan el mismo estilo; cuando lleguen, ajustarlos.
 
 ## Reglas
