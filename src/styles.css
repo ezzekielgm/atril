@@ -1220,3 +1220,186 @@ button:focus:not(:focus-visible) { outline: none; }
 .sheet textarea.versiculo-input:focus { outline: none; border-color: var(--accent); }
 .sheet .chips .chip svg { width: 18px; height: 18px; vertical-align: -3px; margin-right: 6px; }
 .menu-nota { margin: 0 6px 8px; }
+
+/* ============================================================
+   ESCRITORIO: diseño para pantallas grandes con ratón (html.ancho, ver disenoPC en main.js).
+   Menús arriba, biblioteca a la izquierda, panel del discurso a la derecha y controles compactos.
+   En el iPad no se activa nunca.
+   ============================================================ */
+.menubar, .biblioteca, .inspector { display: none; }
+html.ancho { --menu-h: 38px; --bib-w: 264px; --insp-w: 312px; }
+
+/* Barra de menús */
+html.ancho .menubar {
+  display: flex; position: fixed; top: 0; left: 0; right: 0; height: var(--menu-h); z-index: 30;
+  align-items: center; gap: 2px; padding: 0 10px; background: var(--bg); border-bottom: 1px solid var(--border); font-size: 14px;
+}
+.menubar-marca { display: flex; align-items: center; gap: 7px; margin-right: 10px; font-family: var(--redondo); font-weight: 750; font-size: 15px; color: var(--accent); }
+.menubar-marca img { width: 22px; height: 22px; border-radius: 6px; }
+.menubar-btn { height: 28px; padding: 0 10px; border: 0; border-radius: 6px; background: none; color: var(--text); font: inherit; cursor: default; }
+.menubar-btn:hover, .menubar-btn[aria-expanded="true"] { background: var(--surface); }
+.menubar .spacer { flex: 1; }
+.menubar-buscar {
+  display: flex; align-items: center; gap: 8px; height: 28px; min-width: 280px; padding: 0 8px 0 10px; border: 1px solid var(--border);
+  border-radius: 8px; background: var(--desk); color: var(--muted); font: inherit; font-size: 13.5px; cursor: text;
+}
+.menubar-buscar svg { width: 15px; height: 15px; }
+.menubar-buscar span { flex: 1; text-align: left; }
+.menubar-buscar kbd { font: inherit; font-size: 12px; padding: 1px 6px; border: 1px solid var(--border); border-radius: 5px; background: var(--bg); }
+.menu-lista {
+  position: fixed; top: calc(var(--menu-h) - 3px); z-index: 46; min-width: 280px; padding: 6px; border: 1px solid var(--border);
+  border-radius: 10px; background: var(--bg); box-shadow: 0 12px 32px rgba(15, 23, 42, .18); font-size: 14px;
+}
+.menu-item {
+  display: grid; grid-template-columns: 18px 1fr auto; align-items: center; gap: 6px; width: 100%; height: 30px; padding: 0 10px 0 6px;
+  border: 0; border-radius: 6px; background: none; color: var(--text); font: inherit; text-align: left; cursor: default;
+}
+.menu-item:hover, .menu-item:focus-visible { background: var(--accent-vivo); color: var(--on-vivo); outline: none; }
+.menu-item:hover .menu-atajo, .menu-item:focus-visible .menu-atajo { color: inherit; }
+.menu-item.apagado { color: var(--muted); opacity: .55; }
+.menu-item.apagado:hover { background: none; color: var(--muted); }
+.menu-check { font-size: 13px; text-align: center; }
+.menu-atajo { color: var(--muted); font-size: 12.5px; padding-left: 18px; }
+.menu-sep { height: 1px; margin: 5px 8px; background: var(--border); }
+
+/* Biblioteca (izquierda) */
+html.ancho .biblioteca {
+  display: flex; flex-direction: column; gap: 8px; position: fixed; top: var(--menu-h); bottom: 0; left: 0; width: var(--bib-w); z-index: 25;
+  padding: 12px 10px 8px; background: var(--desk); border-right: 1px solid var(--border);
+}
+html.ancho.sin-biblioteca .biblioteca { display: none; }
+.bib-acciones { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.bib-acciones .btn { height: 36px; min-height: 0; padding: 0 8px; font-size: 14px; justify-content: center; }
+.bib-acciones .btn svg { width: 17px; height: 17px; }
+.biblioteca .bib-buscar { height: 34px; margin: 0; }
+.biblioteca .bib-buscar input { font-size: 14px; }
+.bib-inicio, .bib-item {
+  display: flex; align-items: center; gap: 8px; width: 100%; height: 34px; padding: 0 8px; border: 0; border-radius: 8px;
+  background: none; color: var(--text); font: inherit; font-size: 14px; text-align: left; cursor: default;
+}
+.bib-inicio { font-weight: 600; }
+.bib-inicio svg, .bib-ic svg { width: 16px; height: 16px; color: var(--accent); flex: none; }
+.bib-inicio:hover, .bib-item:hover { background: color-mix(in srgb, var(--accent) 7%, transparent); }
+.bib-inicio.activo, .bib-item.activo { background: var(--bg); box-shadow: 0 0 0 1px var(--border); color: var(--accent); font-weight: 650; }
+.bib-lista { flex: 1; min-height: 0; overflow-y: auto; margin: 0 -4px; padding: 0 4px; }
+.bib-lista > * { flex-shrink: 0; }
+.bib-h { display: flex; align-items: center; gap: 6px; margin: 12px 8px 4px; font-size: 11.5px; font-weight: 750; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+.bib-h small { font-weight: 600; letter-spacing: 0; }
+.bib-mas { margin-left: auto; width: 24px; height: 24px; display: grid; place-items: center; border: 0; border-radius: 6px; background: none; color: var(--muted); }
+.bib-mas:hover { background: var(--surface); color: var(--accent); }
+.bib-mas svg { width: 15px; height: 15px; }
+.bib-ic { display: flex; }
+.bib-tit { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bib-min { flex: none; color: var(--muted); font-size: 12.5px; font-variant-numeric: tabular-nums; font-weight: 500; }
+.bib-pin svg { width: 13px; height: 13px; color: var(--muted); display: block; }
+.bib-punto { flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--acento-calido); }
+.bib-vacio { margin: 2px 10px 6px; font-size: 13px; color: var(--muted); }
+.bib-pie { display: flex; align-items: center; gap: 4px; padding-top: 8px; border-top: 1px solid var(--border); }
+.bib-pie .proteccion { flex: 1; min-width: 0; margin: 0; padding: 4px 6px; border: 0; background: none; font-size: 12.5px; gap: 6px; flex-wrap: nowrap; }
+.bib-pie .proteccion .prot-txt { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bib-pie .proteccion .text-btn { font-size: 12.5px; white-space: nowrap; }
+.bib-pie .prot-ic svg { width: 16px; height: 16px; }
+.bib-pie-btns { display: flex; gap: 2px; }
+
+/* Panel del discurso (derecha) */
+html.ancho.con-doc:not(.sin-inspector)[data-vista="reader"] .inspector,
+html.ancho.con-doc:not(.sin-inspector)[data-vista="editor"] .inspector {
+  display: block; position: fixed; top: var(--menu-h); bottom: 0; right: 0; width: var(--insp-w); z-index: 25; overflow-y: auto;
+  padding: 12px; background: var(--desk); border-left: 1px solid var(--border);
+}
+html[data-vista="reader"] #insp-esquema-editor, html[data-vista="editor"] #insp-esquema-lector { display: none; }
+.insp-sec { margin-bottom: 10px; padding: 12px 14px; border: 1px solid var(--border); border-radius: 12px; background: var(--bg); }
+.insp-sec[hidden] { display: none; }
+.insp-h { display: flex; align-items: baseline; gap: 6px; margin: 0 0 8px; font-size: 11.5px; font-weight: 750; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+.insp-h small { margin-left: auto; font-size: 12px; font-weight: 600; letter-spacing: 0; text-transform: none; }
+.insp-grande { margin: 0; color: var(--muted); font-size: 15px; }
+.insp-grande b { color: var(--text); font-size: 26px; font-weight: 750; font-variant-numeric: tabular-nums; font-family: var(--redondo); }
+.insp-barra { display: flex; gap: 2px; height: 8px; margin: 10px 0 8px; }
+.insp-barra i { min-width: 3px; border-radius: 3px; background: #2e7d32; }
+.insp-barra i.pasa { background: #d97706; }
+.insp-nota { margin: 4px 0; font-size: 13px; line-height: 1.45; color: var(--muted); }
+.insp-nota.over { color: var(--danger); font-weight: 600; }
+.insp-nota.ok { color: var(--ok); font-weight: 600; }
+.insp-link { font-size: 13.5px; padding: 4px 0; }
+.insp-ensayos { position: relative; display: flex; align-items: flex-end; gap: 4px; height: 58px; margin: 4px 0 6px; padding-bottom: 1px; border-bottom: 1px solid var(--border); }
+.insp-ensayos i { flex: 1; max-width: 26px; border-radius: 3px 3px 0 0; background: color-mix(in srgb, var(--accent-vivo) 75%, transparent); }
+.insp-ensayos i.ok { background: #2e7d32; }
+.insp-ensayos i.over { background: #d97706; }
+.insp-obj { position: absolute; left: 0; right: 0; height: 0; border-top: 1.5px dashed var(--muted); }
+.insp-btns { display: flex; align-items: center; gap: 12px; margin-top: 6px; }
+.btn.small { height: 32px; min-height: 0; padding: 0 12px; font-size: 13.5px; }
+.btn.small svg { width: 16px; height: 16px; }
+.insp-citas { display: flex; flex-direction: column; gap: 1px; max-height: 220px; overflow-y: auto; }
+.insp-cita { display: flex; align-items: center; gap: 8px; height: 30px; padding: 0 6px; border: 0; border-radius: 6px; background: none; color: var(--text); font: inherit; font-size: 13.5px; text-align: left; cursor: default; }
+.insp-cita:hover { background: var(--surface); }
+.insp-cita svg { width: 15px; height: 15px; color: var(--muted); flex: none; }
+.insp-cita.tiene svg { color: var(--ok); }
+.insp-dado { display: flex; gap: 10px; margin: 0 0 4px; font-size: 13.5px; }
+.insp-dado b { min-width: 92px; font-weight: 650; }
+/* El esquema del lector y la navegación del editor, dentro del panel */
+.inspector .side-pane { width: auto; margin: 0; border: 0; border-radius: 0; background: none; box-shadow: none; }
+.inspector .side-head { display: none; }
+.inspector .side-list { max-height: 44vh; overflow-y: auto; padding: 0; }
+
+/* Las pantallas, en el hueco que dejan la barra y los paneles */
+html.ancho .view { top: var(--menu-h); bottom: 0; left: var(--bib-w); right: 0; height: auto; }
+html.ancho.sin-biblioteca .view { left: 0; }
+html.ancho.con-doc:not(.sin-inspector)[data-vista="reader"] #view-reader,
+html.ancho.con-doc:not(.sin-inspector)[data-vista="editor"] #view-editor { right: var(--insp-w); }
+/* Presentar y las tarjetas, a pantalla completa */
+html.ancho.presentando .menubar, html.ancho.presentando .biblioteca, html.ancho.presentando .inspector,
+html.ancho.tarjetas .menubar, html.ancho.tarjetas .biblioteca, html.ancho.tarjetas .inspector { display: none !important; }
+html.ancho.presentando #view-reader, html.ancho.tarjetas #view-reader { top: 0 !important; left: 0 !important; right: 0 !important; }
+
+/* Lo que ya hace la biblioteca o el menú no se repite */
+html.ancho #reader-back, html.ancho #editor-back, html.ancho .home-hero, html.ancho .home-tools .search,
+html.ancho #btn-guia, html.ancho #btn-settings, html.ancho #install-hint { display: none !important; }
+
+/* Controles compactos, para el ratón */
+html.ancho .topbar { min-height: 52px; }
+html.ancho .reader-bar .tool { height: 34px; padding: 0 11px; font-size: 14px; }
+html.ancho .reader-bar .tool svg { width: 17px; height: 17px; }
+html.ancho .reader-bar .timer-btn { height: 34px; font-size: 15px; }
+html.ancho .btn { min-height: 36px; font-size: 14.5px; }
+html.ancho .statusbar { min-height: 30px; font-size: 13px; }
+html.ancho .home-wrap { max-width: 1040px; }
+html.ancho .tabs-row { padding-top: 14px; }
+.biblioteca .bib-buscar { flex: none; }
+.bib-acciones .btn { gap: 6px; padding: 0 6px; white-space: nowrap; }
+.bib-pie { flex-wrap: wrap; }
+.bib-pie .proteccion { flex: 1 1 100%; }
+.bib-pie-btns { margin-left: auto; }
+/* La cinta del editor, compacta (el editor tiene menos ancho entre los dos paneles) */
+html.ancho .toolbar .estilo { width: 66px; }
+html.ancho .estilo .muestra { font-size: 13px; }
+html.ancho .estilo.e-h1 .muestra { font-size: 15px; }
+html.ancho .estilo.e-h2 .muestra { font-size: 14px; }
+html.ancho .toolbar button { min-width: 36px; }
+html.ancho .toolbar .sep { margin: 0 3px; }
+html.ancho .toolbar .solo-ancho { display: none; }
+html.ancho .toolbar.ribbon { overflow-x: auto; scrollbar-width: thin; }
+html.ancho .ribbon-tabs button { font-size: 14.5px; }
+/* El pie de la biblioteca: la protección en una línea y los botones debajo */
+.bib-pie .proteccion { overflow: hidden; }
+.bib-pie .proteccion .prot-txt { flex: 1; min-width: 0; }
+.bib-pie .proteccion .text-btn { flex: none; padding: 0; }
+/* Inicio en el ordenador: resumen y sin la protección repetida (está en la biblioteca) */
+html.ancho #proteccion { display: none !important; }
+.home-resumen { display: none; }
+html.ancho .home-resumen { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin: 4px 0 16px; }
+.home-resumen > div { padding: 12px 14px; border: 1px solid var(--border); border-radius: 12px; background: var(--bg); }
+.home-resumen small { display: block; font-size: 12.5px; color: var(--muted); }
+.home-resumen b { display: block; margin-top: 2px; font-size: 24px; font-weight: 750; font-family: var(--redondo); color: var(--text); font-variant-numeric: tabular-nums; }
+.home-resumen span { display: block; font-size: 12.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* Buscar en todo (Ctrl+K) */
+.overlay:has(.sheet.paleta) { align-items: flex-start; }
+.sheet.paleta { width: min(660px, 92vw); max-width: none; margin-top: 11vh; padding: 12px; gap: 8px; }
+.sheet.paleta .paleta-buscar { height: 46px; margin: 0; }
+.sheet.paleta .paleta-buscar input { font-size: 17px; }
+.paleta-res { display: flex; flex-direction: column; gap: 2px; max-height: 52vh; overflow-y: auto; }
+.paleta-fila { display: flex; align-items: center; gap: 12px; width: 100%; padding: 8px 10px; border: 0; border-radius: 8px; background: none; color: var(--text); font: inherit; text-align: left; cursor: default; }
+.paleta-fila > svg { width: 18px; height: 18px; flex: none; color: var(--accent); }
+.paleta-fila.sel { background: var(--accent-soft); }
+.paleta-t { display: flex; flex-direction: column; min-width: 0; }
+.paleta-t b { font-size: 15px; font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.paleta-t small { font-size: 13px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

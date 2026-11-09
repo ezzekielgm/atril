@@ -13,8 +13,9 @@
       {
         "label": "main",
         "title": "Atril",
-        "width": 1280,
-        "height": 860,
+        "width": 1440,
+        "height": 900,
+        "maximized": true,
         "minWidth": 760,
         "minHeight": 560,
         "center": true,

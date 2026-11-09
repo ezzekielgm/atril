@@ -18,6 +18,8 @@ const results = [];
 const ok = (name, cond, extra = "") => { results.push({ name, pass: !!cond }); console.log(`${cond ? "✔" : "✘"} ${name}${extra ? " — " + extra : ""}`); };
 const espera = (ms) => new Promise((r) => setTimeout(r, ms));
 
+// Empieza con los datos del programa vacíos (WebKitGTK los guarda aquí entre una prueba y otra)
+fs.rmSync(path.join(os.homedir(), ".local", "share", "io.github.ezzekielgm.atril"), { recursive: true, force: true });
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), "atril-escritorio-"));
 const word = path.join(dir, "Mi discurso del PC.docx");
 const otro = path.join(dir, "Otro discurso.docx");
@@ -61,6 +63,9 @@ try {
   ok("Recuerda dónde está el Word", item.rutaPC === word, item.rutaPC);
   ok("Trae la duración y los ensayos del Word", item.target === 20 && item.ensayos && item.ensayos[0].id === "pc1");
   ok("La ventana lleva el título del discurso", await hasta("return document.title === 'Mi discurso del PC · Atril'"));
+  ok("Con el diseño de ordenador (menús, biblioteca y panel)", await hasta("return document.documentElement.classList.contains('ancho') && !!document.querySelector('#menubar .menubar-btn') && document.querySelectorAll('#bib-lista .bib-item').length > 0"));
+  const png = await pedir("GET", `/session/${sid}/screenshot`).catch(() => null);
+  if (png) fs.writeFileSync(path.join(RAIZ, "test", "out", "escritorio-tauri.png"), Buffer.from(png, "base64"));
   const version = await jsAsync("const done = arguments[arguments.length - 1]; window.__TAURI_INTERNALS__.invoke('version_app').then(done, (e) => done('ERR ' + e));");
   ok("Versión del programa", /^\d+\.\d+\.\d+$/.test(version), version);
 

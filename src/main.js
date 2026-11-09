@@ -403,13 +403,19 @@ async function tx(storeName, mode, fn) {
     t.onabort = () => reject(t.error);
   });
 }
+/** Diseño de escritorio: vuelve a pintar la biblioteca y el panel derecho (poco después del último cambio). */
+let repintarPCesp = 0;
+function repintarPC() {
+  clearTimeout(repintarPCesp);
+  repintarPCesp = setTimeout(() => { try { if (disenoPC.activo) disenoPC.pintarTodo(); } catch (e) { console.warn(e); } }, 300);
+}
 /** Apunta cuándo cambió algo (para el aviso de copia de seguridad). */
 const marcarCambio = (s) => { if (s === "docs" || s === "notes") lsSet("atril.cambio", String(Date.now())); };
 const store = {
   all: (s) => tx(s, "readonly", (o) => o.getAll()),
   get: (s, id) => tx(s, "readonly", (o) => o.get(id)),
-  put: (s, obj) => { marcarCambio(s); return tx(s, "readwrite", (o) => o.put(obj)); },
-  del: (s, id) => { marcarCambio(s); return tx(s, "readwrite", (o) => o.delete(id)); },
+  put: (s, obj) => { marcarCambio(s); return tx(s, "readwrite", (o) => o.put(obj)).finally(() => repintarPC()); },
+  del: (s, id) => { marcarCambio(s); return tx(s, "readwrite", (o) => o.delete(id)).finally(() => repintarPC()); },
 };
 
 /* ============================================================
@@ -423,6 +429,8 @@ const DEFAULTS = {
 const FS_MIN = 14, FS_MAX = 80;
 let settings = { ...DEFAULTS };
 try { settings = { ...DEFAULTS, ...JSON.parse(localStorage.getItem("atril.settings") || "{}") }; } catch {}
+// En el ordenador, la primera vez, una letra de lectura más pequeña que la del iPad
+if (window.__TAURI_INTERNALS__ && !localStorage.getItem("atril.settings")) settings.fontSize = 21;
 // Diseño como Word: la letra pasa a ser la de Word una sola vez (luego se puede cambiar en «Letra»)
 if (!settings.estiloWord) {
   settings.font = "sans";
@@ -483,8 +491,17 @@ function openSheet(content, { onClose, dismissable = true } = {}) {
   };
   overlay.onclick = (e) => { if (e.target === overlay && dismissable) close(); };
   sheetClose = close;
+  sheetSeCierra = dismissable;
   return { sheet, close };
 }
+let sheetSeCierra = true;
+// Escape cierra la hoja abierta (con teclado o en el ordenador), salvo las que hay que contestar
+document.addEventListener("keydown", (e) => {
+  if (e.key !== "Escape" || !sheetClose || !sheetSeCierra || $("#overlay").hidden) return;
+  e.preventDefault();
+  e.stopPropagation();
+  closeSheet();
+}, true);
 function closeSheet() { if (sheetClose) sheetClose(); }
 
 /** Menú de acciones. actions: [{label, icon, danger, run}] */
@@ -1107,6 +1124,29 @@ function mezclarDatos(item, datos) {
 /** Lo de Atril que se guarda dentro del Word de un discurso (no en las notas, ni al compartirlo con otros). */
 const datosParaWord = (kind, item) => (kind === "docs" ? { target: item.target, ensayos: item.ensayos, dado: item.dado, guardado: Date.now() } : null);
 
+/** Diseño de escritorio: cuatro datos de un vistazo arriba del inicio. */
+async function pintarResumen() {
+  let caja = $("#home-resumen");
+  if (!caja) {
+    caja = el("div", { class: "home-resumen", id: "home-resumen", "aria-label": "Resumen" });
+    $("#seguir").before(caja);
+  }
+  if (!disenoPC.activo) { caja.replaceChildren(); return; }
+  let docs = [], notes = [];
+  try { [docs, notes] = await Promise.all([store.all("docs"), store.all("notes")]); } catch { return; }
+  const semana = Date.now() - 7 * DIA;
+  const ens = docs.flatMap((d) => d.ensayos || []).filter((e) => e.fecha >= semana);
+  const minutos = Math.round(ens.reduce((a, e) => a + (e.seg || 0), 0) / 60);
+  const proximo = docs.flatMap((d) => (d.dado || []).map((x) => ({ ...x, titulo: d.title }))).sort((a, b) => String(b.fecha).localeCompare(String(a.fecha)))[0];
+  const est = await estadoCopia();
+  const dato = (titulo, valor, pie) => el("div", {}, el("small", { text: titulo }), el("b", { text: valor }), el("span", { text: pie }));
+  caja.replaceChildren(
+    dato("Discursos", String(docs.length), `${notes.length} ${notes.length === 1 ? "nota" : "notas"}`),
+    dato("Ensayos esta semana", String(ens.length), ens.length ? `${minutos} min ensayados` : "Ninguno todavía"),
+    dato("Último dado", proximo ? new Date(proximo.fecha + "T12:00").toLocaleDateString("es-ES", { day: "numeric", month: "short" }) : "—", proximo ? proximo.titulo || "" : "Apúntalo en cada discurso"),
+    dato("Copia de seguridad", est.copia ? (est.dias === 0 ? "Hoy" : `Hace ${est.dias} d`) : "Nunca", est.nivel === "ok" ? "Todo copiado" : `${est.cambiados} sin copiar`));
+}
+
 /** Cómo llevar el Word del PC al iPad. */
 function ayudaWord() {
   openSheet([
@@ -1372,7 +1412,9 @@ let currentView = null;
 function showView(name) {
   for (const [k, v] of Object.entries(views)) v.hidden = k !== name;
   currentView = name;
+  document.documentElement.dataset.vista = name;
   pintarColorBarra();
+  repintarPC();
 }
 
 function go(hash, { replace = false } = {}) {
@@ -1690,6 +1732,8 @@ async function renderHome() {
     })
   );
 
+  pintarResumen();
+
   // «Seguir donde lo dejaste»: el último discurso abierto, con un toque para seguir o presentar
   const seguir = $("#seguir");
   const u = tab === "docs" && !q && total >= 2 ? ultimoAbierto() : null;
@@ -1867,7 +1911,7 @@ async function pintarProteccion() {
     pie.replaceChildren(
       el("span", { class: "prot-ic", html: icon("escudo") }),
       el("span", { class: "prot-txt" }, el("b", { text: "Protección: " }), est.texto),
-      est.nivel === "ok" ? null : el("button", { class: "text-btn", id: "prot-copia", text: "Hacer copia", onclick: () => exportBackup() }));
+      ...(est.nivel === "ok" ? [] : [el("button", { class: "text-btn", id: "prot-copia", text: "Hacer copia", onclick: () => exportBackup() })]));
   }
   const aj = $("#ajustes-proteccion");
   if (aj) { aj.className = "proteccion " + est.nivel; aj.replaceChildren(el("span", { class: "prot-ic", html: icon("escudo") }), el("span", { class: "prot-txt", text: est.texto })); }
@@ -1935,6 +1979,11 @@ function openSettings() {
   const toque = el("input", { type: "checkbox", role: "switch" });
   toque.checked = settings.presToque !== false;
   toque.addEventListener("change", () => { settings.presToque = toque.checked; saveSettings(); });
+  // El diseño de escritorio solo se ofrece donde puede usarse (pantalla grande con ratón, no el iPad)
+  const puedePC = mqAncho.matches && (escritorio.activo || (mqRaton.matches && !esIOS()));
+  const pc = el("input", { type: "checkbox", role: "switch", id: "ajustes-disenopc" });
+  pc.checked = settings.disenoPC !== false;
+  pc.addEventListener("change", () => { settings.disenoPC = pc.checked; saveSettings(); disenoPC.aplicar(); });
   const comprobar = el("input", { type: "checkbox", role: "switch", id: "ajustes-comprobar" });
   comprobar.checked = settings.presComprobar !== false;
   comprobar.addEventListener("change", () => { settings.presComprobar = comprobar.checked; saveSettings(); });
@@ -1943,6 +1992,7 @@ function openSettings() {
     el("label", { class: "switch-row" }, el("span", { text: "Mantener la pantalla encendida al leer" }), wake),
     el("label", { class: "switch-row" }, el("span", { text: "Al presentar, tocar abajo pasa la página (y arriba vuelve)" }), toque),
     el("label", { class: "switch-row" }, el("span", { text: "Comprobar la letra y el tiempo antes de presentar" }), comprobar),
+    puedePC ? el("label", { class: "switch-row" }, el("span", { text: "Diseño de ordenador: menús, biblioteca a la izquierda y panel del discurso a la derecha" }), pc) : null,
     puedeGrabar() ? el("label", { class: "switch-row" }, el("span", { text: "Grabar audio al ensayar con el cronómetro" }), grabar) : null,
     el("div", { class: "group" },
       el("span", { class: "label", text: "Citas bíblicas" }),
@@ -2430,10 +2480,10 @@ const mqPanel = window.matchMedia("(min-width: 1024px)");
 function crearPanel({ aside, lista, ajuste, scrollEl, contenido, rellenar, alCambiar = () => {}, util = () => true }) {
   return {
     abierto: false,
-    cabe: () => mqPanel.matches,
-    /** Lo abre o lo cierra según el ajuste y el ancho de la pantalla (solo se abre solo si sirve: `util`). */
+    cabe: () => mqPanel.matches || disenoPC.activo,
+    /** Lo abre o lo cierra según el ajuste y el ancho de la pantalla (solo se abre solo si sirve: `util`). En el diseño de escritorio va siempre en el panel derecho. */
     abrir({ forzar = false } = {}) {
-      const v = this.cabe() && (forzar || (settings[ajuste] !== false && util()));
+      const v = this.cabe() && (forzar || disenoPC.activo || (settings[ajuste] !== false && util()));
       if (v !== this.abierto) mantenerSitio(scrollEl, contenido, () => { aside.hidden = !v; this.abierto = v; });
       if (v) { this.rellenar(); }
       alCambiar(v);
@@ -2773,6 +2823,7 @@ const reader = {
 
   /** Esquema: con la pantalla ancha, panel al lado del texto; si no, a pantalla completa. */
   toggleOutline() {
+    if (disenoPC.activo) { disenoPC.alternar("inspector"); return; }
     if (this.lateral.cabe()) { if (this.mode !== "texto") this.setMode("texto"); this.lateral.alternar(); return; }
     if (this.mode === "texto") { buscador.cerrar(); prompter.cerrar(); this.savedScroll = this.scrollEl.scrollTop; this.setMode("esquema"); }
     else this.setMode("texto");
@@ -3177,6 +3228,7 @@ const presentar = {
     mantenerSitio(reader.scrollEl, reader.contentEl, () => {
       views.reader.classList.remove("immersive");
       views.reader.classList.add("presentando");
+      document.documentElement.classList.add("presentando");
       $("#pres-bar").hidden = false;
       $("#pres-salir").hidden = true;
     });
@@ -3261,6 +3313,7 @@ const presentar = {
     if (quitarPaso && history.state && history.state.atril === "presentar") history.back();
     mantenerSitio(reader.scrollEl, reader.contentEl, () => {
       views.reader.classList.remove("presentando");
+      document.documentElement.classList.remove("presentando");
       $("#pres-bar").hidden = true;
       $("#pres-salir").hidden = true;
     });
@@ -3478,6 +3531,7 @@ const tarjetas = {
     this.i = Math.max(0, this.lista.findIndex((t) => b >= t.inicio && b < t.fin));
     this.activo = true;
     $("#cards").hidden = false;
+    document.documentElement.classList.add("tarjetas");
     this.pintar(0);
     timer.paint();
   },
@@ -3486,6 +3540,7 @@ const tarjetas = {
     ensayo.tic();
     this.activo = false;
     $("#cards").hidden = true;
+    document.documentElement.classList.remove("tarjetas");
     const t = this.lista[this.i];
     if (t) reader.goToBlock(t.inicio, { flash: false });
     timer.paint();
@@ -3715,6 +3770,7 @@ const editor = {
   pintarZoom() { $("#ed-zoom").textContent = `${Math.round((settings.fontSize / DEFAULTS.fontSize) * 100)} %`; },
 
   pintarTiempo() {
+    repintarPC();
     const chip = $("#editor-time");
     this.totalPalabras = contarPalabras(this.area.textContent || "");
     this.pintarSeleccion();
@@ -3834,7 +3890,7 @@ const editor = {
       menos: () => this.zoom(-2),
       mas: () => this.zoom(2),
       aspecto: () => openAaSheet(),
-      navegacion: () => (this.lateral.cabe() ? this.lateral.alternar() : this.navegacionHoja()),
+      navegacion: () => (disenoPC.activo ? disenoPC.alternar("inspector") : this.lateral.cabe() ? this.lateral.alternar() : this.navegacionHoja()),
       dibujo: () => this.nuevoDibujo(),
       dictar: () => this.dictar(),
       letra: () => this.togglePaletteLetra(),
@@ -4580,6 +4636,520 @@ const reemplazo = {
    ============================================================ */
 const APP_VERSION = "__APP_VERSION__";
 
+/* ============================================================
+   Diseño de escritorio (a petición de Ezequiel: «en Windows se ve una aplicación muy simple»).
+   En pantallas grandes con ratón (Atril para el ordenador y la web en el PC; nunca en el iPad):
+   barra de menús, biblioteca fija a la izquierda, panel a la derecha con el tiempo por partes,
+   el esquema, los ensayos, las citas y dónde se ha dado, controles más compactos y Ctrl+K.
+   `html.ancho` activa los estilos (capa «ESCRITORIO» de styles.css).
+   ============================================================ */
+const mqAncho = matchMedia("(min-width: 1180px)");
+/** replaceChildren sin los huecos (null/false) de las partes que no tocan. */
+const rellenar = (nodo, ...hijos) => nodo.replaceChildren(...hijos.flat().filter((h) => h != null && h !== false));
+const mqRaton = matchMedia("(hover: hover) and (pointer: fine)");
+const disenoPC = {
+  activo: false,
+  montado: false,
+
+  /** ¿Toca el diseño de escritorio? (también se puede quitar en Ajustes) */
+  toca() {
+    if (settings.disenoPC === false || !mqAncho.matches) return false;
+    return escritorio.activo || (mqRaton.matches && !esIOS());
+  },
+
+  aplicar() {
+    const v = this.toca();
+    if (v && !this.montado) this.montar();
+    if (v === this.activo) { if (v) this.pintarTodo(); return; }
+    this.activo = v;
+    const raiz = document.documentElement;
+    raiz.classList.toggle("ancho", v);
+    // El esquema del lector y la navegación del editor pasan al panel derecho (y vuelven a su sitio)
+    const lr = $("#reader-side"), le = $("#editor-side");
+    if (v) { $("#insp-esquema-lector").append(lr); $("#insp-esquema-editor").append(le); }
+    else {
+      $("#view-reader .split-body").prepend(lr);
+      $("#view-editor .split-body").prepend(le);
+    }
+    this.marcarPaneles();
+    if (currentView === "reader" && reader.item) reader.lateral.abrir();
+    if (currentView === "editor" && editor.item) editor.lateral.abrir();
+    if (v) this.pintarTodo();
+    if (currentView === "home") renderHome();
+  },
+
+  marcarPaneles() {
+    const raiz = document.documentElement;
+    raiz.classList.toggle("sin-biblioteca", settings.biblioteca === false);
+    raiz.classList.toggle("sin-inspector", settings.inspector === false);
+  },
+
+  alternar(que) {
+    settings[que] = settings[que] === false;
+    saveSettings();
+    this.marcarPaneles();
+    if (que === "inspector" && settings.inspector !== false) this.pintarInspector();
+  },
+
+  montar() {
+    this.montado = true;
+    document.body.prepend(
+      el("nav", { class: "menubar", id: "menubar", "aria-label": "Menú" }),
+      el("aside", { class: "biblioteca", id: "biblioteca", "aria-label": "Tus discursos y notas" }),
+      el("aside", { class: "inspector", id: "inspector", "aria-label": "Datos del discurso" },
+        el("section", { class: "insp-sec", id: "insp-tiempo" }),
+        el("section", { class: "insp-sec insp-esquema", id: "insp-esquema" },
+          el("h3", { class: "insp-h", text: "Partes y esquema" }),
+          el("div", { id: "insp-esquema-lector" }), el("div", { id: "insp-esquema-editor" })),
+        el("section", { class: "insp-sec", id: "insp-ensayos" }),
+        el("section", { class: "insp-sec", id: "insp-citas" }),
+        el("section", { class: "insp-sec", id: "insp-dado" })));
+    this.montarMenus();
+    this.montarBiblioteca();
+  },
+
+  pintarTodo() {
+    this.pintarBiblioteca();
+    this.pintarInspector();
+  },
+
+  /* ---------------- Barra de menús ---------------- */
+  hayDoc() { return (currentView === "reader" && reader.item) || (currentView === "editor" && editor.item); },
+  docActual() {
+    if (currentView === "reader" && reader.item) return { kind: reader.kind, id: reader.id, item: reader.item };
+    if (currentView === "editor" && editor.item) return { kind: editor.kind, id: editor.id, item: editor.item };
+    return null;
+  },
+  /** Hace algo con el documento abierto (fresco del almacén); si no hay, lo dice. */
+  async conDoc(fn) {
+    const d = this.docActual();
+    if (!d) { toast("Abre antes un discurso o una nota."); return; }
+    if (currentView === "editor") await editor.flush();
+    const item = (await store.get(d.kind, d.id)) || d.item;
+    fn(d.kind, item);
+  },
+  /** Va al lector del documento abierto y luego hace algo allí. */
+  async enLector(fn) {
+    const d = this.docActual();
+    if (!d) { toast("Abre antes un discurso."); return; }
+    if (currentView !== "reader") {
+      go(`#/leer/${d.kind}/${d.id}`);
+      for (let i = 0; i < 40 && !(currentView === "reader" && reader.id === d.id && reader.item); i++) await new Promise((r) => setTimeout(r, 50));
+    }
+    if (currentView === "reader") fn();
+  },
+  modoEdicion() {
+    const d = this.docActual();
+    if (!d) return;
+    if (currentView === "reader") go(`#/editar/${d.kind}/${d.id}`);
+    else editor.exec("leer");
+  },
+
+  menus() {
+    const hay = !!this.hayDoc();
+    const enEditor = currentView === "editor" && !!editor.item;
+    const esDiscurso = hay && this.docActual().kind === "docs";
+    const mac = escritorio.mac || /Mac/.test(navigator.platform);
+    const k = (t) => (mac ? t.replace(/Ctrl\+/g, "⌘") : t);
+    return [
+      ["Archivo", [
+        { label: "Nuevo discurso…", atajo: k("Ctrl+N"), run: nuevoDiscurso },
+        { label: "Nueva nota", run: () => newItem("notes") },
+        { label: "Abrir un Word…", atajo: k("Ctrl+O"), run: abrirWord },
+        "-",
+        { label: "Guardar como Word", atajo: enEditor ? k("Ctrl+S") : "", si: hay, run: () => this.conDoc((kd, it) => exportWord(kd, it)) },
+        { label: "Guardar como PDF…", atajo: k("Ctrl+P"), si: hay, run: () => this.conDoc((kd, it) => exportPdf(kd, it)) },
+        { label: "Compartir…", si: hay, run: () => this.conDoc((kd, it) => abrirCompartir(kd, it)) },
+        "-",
+        { label: "Hacer copia de seguridad", run: () => exportBackup() },
+        { label: "Restaurar una copia…", run: () => $("#backup-input").click() },
+        "-",
+        { label: "Ajustes", atajo: k("Ctrl+,"), run: openSettings },
+      ]],
+      ["Editar", [
+        { label: "Deshacer", atajo: k("Ctrl+Z"), si: enEditor, run: () => editor.exec("undo") },
+        { label: "Rehacer", atajo: k("Ctrl+Y"), si: enEditor, run: () => editor.exec("redo") },
+        "-",
+        { label: "Buscar en el discurso", atajo: k("Ctrl+F"), si: hay, run: () => (enEditor ? reemplazo.abrir() : buscador.abrir()) },
+        { label: "Buscar y reemplazar", si: enEditor, run: () => reemplazo.abrir() },
+        { label: "Buscar en todo Atril", atajo: k("Ctrl+K"), run: () => this.buscarEnTodo() },
+        "-",
+        { label: "Renombrar…", si: hay, run: () => this.conDoc((kd, it) => renameItem(kd, it)) },
+        { label: "Eliminar…", si: hay, run: () => this.conDoc((kd, it) => deleteItem(kd, it)) },
+      ]],
+      ["Ver", [
+        { label: "Inicio", run: () => go("#/") },
+        { label: enEditor ? "Leer" : "Editar", atajo: k("Ctrl+E"), si: hay, run: () => this.modoEdicion() },
+        { label: "Presentar", atajo: "F5", si: hay, run: () => this.enLector(() => presentar.comprobar()) },
+        "-",
+        { label: "Biblioteca (izquierda)", check: settings.biblioteca !== false, run: () => this.alternar("biblioteca") },
+        { label: "Panel del discurso (derecha)", check: settings.inspector !== false, run: () => this.alternar("inspector") },
+        "-",
+        { label: "Letra más grande", atajo: k("Ctrl++"), si: hay, run: () => this.letra(2) },
+        { label: "Letra más pequeña", atajo: k("Ctrl+−"), si: hay, run: () => this.letra(-2) },
+        { label: "Letra, tema y duración…", run: openAaSheet },
+      ]],
+      ["Discurso", [
+        { label: "Ensayos", si: esDiscurso, run: () => this.enLector(() => reader.openEnsayos()) },
+        { label: "Tarjetas: una parte por pantalla", si: hay, run: () => this.enLector(() => tarjetas.abrir()) },
+        { label: "Desplazamiento automático", si: hay, run: () => this.enLector(() => prompter.abrir()) },
+        "-",
+        { label: "Dónde lo he dado…", si: esDiscurso, run: () => this.conDoc((kd, it) => abrirDado(kd, it.id)) },
+        { label: "Texto bíblico de la cita…", si: enEditor, run: () => editor.textoBiblico() },
+        { label: "Parte nueva…", si: enEditor, run: () => editor.parteNueva() },
+        "-",
+        { label: "Fijar arriba / quitar", si: hay, run: () => this.conDoc((kd, it) => fijarItem(kd, it)) },
+      ]],
+      ["Ayuda", [
+        { label: "Guía de Atril", run: () => abrirGuia() },
+        { label: "Atajos de teclado", run: () => editor.atajosHoja() },
+        "-",
+        { label: "Buscar actualizaciones", run: () => buscarActualizaciones() },
+        { label: "Acerca de Atril", run: () => this.acercaDe() },
+      ]],
+    ];
+  },
+
+  letra(d) {
+    if (currentView === "editor") editor.zoom(d);
+    else if (currentView === "reader") { setFontSize(settings.fontSize + d, { scrollEl: reader.scrollEl, contentEl: reader.contentEl }); saveSettings(); }
+  },
+
+  async acercaDe() {
+    const v = escritorio.activo ? await escritorio.version().catch(() => "") : "";
+    openSheet([
+      el("h2", { text: "Atril" }),
+      el("p", { text: "Para leer, ensayar, presentar y editar tus discursos. Todo se queda en este dispositivo." }),
+      el("p", { class: "small-print", text: (v ? `Atril para ${escritorio.mac ? "Mac" : "Windows"} ${v} · ` : "") + `contenido ${fechaDeVersion(APP_VERSION)} (${APP_VERSION})` }),
+      el("div", { class: "actions" }, el("button", { class: "action plain", text: "Cerrar", onclick: () => closeSheet() })),
+    ]);
+  },
+
+  montarMenus() {
+    const barra = $("#menubar");
+    let abierto = null;
+    const cerrar = () => {
+      if (!abierto) return;
+      abierto.boton.setAttribute("aria-expanded", "false");
+      abierto.lista.remove();
+      abierto = null;
+    };
+    const abrir = (i, boton) => {
+      cerrar();
+      const [, items] = this.menus()[i];
+      const lista = el("div", { class: "menu-lista", role: "menu" });
+      for (const it of items) {
+        if (it === "-") { lista.append(el("div", { class: "menu-sep", role: "separator" })); continue; }
+        const activo = it.si !== false;
+        const b = el("button", {
+          class: "menu-item" + (activo ? "" : " apagado"), role: it.check != null ? "menuitemcheckbox" : "menuitem",
+          "aria-disabled": activo ? null : "true", "aria-checked": it.check != null ? String(!!it.check) : null,
+        },
+        el("span", { class: "menu-check", text: it.check ? "✓" : "" }),
+        el("span", { class: "menu-txt", text: it.label }),
+        el("span", { class: "menu-atajo", text: it.atajo || "" }));
+        b.addEventListener("click", () => { if (!activo) return; cerrar(); it.run(); });
+        lista.append(b);
+      }
+      const r = boton.getBoundingClientRect();
+      lista.style.left = Math.round(r.left) + "px";
+      document.body.append(lista);
+      boton.setAttribute("aria-expanded", "true");
+      abierto = { i, boton, lista };
+      const primero = lista.querySelector(".menu-item:not(.apagado)");
+      if (primero) primero.focus({ preventScroll: true });
+    };
+    barra.append(el("span", { class: "menubar-marca", html: `<img src="icons/icon-192.png" alt=""><span>Atril</span>` }));
+    this.menus().forEach(([nombre], i) => {
+      const b = el("button", { class: "menubar-btn", text: nombre, "aria-haspopup": "true", "aria-expanded": "false" });
+      b.addEventListener("click", () => (abierto && abierto.i === i ? cerrar() : abrir(i, b)));
+      b.addEventListener("mouseenter", () => { if (abierto && abierto.i !== i) abrir(i, b); });
+      barra.append(b);
+    });
+    barra.append(el("span", { class: "spacer" }),
+      el("button", { class: "menubar-buscar", id: "menubar-buscar", html: icon("search") + `<span>Buscar en todo</span><kbd>${escritorio.mac ? "⌘K" : "Ctrl+K"}</kbd>`, onclick: () => this.buscarEnTodo() }));
+    document.addEventListener("mousedown", (e) => { if (abierto && !e.target.closest(".menu-lista, .menubar-btn")) cerrar(); });
+    document.addEventListener("keydown", (e) => {
+      if (!abierto) return;
+      const items = [...abierto.lista.querySelectorAll(".menu-item:not(.apagado)")];
+      const i = items.indexOf(document.activeElement);
+      if (e.key === "Escape") { e.preventDefault(); cerrar(); }
+      else if (e.key === "ArrowDown") { e.preventDefault(); (items[i + 1] || items[0]).focus(); }
+      else if (e.key === "ArrowUp") { e.preventDefault(); (items[i - 1] || items[items.length - 1]).focus(); }
+      else if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
+        e.preventDefault();
+        const botones = [...barra.querySelectorAll(".menubar-btn")];
+        const j = (abierto.i + (e.key === "ArrowRight" ? 1 : -1) + botones.length) % botones.length;
+        abrir(j, botones[j]);
+      }
+    }, true);
+    window.addEventListener("blur", cerrar);
+    window.addEventListener("resize", cerrar);
+  },
+
+  /* ---------------- Biblioteca (izquierda) ---------------- */
+  consulta: "",
+  montarBiblioteca() {
+    const bib = $("#biblioteca");
+    const buscar = el("input", { type: "search", placeholder: "Buscar", autocomplete: "off", "aria-label": "Buscar en tus discursos y notas" });
+    buscar.addEventListener("input", debounce(() => { this.consulta = buscar.value; this.pintarBiblioteca(); }, 120));
+    bib.append(
+      el("div", { class: "bib-acciones" },
+        el("button", { class: "btn primary", id: "bib-nuevo", html: icon("plus") + "<span>Nuevo</span>", onclick: nuevoDiscurso }),
+        el("button", { class: "btn", id: "bib-abrir", html: icon("open") + "<span>Abrir Word</span>", onclick: () => abrirWord() })),
+      el("label", { class: "search bib-buscar" }, el("span", { html: icon("search") }), buscar),
+      el("button", { class: "bib-inicio", id: "bib-inicio", html: icon("doc") + "<span>Inicio</span>", onclick: () => go("#/") }),
+      el("div", { class: "bib-lista", id: "bib-lista" }),
+      el("div", { class: "bib-pie" },
+        el("p", { class: "proteccion", id: "bib-proteccion" }),
+        el("div", { class: "bib-pie-btns" },
+          el("button", { class: "icon-btn small", "aria-label": "Guía de Atril", title: "Guía de Atril", html: icon("guia"), onclick: () => abrirGuia() }),
+          el("button", { class: "icon-btn small", "aria-label": "Ajustes", title: "Ajustes", html: icon("settings"), onclick: openSettings }))));
+    this.inputBuscar = buscar;
+  },
+
+  async pintarBiblioteca() {
+    if (!this.activo) return;
+    const lista = $("#bib-lista");
+    let docs = [], notes = [];
+    try { [docs, notes] = await Promise.all([store.all("docs"), store.all("notes")]); } catch { return; }
+    const q = plegarTexto(this.consulta);
+    const pasa = (it) => !q || plegarTexto(it.title).includes(q) || plegarTexto(htmlToText(it.html || "")).includes(q) ||
+      (it.dado || []).some((d) => plegarTexto(`${d.lugar} ${d.notas}`).includes(q));
+    const orden = (a, b) => (b.fijado ? 1 : 0) - (a.fijado ? 1 : 0) || (b.updated || 0) - (a.updated || 0);
+    const d = this.docActual();
+    const fila = (kind, it) => {
+      const titulo = it.title || htmlToText(it.html || "").split("\n")[0].slice(0, 60) || "Sin título";
+      const minutos = kind === "docs" ? it.target || minutosEstimados(contarPalabras(htmlToText(it.html || "")), ppm()) : null;
+      const activo = d && d.kind === kind && d.id === it.id;
+      const b = el("button", {
+        class: "bib-item" + (activo ? " activo" : ""), title: titulo, "aria-current": activo ? "true" : null,
+        "data-kind": kind, "data-id": it.id,
+      },
+      el("span", { class: "bib-ic", html: icon(kind === "docs" ? "doc" : "nota") }),
+      el("span", { class: "bib-tit", text: titulo }),
+      it.fijado ? el("span", { class: "bib-pin", html: icon("pin"), title: "Fijado arriba" }) : null,
+      sinPasarAlPC(it) ? el("span", { class: "bib-punto", title: "Tiene cambios que aún no están en el Word" }) : null,
+      minutos ? el("span", { class: "bib-min", text: `${minutos}′`, title: it.target ? "Duración" : "Lectura estimada" }) : null);
+      b.addEventListener("click", () => go(kind === "docs" ? `#/leer/docs/${it.id}` : `#/editar/notes/${it.id}`));
+      b.addEventListener("dblclick", () => go(`#/editar/${kind}/${it.id}`));
+      b.addEventListener("contextmenu", (e) => { e.preventDefault(); actionSheet(titulo, itemActions(kind, it)); });
+      return b;
+    };
+    const seccion = (nombre, kind, items) => {
+      const vis = items.filter(pasa).sort(orden);
+      return [
+        el("h3", { class: "bib-h" }, el("span", { text: nombre }), el("small", { text: String(vis.length) }),
+          el("button", { class: "bib-mas", "aria-label": kind === "docs" ? "Nuevo discurso" : "Nueva nota", title: kind === "docs" ? "Nuevo discurso" : "Nueva nota",
+            html: icon("plus"), onclick: () => (kind === "docs" ? nuevoDiscurso() : newItem("notes")) })),
+        ...(vis.length ? vis.map((it) => fila(kind, it)) : [el("p", { class: "bib-vacio", text: q ? "Nada con eso." : kind === "docs" ? "Abre un Word o crea uno." : "Sin notas." })]),
+      ];
+    };
+    lista.replaceChildren(...seccion("Discursos", "docs", docs), ...seccion("Notas", "notes", notes));
+    $("#bib-inicio").classList.toggle("activo", currentView === "home");
+    const est = await estadoCopia();
+    const p = $("#bib-proteccion");
+    p.className = "proteccion " + est.nivel;
+    p.hidden = est.nivel === "vacio";
+    p.replaceChildren(el("span", { class: "prot-ic", html: icon("escudo") }), el("span", { class: "prot-txt", text: est.texto }),
+      ...(est.nivel === "ok" ? [] : [el("button", { class: "text-btn", text: "Hacer copia", onclick: () => exportBackup() })]));
+  },
+
+  /* ---------------- Panel derecho (inspector) ---------------- */
+  async pintarInspector() {
+    if (!this.activo) return;
+    const insp = $("#inspector");
+    const d = this.docActual();
+    document.documentElement.classList.toggle("con-doc", !!d);
+    if (!d) return;
+    const kind = d.kind;
+    const item = (await store.get(kind, d.id)) || d.item;
+    if (!item) return;
+    const esDoc = kind === "docs";
+    // El texto: en el editor, el que se está escribiendo; si no, el guardado
+    const caja = document.createElement("div");
+    caja.innerHTML = currentView === "editor" ? editor.area.innerHTML : item.html || "";
+    const bloques = [...caja.children];
+    const est = estimarPartes(bloques, item.target, ppm());
+
+    // Tiempo
+    const tiempo = $("#insp-tiempo", insp);
+    const obj = est.objetivoSeg;
+    const dif = obj ? est.seg - obj : null;
+    const barra = el("div", { class: "insp-barra", role: "img", "aria-label": "Tiempo de cada parte" });
+    const total = Math.max(1, est.partes.reduce((a, p) => a + p.seg, 0));
+    if (est.partes.length > 1) {
+      for (const p of est.partes) {
+        const pasa = p.objetivoSeg && p.seg > p.objetivoSeg * 1.08 + 5;
+        barra.append(el("i", { class: pasa ? "pasa" : "", style: `flex:${Math.max(p.seg, total / 60)}`, title: `${p.titulo}: ≈ ${mmss(p.seg)}${p.objetivoSeg ? ` de ${mmss(p.objetivoSeg)}` : ""}` }));
+      }
+    } else barra.append(el("i", { style: "flex:1" }));
+    rellenar(tiempo,
+      el("h3", { class: "insp-h", text: esDoc ? "Tiempo" : "Lectura" }),
+      el("p", { class: "insp-grande" }, el("b", { text: `≈ ${mmss(est.seg)}` }), el("span", { text: obj ? ` de ${mmss(obj)}` : "" })),
+      barra,
+      el("p", { class: "insp-nota " + (dif == null ? "" : dif > 15 ? "over" : dif < -45 ? "ahead" : "ok"), text:
+        dif == null ? `${est.palabras.toLocaleString("es-ES")} palabras a ${ppm()} por minuto${esDoc ? " · sin duración puesta" : ""}`
+          : Math.abs(dif) <= 15 ? `Va en tiempo · ${est.palabras.toLocaleString("es-ES")} palabras`
+            : dif > 0 ? `Te pasas ≈ ${mmss(dif)} · ${est.palabras.toLocaleString("es-ES")} palabras` : `Te sobran ≈ ${mmss(-dif)} · ${est.palabras.toLocaleString("es-ES")} palabras` }),
+      esDoc ? el("button", { class: "text-btn insp-link", text: obj ? "Cambiar la duración" : "Poner la duración", onclick: openAaSheet }) : null);
+
+    // Ensayos
+    const ens = $("#insp-ensayos", insp);
+    ens.hidden = !esDoc;
+    if (esDoc) {
+      const lista = item.ensayos || [];
+      const ultimos = lista.slice(0, 8).reverse();
+      const objE = obj || null;
+      const max = Math.max(...ultimos.map((e) => e.seg), objE || 0, 1);
+      let consejo = "";
+      try {
+        const previstos = objE && est.palabras ? new Map(est.partes.map((p) => [p.titulo, p.objetivoSeg || Math.round((objE * p.palabras) / est.palabras)])) : null;
+        const a = lista.length ? analizarEnsayos(lista, objE, { previstos }) : null;
+        consejo = a && a.consejo ? a.consejo : "";
+      } catch (e) { console.warn(e); }
+      rellenar(ens,
+        el("h3", { class: "insp-h" }, el("span", { text: "Ensayos" }), lista.length ? el("small", { text: String(lista.length) }) : null),
+        ultimos.length
+          ? el("div", { class: "insp-ensayos", role: "img", "aria-label": "Duración de los últimos ensayos" },
+              ...ultimos.map((e) => el("i", {
+                class: objE ? (e.seg > objE + 15 ? "over" : "ok") : "", style: `height:${Math.max(8, Math.round((e.seg / max) * 100))}%`,
+                title: `${fmtDate(e.fecha)}: ${mmss(e.seg)}`,
+              })),
+              objE ? el("b", { class: "insp-obj", style: `bottom:${Math.round((objE / max) * 100)}%`, title: `Objetivo ${mmss(objE)}` }) : null)
+          : el("p", { class: "insp-nota", text: "Aún no lo has ensayado. Pon en marcha el cronómetro y léelo en voz alta." }),
+        consejo ? el("p", { class: "insp-nota", text: consejo }) : null,
+        el("div", { class: "insp-btns" },
+          el("button", { class: "btn small", html: icon("timer") + "<span>Ensayar</span>", onclick: () => this.enLector(() => { if (!timer.running) timer.toggle(); }) }),
+          lista.length ? el("button", { class: "text-btn insp-link", text: "Ver ensayos", onclick: () => this.enLector(() => reader.openEnsayos()) }) : null));
+    }
+
+    // Citas bíblicas
+    const citasEl = $("#insp-citas", insp);
+    const citas = [];
+    const vistas = new Set();
+    for (const b of caja.querySelectorAll(BLOQUE_CITA)) {
+      if (b.closest("blockquote.versiculo")) continue;
+      for (const c of buscarCitas(textoPropio(b))) {
+        if (vistas.has(c.bible)) continue;
+        vistas.add(c.bible);
+        citas.push({ c, tiene: !!versiculoDe(b, c) });
+      }
+    }
+    citasEl.hidden = !citas.length;
+    if (citas.length) {
+      const con = citas.filter((x) => x.tiene).length;
+      rellenar(citasEl,
+        el("h3", { class: "insp-h" }, el("span", { text: "Citas" }), el("small", { text: `${con} de ${citas.length} con texto` })),
+        el("div", { class: "insp-citas" }, ...citas.slice(0, 30).map(({ c, tiene }) =>
+          el("button", { class: "insp-cita" + (tiene ? " tiene" : ""), title: tiene ? "Tiene el versículo debajo" : "Sin el versículo: tócala para abrirla y pegarlo",
+            html: (tiene ? icon("bookmark") : icon("book")) + `<span>${escapeHtml(citaCompleta(c))}</span>`,
+            onclick: () => this.irACita(c) }))));
+    }
+
+    // Dónde lo he dado
+    const dadoEl = $("#insp-dado", insp);
+    dadoEl.hidden = !esDoc;
+    if (esDoc) {
+      const dado = item.dado || [];
+      rellenar(dadoEl,
+        el("h3", { class: "insp-h" }, el("span", { text: "Dónde lo he dado" }), dado.length ? el("small", { text: String(dado.length) }) : null),
+        ...(dado.length ? dado.slice(0, 4).map((x) => el("p", { class: "insp-dado" },
+          el("b", { text: new Date(x.fecha + "T12:00").toLocaleDateString("es-ES", { day: "numeric", month: "short", year: "numeric" }) }),
+          el("span", { text: x.lugar || "—" }))) : [el("p", { class: "insp-nota", text: "Aún no lo has dado." })]),
+        el("button", { class: "text-btn insp-link", text: dado.length ? "Apuntar o ver todos" : "Apuntar que lo he dado", onclick: () => abrirDado(kind, item.id) }));
+    }
+  },
+
+  /** Lleva a una cita del discurso: en el lector, abre su menú; en el editor, pone el cursor y abre «Texto bíblico». */
+  irACita(c) {
+    if (currentView === "reader") {
+      const a = [...reader.contentEl.querySelectorAll("a.bref")].find((x) => { const y = buscarCitas(x.textContent || "")[0]; return y && y.bible === c.bible && !x.closest("blockquote.versiculo"); });
+      if (a) { a.scrollIntoView({ block: "center", behavior: "smooth" }); reader.menuCita(a); }
+      else toast("Esa cita no se puede abrir con los enlaces de las citas quitados (Ajustes → Citas bíblicas).");
+      return;
+    }
+    if (currentView === "editor") {
+      const b = [...editor.area.querySelectorAll(BLOQUE_CITA)].find((x) => !x.closest("blockquote.versiculo") && buscarCitas(textoPropio(x)).some((y) => y.bible === c.bible));
+      if (!b) return;
+      b.scrollIntoView({ block: "center" });
+      editor.area.focus();
+      const r = document.createRange(); r.selectNodeContents(b); r.collapse(true);
+      const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(r);
+      editor.textoBiblico();
+    }
+  },
+
+  /* ---------------- Buscar en todo (Ctrl+K) ---------------- */
+  async buscarEnTodo() {
+    const [docs, notes] = await Promise.all([store.all("docs").catch(() => []), store.all("notes").catch(() => [])]);
+    const todos = [...docs.map((it) => ["docs", it]), ...notes.map((it) => ["notes", it])]
+      .map(([kind, it]) => ({ kind, it, titulo: it.title || "Sin título", texto: htmlToText(it.html || "") }));
+    const ordenes = [
+      { t: "Nuevo discurso", run: nuevoDiscurso }, { t: "Nueva nota", run: () => newItem("notes") },
+      { t: "Abrir un Word", run: () => abrirWord() }, { t: "Hacer copia de seguridad", run: () => exportBackup() },
+      { t: "Ajustes", run: openSettings }, { t: "Guía de Atril", run: () => abrirGuia() },
+      { t: "Letra, tema y duración", run: openAaSheet },
+    ];
+    const input = el("input", { type: "search", placeholder: "Busca un discurso, una frase o una orden", autocomplete: "off", "aria-label": "Buscar en todo Atril" });
+    const res = el("div", { class: "paleta-res", role: "listbox" });
+    let sel = 0, filas = [];
+    const pintar = () => {
+      const q = plegarTexto(input.value.trim());
+      const out = [];
+      for (const x of todos) {
+        const enTit = !q || plegarTexto(x.titulo).includes(q);
+        let trozo = "";
+        if (!enTit) {
+          const pt = plegarTexto(x.texto);
+          const i = pt.indexOf(q);
+          if (i < 0) continue;
+          trozo = "…" + x.texto.slice(Math.max(0, i - 30), i + q.length + 50).replace(/\s+/g, " ") + "…";
+        }
+        out.push({ rango: enTit ? 0 : 1, icono: x.kind === "docs" ? "doc" : "nota", t: x.titulo, sub: trozo || (x.kind === "docs" ? "Discurso" : "Nota"),
+          run: () => go(x.kind === "docs" ? `#/leer/docs/${x.it.id}` : `#/editar/notes/${x.it.id}`) });
+      }
+      out.sort((a, b) => a.rango - b.rango);
+      for (const o of ordenes) if (!q || plegarTexto(o.t).includes(q)) out.push({ rango: 2, icono: "more", t: o.t, sub: "Orden", run: o.run });
+      filas = out.slice(0, 40);
+      sel = Math.min(sel, Math.max(0, filas.length - 1));
+      res.replaceChildren(...(filas.length ? filas.map((f, i) => {
+        const b = el("button", { class: "paleta-fila" + (i === sel ? " sel" : ""), role: "option", "aria-selected": String(i === sel), html: icon(f.icono) },
+          el("span", { class: "paleta-t" }, el("b", { text: f.t }), el("small", { text: f.sub })));
+        b.addEventListener("click", () => { closeSheet(); f.run(); });
+        b.addEventListener("mousemove", () => { if (sel !== i) { sel = i; pintar(); } });
+        return b;
+      }) : [el("p", { class: "small-print", text: "No hay nada con eso." })]));
+    };
+    input.addEventListener("input", () => { sel = 0; pintar(); });
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "ArrowDown") { e.preventDefault(); sel = Math.min(filas.length - 1, sel + 1); pintar(); res.querySelector(".sel")?.scrollIntoView({ block: "nearest" }); }
+      else if (e.key === "ArrowUp") { e.preventDefault(); sel = Math.max(0, sel - 1); pintar(); res.querySelector(".sel")?.scrollIntoView({ block: "nearest" }); }
+      else if (e.key === "Enter" && filas[sel]) { e.preventDefault(); const f = filas[sel]; closeSheet(); f.run(); }
+    });
+    const { sheet } = openSheet([el("label", { class: "search paleta-buscar" }, el("span", { html: icon("search") }), input), res]);
+    sheet.classList.add("paleta");
+    pintar();
+    input.focus();
+  },
+
+  /* ---------------- Teclado ---------------- */
+  atajos(e) {
+    if (!this.activo) return;
+    const mod = e.metaKey || e.ctrlKey;
+    const k = (e.key || "").toLowerCase();
+    const hojaAbierta = !$("#overlay").hidden;
+    if (mod && !e.altKey && !e.shiftKey && k === "k") { e.preventDefault(); if (!hojaAbierta) this.buscarEnTodo(); return; }
+    if (hojaAbierta || presentar.activo) return;
+    if (mod && !e.altKey && !e.shiftKey && k === ",") { e.preventDefault(); openSettings(); }
+    else if (mod && !e.altKey && !e.shiftKey && k === "e" && this.hayDoc()) { e.preventDefault(); this.modoEdicion(); }
+    else if (mod && !e.altKey && !e.shiftKey && k === "p" && this.hayDoc()) { e.preventDefault(); this.conDoc((kd, it) => exportPdf(kd, it)); }
+    else if (mod && !e.altKey && (k === "+" || k === "=") && this.hayDoc()) { e.preventDefault(); this.letra(2); }
+    else if (mod && !e.altKey && k === "-" && this.hayDoc()) { e.preventDefault(); this.letra(-2); }
+    else if (!mod && e.key === "F5" && this.hayDoc()) { e.preventDefault(); this.enLector(() => presentar.comprobar()); }
+  },
+};
+
 function init() {
   applySettings();
   paintIcons();
@@ -4637,6 +5207,11 @@ function init() {
     sesionARestaurar = pend;
     if (h !== suyo) history.replaceState(null, "", suyo);
   }
+  disenoPC.aplicar();
+  const reaplicar = () => disenoPC.aplicar();
+  mqAncho.addEventListener("change", reaplicar);
+  mqRaton.addEventListener("change", reaplicar);
+  document.addEventListener("keydown", (e) => disenoPC.atajos(e), true);
   route();
   registerSW();
   if (escritorio.activo) {

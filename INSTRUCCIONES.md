@@ -100,13 +100,15 @@ La misma Atril, como programa del ordenador. Se descarga de **https://github.com
 - **Mac**: el **.dmg**; arrastra Atril a Aplicaciones. La primera vez, clic derecho sobre Atril → **Abrir** (o Ajustes del Sistema → Privacidad y seguridad → «Abrir igualmente»).
 
 Qué tiene además:
+- **Se ve como un programa de ordenador**: arriba los **menús** (Archivo, Editar, Ver, Discurso, Ayuda); a la izquierda **todos tus discursos y notas** (un clic abre uno, doble clic lo edita, clic derecho para el resto); a la derecha el **panel del discurso**: cuánto dura frente a lo que tienes (con una barra por parte, en ámbar la que se pasa), el esquema, tus últimos ensayos y qué practicar, las citas (y cuáles tienen ya el versículo debajo) y dónde lo has dado. El inicio enseña un resumen: discursos, ensayos de la semana, el último que diste y la copia de seguridad. Los paneles se quitan y se ponen en *Ver*.
+- **Teclado**: **Ctrl+K** busca en todo (títulos, frases y órdenes), **Ctrl+E** pasa de leer a editar, **F5** presenta, **Ctrl+P** guarda el PDF, **Ctrl++ / Ctrl+−** cambian la letra, **Escape** cierra lo que esté abierto.
 - **Abrir un Word**: con el botón, con **Ctrl+O** (⌘O en el Mac), **arrastrándolo** a la ventana o con **clic derecho → Abrir con → Atril**. Tus documentos de Word siguen abriéndose con Word con doble clic: Atril no te los quita (si quieres que un discurso se abra siempre con Atril, en «Abrir con» elige «Elegir otra aplicación» y marca «Siempre»).
 - **Guarda en el mismo Word**: «Guardar como Word» (o **Ctrl+S** en el editor) lo escribe encima del archivo que abriste, sin preguntar dónde. Si lo tienes abierto en Word, ciérralo antes. Si ese Word se ha cambiado fuera de Atril después de abrirlo, te avisa antes de sustituirlo. Si el Word está en OneDrive, el iPad abre ese mismo archivo ya con tus tiempos.
 - **Ctrl+N**: discurso nuevo. La ventana lleva el nombre del discurso que tienes abierto.
 - **Versiones nuevas**: Atril te avisa (como mucho una vez al día) cuando hay un instalador más nuevo; lo descargas y lo instalas encima. Tus discursos y notas se conservan. Ajustes → «Buscar actualizaciones» lo mira en el momento.
 - Los discursos del ordenador están **en el ordenador** (como los del iPad están en el iPad): para pasar de uno a otro, el Word (con sus tiempos dentro) o la copia de seguridad.
 
-La web (https://ezzekielgm.github.io/atril/) también funciona en el ordenador: en Edge o Chrome se puede instalar (icono de instalar en la barra de direcciones) y se puede **arrastrar un Word** a la ventana para abrirlo; lo que solo hace el programa es guardar encima del mismo Word y el «Abrir con».
+La web (https://ezzekielgm.github.io/atril/) también funciona en el ordenador, con el mismo diseño de menús y paneles en ventanas grandes (se puede quitar en Ajustes; en el iPad no cambia nada): en Edge o Chrome se puede instalar (icono de instalar en la barra de direcciones) y se puede **arrastrar un Word** a la ventana para abrirlo; lo que solo hace el programa es guardar encima del mismo Word y el «Abrir con».
 
 ## Atril en el reloj (Galaxy Watch)
 
