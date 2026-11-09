@@ -24,7 +24,7 @@ const SECCIONES = (p) => [
       ["outline", "Esquema", "Los títulos y lo que has resaltado; toca uno para ir allí. Con el iPad en horizontal se queda al lado del texto y marca por dónde vas.", "Lector → Esquema"],
       ["bookmark", "Voy por aquí", "Dos toques en un párrafo lo marcan con una raya azul y se recuerda al volver. Un toque en el texto oculta las barras para tener toda la pantalla."],
       ["timer", "Cronómetro y ritmo", "Tócalo para empezar o pararlo. Con una duración puesta verás si vas adelantado o retrasado. Si un título termina en «(5 min)», el ritmo se calcula por partes. Abajo ves en qué parte vas y cuánto queda.", "Lector → arriba"],
-      ["search", "Buscar, tarjetas y desplazamiento automático", "Busca una palabra (da igual tildes y mayúsculas), ve una parte por pantalla en tarjetas o deja que el texto suba solo a tu ritmo.", "Lector → Más"],
+      ["search", "Buscar, tarjetas y desplazamiento automático", "Busca una palabra (da igual tildes y mayúsculas), ve una parte por pantalla en tarjetas o deja que el texto suba solo a tu ritmo. «Más» está ordenado en Practicar, Documento, Compartir y guardar, y Ayuda.", "Lector → Más"],
       ["book", "Citas bíblicas", "Las citas como «Sal 37:4» salen subrayadas: tócalas para abrir el versículo en JW Library o en jw.org.", "Ajustes → Citas bíblicas"],
     ],
   },
@@ -32,7 +32,7 @@ const SECCIONES = (p) => [
     id: "presentar", icon: "play", titulo: "Presentar",
     intro: "Para dar el discurso: pantalla limpia, cronómetro grande y nada que se toque sin querer.",
     items: [
-      ["play", "Empezar", "Verás el cronómetro, cuánto queda, la hora, en qué parte vas y cuál sigue.", "Lector → Presentar (el botón azul)"],
+      ["play", "Empezar", "Antes sale una comprobación rápida: el tiempo, la letra, si empiezas desde el principio o desde donde estás y que la pantalla no se apague. Toca «Presentar ahora». Verás el cronómetro, cuánto queda, la hora, en qué parte vas y cuál sigue.", "Lector → Presentar (el botón azul)"],
       ["timer", "El cronómetro, como un semáforo", "Tócalo para empezar; para pausarlo, mantenlo pulsado. Verde mientras hay tiempo, ámbar en el último minuto y rojo si te pasas."],
       ["down", "Pasar página", "Toca la parte de abajo de la pantalla para avanzar y la de arriba para volver. También puedes deslizar el dedo.", "Se puede quitar en Ajustes"],
       ["lock", "Salir", "Toca el centro de la pantalla y aparece «Mantén pulsado para salir»: mantén el dedo hasta que se llene. Ni los toques sueltos ni el gesto de «atrás» te sacan del discurso."],
@@ -47,6 +47,7 @@ const SECCIONES = (p) => [
     items: [
       ["clock", "Minutos de cada parte", "Pon la duración del discurso en «Letra». En el editor, «Minutos de la parte» añade «(5 min)» al título de cada parte para llevar el ritmo por partes.", "Editor → Insertar"],
       ["history", "Ensayos", "Cada vez que pones el cronómetro a cero tras 30 segundos o más se guarda el ensayo, con el tiempo de cada parte comparado con tu objetivo.", "Lector → Más → Ensayos"],
+      ["bookmark", "Cómo vas", "Con tus últimos ensayos, Atril te dice tu tiempo habitual, qué parte se pasa más y qué practicar. Toca una parte para practicarla sola: el cronómetro se para al llegar a la siguiente y no cuenta como ensayo.", "Lector → Más → Ensayos"],
       ["mic", "Grabar tu voz", "Se graba mientras corre el cronómetro; luego te escuchas y saltas a cada parte. Las grabaciones se quedan en el dispositivo.", "Ajustes → Grabar audio al ensayar"],
       ["calendar", "Dónde lo he dado", "Apunta la fecha, el lugar y unas notas. Si vas a darlo donde ya lo diste, te avisa.", "Lector → Más, o ⋯ del discurso"],
     ],
@@ -85,11 +86,11 @@ const SECCIONES = (p) => [
   {
     id: "compartir", icon: "share", titulo: "Compartir y guardar",
     items: [
-      ["chat", "Mandar por WhatsApp", "Se abre WhatsApp con el texto escrito y eliges el chat. Sale con negritas y cursivas (*así*); si lo prefieres, quítalas con el interruptor.", "⋯ → Compartir, Lector → Compartir (o Más), o el botón de compartir del editor"],
+      ["chat", "Mandar por WhatsApp", "Se abre WhatsApp con el texto escrito y eliges el chat. Sale con negritas y cursivas (*así*); si lo prefieres, quítalas con el interruptor.", "⋯ → Compartir, Lector → Más → Compartir, o el botón de compartir del editor"],
       ["share", "A otra app o copiado", "«Otra app» abre la lista del sistema: correo, Mensajes, Telegram, Notas, Claude… «Copiar el texto» lo deja listo para pegar donde quieras.", "⋯ → Compartir"],
-      ["word", "Como archivo", "Word (se abre en Word, Pages o Google Docs) o PDF (para leerlo o imprimirlo tal cual, con letra normal, grande o muy grande).", "⋯ → Compartir → Como archivo"],
+      ["word", "Como archivo", "Word (se abre en Word, Pages o Google Docs) o PDF (para leerlo o imprimirlo tal cual, con letra normal, grande o muy grande y las mismas letras de Atril, con todas las tildes y comillas).", "⋯ → Compartir → Como archivo"],
       ["word", "El Word del PC, al día", "Si un discurso vino de un Word y lo cambias aquí, su tarjeta dice «Cambiado en el iPad». «Guardar como Word» lo crea con el mismo nombre: Guardar en Archivos → la misma carpeta → «Reemplazar».", "⋯ → Guardar como Word"],
-      ["download", "Copia de seguridad", "Todo está solo en este dispositivo: si borras la app, se borra. Haz una copia de vez en cuando y guárdala en OneDrive o iCloud; Atril te lo recuerda cada semana.", "Ajustes → Hacer copia de seguridad"],
+      ["escudo", "Copia de seguridad", "Todo está solo en este dispositivo: si borras la app, se borra. Abajo en el inicio ves la «Protección»: cuándo fue la última copia y cuánto has cambiado desde entonces. Guarda la copia en OneDrive o iCloud; Atril te lo recuerda cada semana.", "Inicio, abajo; Ajustes → Hacer copia de seguridad"],
       ["download", "Actualizaciones", "Atril se actualiza sola y tus datos no se tocan. Para mirarlo ahora mismo, «Buscar actualizaciones».", "Ajustes → Versión"],
     ],
   },

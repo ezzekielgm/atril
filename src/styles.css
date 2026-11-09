@@ -39,7 +39,7 @@
   --danger: #c4314b; --ok: #107c10; --warn: #8a5300; --warn-bg: #fff4ce;
   --mark: #fff176; --mark-text: inherit; --shadow: 0 10px 30px rgba(0,0,0,.22);
   --mark-verde: #b9f6ca; --mark-azul: #b3e5fc; --mark-rosa: #f8bbd0;
-  --t-rojo: #c00000; --t-azul: #0062b0; --t-verde: #00803a; --t-naranja: #c55a00;
+  --t-rojo: #c00000; --t-azul: #0062b0; --t-verde: #00803a; --t-naranja: #b25000;
 }
 [data-theme="sepia"] {
   --bg: #f7efdd; --desk: #ece2c9; --canvas: #ddd0b1; --surface: #efe4ca; --surface-2: #e2d4b4; --text: #33271a; --muted: #6f604a;
@@ -48,7 +48,7 @@
   --danger: #b3261e; --ok: #3f6b2a; --warn: #8a5200; --warn-bg: #f3dfb0;
   --mark: #f3d36b; --mark-text: inherit; --shadow: 0 10px 30px rgba(60,40,10,.25);
   --mark-verde: #c8e6a8; --mark-azul: #b5d9ea; --mark-rosa: #f0bcc8;
-  --t-rojo: #b0141a; --t-azul: #1b5a96; --t-verde: #2e6b2a; --t-naranja: #b35400;
+  --t-rojo: #b0141a; --t-azul: #1b5a96; --t-verde: #2e6b2a; --t-naranja: #a14a00;
 }
 [data-theme="oscuro"] {
   --bg: #1b1b1d; --desk: #252528; --canvas: #111113; --surface: #2b2b2e; --surface-2: #38383c; --text: #ecebe8; --muted: #a8a6a2;
@@ -390,6 +390,7 @@ button:focus:not(:focus-visible) { outline: none; }
   padding: 8px 18px calc(18px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 12px; max-height: 88vh; overflow-y: auto;
   animation: sheetIn .22s ease-out;
 }
+.sheet > * { flex-shrink: 0; } /* nada se aplasta: si no cabe, la hoja se desplaza */
 .sheet::before { content: ""; flex: none; align-self: center; width: 40px; height: 5px; border-radius: 3px; background: var(--surface-2); margin-bottom: 2px; }
 @media (min-width: 700px) {
   .overlay { align-items: center; padding: 24px; }
@@ -727,7 +728,7 @@ button:focus:not(:focus-visible) { outline: none; }
 .pres-timer.running { background: #1e7b34; color: #fff; } /* semáforo: verde mientras hay tiempo */
 .pres-timer.running .pres-hint { color: inherit; opacity: .85; }
 .pres-timer.warn { background: #f2a51a; color: #241600; }
-.pres-timer.over { background: var(--danger); color: #fff; }
+.pres-timer.over { background: #b42318; color: #fff; } /* el mismo rojo en los tres temas: en el oscuro, el --danger claro no deja leer el blanco */
 .pres-timer.warn .pres-hint, .pres-timer.over .pres-hint { color: inherit; opacity: .85; }
 /* Raya de color arriba y destello al cambiar a ámbar o rojo: se ve con el rabillo del ojo */
 .pres-bar.warn { box-shadow: inset 0 5px 0 #f2a51a; }
@@ -955,9 +956,6 @@ button:focus:not(:focus-visible) { outline: none; }
 .co-t small { font-size: 13px; font-weight: 400; color: var(--muted); }
 .co-wa svg { color: #1f8f4e; }
 .co-ej { color: var(--muted); font-weight: 400; margin-left: 4px; white-space: nowrap; }
-/* El botón «Compartir» del lector: con nombre en el iPad en horizontal, solo el icono en vertical y en el menú «Más» del móvil */
-@media (max-width: 1000px) and (min-width: 701px) { .tool-compartir .lbl { display: none; } .tool-compartir { padding: 0 10px; } }
-@media (max-width: 700px) { .tool-compartir { display: none; } }
 
 /* ---------- Guía de Atril ---------- */
 .guia { position: fixed; inset: 0; z-index: 36; display: flex; flex-direction: column; background: var(--desk); color: var(--text); }
@@ -993,3 +991,50 @@ button:focus:not(:focus-visible) { outline: none; }
 .guia-hint svg { width: 26px; height: 26px; color: var(--accent); flex: none; }
 .guia-hint p { flex: 1; min-width: 200px; margin: 0; font-size: 15px; }
 .guia-hint .btn { min-height: 44px; }
+
+/* ---------- Menús agrupados ---------- */
+.menu-grupo { font-size: 13px; font-weight: 700; letter-spacing: .02em; text-transform: uppercase; color: var(--muted); margin: 14px 4px 6px; }
+.menu-grupo:first-child { margin-top: 2px; }
+
+/* ---------- Protección (copia de seguridad) ---------- */
+.proteccion { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 18px 0 8px; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font-size: 14px; }
+.proteccion .prot-ic { display: inline-flex; }
+.proteccion .prot-ic svg { width: 20px; height: 20px; }
+.proteccion.ok .prot-ic { color: var(--ok); }
+.proteccion.aviso .prot-ic { color: var(--warn); }
+.proteccion.riesgo { border-color: var(--danger); }
+.proteccion.riesgo .prot-ic { color: var(--danger); }
+.proteccion .prot-txt { flex: 1; min-width: 180px; }
+.proteccion .text-btn { min-height: 44px; }
+.group .proteccion { margin: 4px 0 8px; }
+
+/* ---------- Ensayos: cómo vas ---------- */
+.ens-analisis { border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; margin: 8px 0 12px; background: var(--bg); }
+.ens-analisis h3 { margin: 0 0 6px; font-size: 17px; }
+.ens-mediana { display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px; margin: 0 0 4px; font-size: 16px; }
+.ens-mediana strong { font-size: 22px; font-variant-numeric: tabular-nums; }
+.ens-consejo { display: flex; gap: 8px; align-items: flex-start; margin: 10px 0; padding: 10px 12px; border-radius: 8px; background: var(--accent-soft); font-weight: 600; }
+.ens-consejo svg { width: 20px; height: 20px; flex: none; color: var(--accent); margin-top: 1px; }
+.ens-practicar { min-height: 44px; margin: 0 0 10px; }
+.ens-partes { display: flex; flex-direction: column; gap: 4px; }
+.ens-parte-btn { display: flex; justify-content: space-between; align-items: center; gap: 10px; min-height: 44px; width: 100%; padding: 6px 10px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font-size: 15px; text-align: left; }
+.ens-parte-btn .ens-pt { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ens-parte-btn .ens-ps { font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* ---------- Antes de presentar ---------- */
+.pc-lista { display: flex; flex-direction: column; gap: 10px; margin: 6px 0 12px; }
+.pc-fila { display: grid; grid-template-columns: 36px 1fr; gap: 10px; align-items: start; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); }
+.pc-ic { width: 36px; height: 36px; border-radius: 8px; background: var(--accent-soft); color: var(--accent); display: flex; align-items: center; justify-content: center; }
+.pc-ic svg { width: 20px; height: 20px; }
+.pc-cuerpo > b { display: block; font-size: 16px; margin-bottom: 4px; }
+.pc-cuerpo .group { margin: 0; }
+.pc-cuerpo .group > .label { display: none; }
+.pc-txt { margin: 0 0 6px; font-size: 14px; color: var(--muted); }
+.pc-switch { margin: 0; padding: 0; min-height: 44px; }
+.pc-switch.small { font-size: 14px; color: var(--muted); margin-top: 6px; }
+.pc-ya { min-height: 52px; font-size: 18px; }
+.pc-cuerpo .group .small-print + .small-print { display: none; }
+.pc-linea { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.pc-linea .pc-txt { margin: 0; }
+/* «Presentar ahora» siempre a la vista, abajo de la hoja */
+.sheet .pc-acciones { position: sticky; bottom: -20px; z-index: 1; background: var(--bg); margin: 0 -4px -6px; padding: 10px 4px 6px; box-shadow: 0 -10px 14px -12px rgba(0,0,0,.25); }

@@ -43,14 +43,14 @@ ok("«Probar con un ejemplo» abre un discurso de muestra", ej.title === "Ejempl
 
 // ============ Botones con nombre ============
 const nombres = await page.$$eval(".reader-tools .tool .lbl", (xs) => xs.map((x) => x.textContent));
-ok("Los botones del lector llevan su nombre", nombres.join(",") === "Esquema,Letra,Presentar,Compartir,Editar,Más", nombres.join(","));
+ok("Los botones del lector llevan su nombre", nombres.join(",") === "Esquema,Letra,Presentar,Editar,Más", nombres.join(","));
 ok("«Volver» dice a dónde", (await page.textContent("#reader-back")).includes("Discursos"));
 await page.screenshot({ path: `${OUTDIR}/51-lector-botones.png` });
 
 // ============ Presentar ============
 await page.evaluate(() => { window.__atril.setFontSize(56); document.querySelector("#reader-scroll").scrollTop = 0; });
 await page.waitForTimeout(200);
-await page.click("#reader-presentar");
+await page.click("#reader-presentar"); await page.click("#pc-ya");
 await page.waitForSelector("#pres-bar:not([hidden])");
 if (await page.isVisible(".sheet >> text=Entendido")) await page.click(".sheet >> text=Entendido");
 ok("Presentar: barra con cronómetro grande y la parte actual", (await page.isHidden(".reader-bar")) && (await page.textContent("#pres-parte")).startsWith("Parte 1 de 4") && (await page.textContent("#pres-sigue")).startsWith("Sigue: Por qué vale la pena"),
@@ -149,7 +149,7 @@ await page.waitForTimeout(500);
 ok("En modo atril, la barra de abajo también se esconde", await page.evaluate(() => document.querySelector(".reader-tools").getBoundingClientRect().top >= innerHeight - 2));
 await page.tap("#reader-content p >> nth=0");
 await page.waitForTimeout(500);
-await page.click("#reader-presentar");
+await page.click("#reader-presentar"); await page.click("#pc-ya");
 await page.waitForSelector("#pres-bar:not([hidden])");
 const pres = await page.evaluate(() => { const b = document.querySelector("#pres-bar"); return b.scrollWidth <= b.clientWidth + 1; });
 ok("Presentar cabe en el móvil", pres);

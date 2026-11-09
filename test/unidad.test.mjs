@@ -2,7 +2,7 @@
 import { repartirMinutos, crearPlantilla } from "../src/plantilla.js";
 import { dividirEnTarjetas, partesDelDiscurso, parteDeBloque, estimarPartes } from "../src/tarjetas.js";
 import { claseDeFondo, claseValida } from "../src/colores.js";
-import { crearPlan, minutosDeTitulo, ritmoDeEnsayos, minutosEstimados } from "../src/tiempo.js";
+import { crearPlan, minutosDeTitulo, ritmoDeEnsayos, minutosEstimados, analizarEnsayos } from "../src/tiempo.js";
 
 let fallos = 0, total = 0;
 const ok = (nombre, cond, extra = "") => { total++; if (!cond) fallos++; console.log(`${cond ? "✔" : "✘"} ${nombre}${extra ? " — " + extra : ""}`); };
@@ -66,6 +66,25 @@ ok("Fondos del editor y de Word a su color", [
   ["rgb(0, 255, 0)", "c-verde"], ["yellow", ""], ["#FF00FF", "c-rosa"], ["rgb(0, 255, 255)", "c-azul"], ["orange", ""], ["#ccc", ""],
 ].every(([c, esperado]) => claseDeFondo(c) === esperado));
 ok("Solo se aceptan las clases de color conocidas", claseValida("x c-azul y") === "c-azul" && claseValida("c-rojo") === "" && claseValida(null) === "");
+
+// --- Ensayo inteligente
+const ens = (seg, partes) => ({ seg, objetivoSeg: 600, partes: partes.map(([t, s, o]) => ({ t, s, o })) });
+let an = analizarEnsayos([
+  ens(640, [["Introducción", 160, 120], ["Punto 1", 240, 240], ["Conclusión", 240, 240]]),
+  ens(650, [["Introducción", 170, 120], ["Punto 1", 240, 240], ["Conclusión", 240, 240]]),
+  ens(630, [["Introducción", 150, 120], ["Punto 1", 240, 240], ["Conclusión", 240, 240]]),
+], 600);
+ok("Análisis: mediana de los ensayos y diferencia con el objetivo", an.n === 3 && an.mediana === 640 && an.dif === 40 && an.rango === 20, JSON.stringify([an.mediana, an.dif, an.rango]));
+ok("Análisis: encuentra la parte que más se pasa", an.peor && an.peor.t === "Introducción" && an.peor.dif === 40 && an.consejo.startsWith("Practica «Introducción»"), an.consejo);
+an = analizarEnsayos([ens(500, [["A", 280, 300], ["B", 120, 300]]), ens(510, [["A", 290, 300], ["B", 120, 300]])], 600);
+ok("Análisis: avisa de una parte que se queda corta", !an.peor && an.corta && an.corta.t === "B" && an.consejo.includes("se queda corta"), an.consejo);
+an = analizarEnsayos([ens(600, [["A", 300, 300], ["B", 300, 300]])], 600);
+ok("Análisis: en tiempo", an.dif === 0 && !an.peor && !an.corta && an.consejo.startsWith("Vas en tiempo"), an.consejo);
+an = analizarEnsayos([{ seg: 400, partes: [{ t: "A", s: 250, o: null }, { t: "B", s: 150, o: null }] }], 400, { previstos: new Map([["A", 200], ["B", 200]]) });
+ok("Análisis: sin «(N min)», usa lo previsto por palabras", an.peor && an.peor.t === "A" && an.peor.o === 200, JSON.stringify(an.peor));
+an = analizarEnsayos([ens(560, []), ens(570, []), ens(640, []), ens(650, [])], 600);
+ok("Análisis: tendencia de los 2 últimos (más rápidos)", an.tendencia === -80, String(an.tendencia));
+ok("Análisis: sin ensayos válidos no hay análisis", analizarEnsayos([{ seg: 10 }]) === null && analizarEnsayos(null) === null);
 
 console.log(`\n${total - fallos}/${total} pruebas superadas`);
 process.exit(fallos ? 1 : 0);

@@ -105,3 +105,57 @@ export const mmss = (seg) => {
   const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), x = s % 60;
   return (h ? h + ":" + String(m).padStart(2, "0") : String(m)) + ":" + String(x).padStart(2, "0");
 };
+
+/* ---------- Ensayo inteligente: qué dicen los últimos ensayos ---------- */
+const medianaDe = (xs) => {
+  const a = xs.filter((x) => Number.isFinite(x)).sort((x, y) => x - y);
+  if (!a.length) return null;
+  const m = a.length >> 1;
+  return a.length % 2 ? a[m] : Math.round((a[m - 1] + a[m]) / 2);
+};
+
+/**
+ * Analiza los últimos ensayos (los más recientes primero, como se guardan).
+ * objetivoSeg: duración objetivo. previstos: Map(título → segundos previstos) para las partes sin «(N min)».
+ * Devuelve null sin ensayos, o {n, mediana, objetivo, dif, rango, tendencia, partes[{t, s, o, dif, n}], peor, corta, consejo}.
+ */
+export function analizarEnsayos(ensayos, objetivoSeg = null, { previstos = null, ultimos = 5 } = {}) {
+  const lista = (ensayos || []).filter((e) => e && e.seg >= 30).slice(0, ultimos);
+  if (!lista.length) return null;
+  const mediana = medianaDe(lista.map((e) => e.seg));
+  const objetivo = objetivoSeg || lista[0].objetivoSeg || null;
+  const dif = objetivo ? mediana - objetivo : null;
+  const totales = lista.map((e) => e.seg);
+  const rango = lista.length >= 3 ? Math.max(...totales) - Math.min(...totales) : null;
+  // Tendencia: los 2 últimos frente a los anteriores (negativo = ahora más rápido)
+  let tendencia = null;
+  if (lista.length >= 4) {
+    const media = (xs) => xs.reduce((a, b) => a + b, 0) / xs.length;
+    const t = Math.round(media(totales.slice(0, 2)) - media(totales.slice(2)));
+    if (Math.abs(t) >= 15) tendencia = t;
+  }
+  // Partes, por título, en el orden del ensayo más reciente
+  const porTitulo = new Map();
+  for (const e of lista) for (const p of e.partes || []) {
+    const t = String(p.t || "").trim();
+    if (!t) continue;
+    if (!porTitulo.has(t)) porTitulo.set(t, []);
+    porTitulo.get(t).push(p);
+  }
+  const partes = [...porTitulo.entries()].map(([t, ps]) => {
+    const s = medianaDe(ps.map((p) => p.s));
+    const o = medianaDe(ps.map((p) => p.o).filter(Boolean)) || (previstos && previstos.get(t)) || null;
+    return { t, s, o, dif: o ? s - o : null, n: ps.length };
+  });
+  const juzgables = partes.filter((p) => p.dif != null && partes.length > 1);
+  const peor = juzgables.filter((p) => p.dif > Math.max(10, p.o * 0.1)).sort((a, b) => b.dif - a.dif)[0] || null;
+  const corta = juzgables.filter((p) => p.dif < -Math.max(30, p.o * 0.3)).sort((a, b) => a.dif - b.dif)[0] || null;
+  let consejo;
+  if (peor) consejo = `Practica «${peor.t}»: se pasa ${mmss(peor.dif)} de media.`;
+  else if (dif != null && dif > 15) consejo = `Vas ${mmss(dif)} por encima del objetivo, repartido entre las partes: acorta un poco cada una.`;
+  else if (corta) consejo = `«${corta.t}» se queda corta (${mmss(-corta.dif)} menos de lo previsto): ¿te saltas algo o vas deprisa?`;
+  else if (dif != null && dif < -45) consejo = `Te sobran ${mmss(-dif)}: puedes ir más despacio o añadir un ejemplo.`;
+  else if (dif != null) consejo = "Vas en tiempo. Ensáyalo entero otra vez para afianzarlo.";
+  else consejo = "Pon la duración del discurso (en «Letra») para saber si vas en tiempo.";
+  return { n: lista.length, mediana, objetivo, dif, rango, tendencia, partes, peor, corta, consejo };
+}

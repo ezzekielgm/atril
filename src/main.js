@@ -2,7 +2,7 @@
 // Código sin frameworks. Los datos se guardan en IndexedDB, en el propio dispositivo.
 
 import { enlazarCitas } from "./biblia.js";
-import { crearPlan, tiempoPrevisto, palabraActual, mmss, contarPalabras, minutosEstimados, minutosDeTitulo, tituloSinMinutos, ritmoDeEnsayos, PALABRAS_POR_MINUTO } from "./tiempo.js";
+import { crearPlan, tiempoPrevisto, palabraActual, mmss, contarPalabras, minutosEstimados, minutosDeTitulo, tituloSinMinutos, ritmoDeEnsayos, analizarEnsayos, PALABRAS_POR_MINUTO } from "./tiempo.js";
 import { limpiarDibujo, figuraDibujo, svgDibujo } from "./dibujo-svg.js";
 import { COLORES, LETRAS, claseValida, claseDeFondo, colorDeMark, claseLetraValida, claseDeLetra, rgbDe } from "./colores.js";
 import { crearPlantilla, repartirMinutos } from "./plantilla.js";
@@ -146,6 +146,7 @@ const P = {
   pluma: '<path d="M4 20c4-1 6-3 8-6l5-8a2 2 0 0 0-3-2l-6 9c-2 3-3 5-4 7z"/><path d="M12.5 14.5l-3-2"/>',
   goma: '<path d="M7 20h11"/><path d="M5.5 15.5l9-9a2 2 0 0 1 3 0l2 2a2 2 0 0 1 0 3l-8 8H9z"/><path d="M10 11l5 5"/>',
   rotulador: '<path d="M9 15l-3 3v2h4l3-3"/><path d="M9 15l6-9 4 3-6 8z"/><path d="M3 21h8"/>',
+  escudo: '<path d="M12 3l7.5 3v5.5c0 4.6-3.2 8.2-7.5 9.5-4.3-1.3-7.5-4.9-7.5-9.5V6L12 3z"/><path d="M8.8 12.2l2.2 2.2 4.3-4.6"/>',
   chat: '<path d="M21 11.5a8.5 8.5 0 0 1-12.4 7.6L3 20.5l1.5-5.2A8.5 8.5 0 1 1 21 11.5z"/>',
   guia: '<circle cx="12" cy="12" r="9.5"/><path d="M9.3 9.2a2.8 2.8 0 0 1 5.4 1c0 1.9-2.7 2.6-2.7 4.2"/><path d="M12 17.6h.01" stroke-width="2.6"/>',
   pin: '<path d="M12 16v6"/><path d="M8.5 3h7l-1 6 3.5 3.5V16H6v-3.5L9.5 9z"/>',
@@ -412,7 +413,7 @@ const store = {
 const DEFAULTS = {
   fontSize: 26, theme: "claro", font: "sans", lineHeight: 1.6, wakeLock: true, tab: "docs", refLinks: "app",
   grabar: false, tpWpm: 130, pdfSize: 16, pdfMarks: true, markColor: "amarillo", ppm: PALABRAS_POR_MINUTO,
-  panel: true, panelEditor: true, presToque: true, // panel lateral (lector / editor) y pasar página tocando al presentar
+  panel: true, panelEditor: true, presToque: true, presComprobar: true, // panel lateral (lector / editor) y pasar página tocando al presentar
 };
 const FS_MIN = 14, FS_MAX = 80;
 let settings = { ...DEFAULTS };
@@ -482,16 +483,21 @@ function openSheet(content, { onClose, dismissable = true } = {}) {
 function closeSheet() { if (sheetClose) sheetClose(); }
 
 /** Menú de acciones. actions: [{label, icon, danger, run}] */
+/** Menú de acciones. Un elemento {grupo: "Nombre"} empieza un grupo con su título. */
 function actionSheet(title, actions) {
+  const bloques = [];
+  let actual = null;
+  for (const a of actions) {
+    if (!a) continue;
+    if (a.grupo) { actual = null; bloques.push(el("h3", { class: "menu-grupo", text: a.grupo })); continue; }
+    if (!actual) { actual = el("div", { class: "actions menu" }); bloques.push(actual); }
+    const b = el("button", { class: "action" + (a.danger ? " danger" : ""), html: (a.icon ? icon(a.icon) : "") + `<span>${escapeHtml(a.label)}</span>` });
+    b.addEventListener("click", () => { close(); a.run(); });
+    actual.append(b);
+  }
   const { close } = openSheet([
     title ? el("h2", { text: title }) : null,
-    el("div", { class: "actions menu" },
-      actions.map((a) => {
-        const b = el("button", { class: "action" + (a.danger ? " danger" : ""), html: (a.icon ? icon(a.icon) : "") + `<span>${escapeHtml(a.label)}</span>` });
-        b.addEventListener("click", () => { close(); a.run(); });
-        return b;
-      })
-    ),
+    ...bloques,
     el("div", { class: "actions" }, el("button", { class: "action plain", text: "Cancelar", onclick: () => close() })),
   ].filter(Boolean));
 }
@@ -1374,6 +1380,9 @@ async function renderHome() {
 
   let items = [];
   try { items = await store.all(tab); } catch (e) { console.error(e); toast("No se pudo leer el almacenamiento del dispositivo."); }
+  // «¿Cómo paso el Word del PC?» solo hasta que se abre el primer Word
+  const ayudaPC = $(".ayuda-word", actions);
+  if (ayudaPC) ayudaPC.hidden = items.some((i) => i.source);
   // Los fijados primero; después, lo último editado
   items.sort((a, b) => (b.fijado ? 1 : 0) - (a.fijado ? 1 : 0) || (b.updated || 0) - (a.updated || 0));
   const total = items.length;
@@ -1570,7 +1579,40 @@ async function abrirDado(kind, id) {
    Aviso de copia de seguridad
    ============================================================ */
 const DIA = 86400000;
+/** Cómo están protegidos los datos: cuándo fue la última copia y cuánto ha cambiado desde entonces. */
+async function estadoCopia() {
+  const copia = Number(lsGet("atril.copia", "0")) || 0;
+  let todos = [];
+  try { todos = [...(await store.all("docs")), ...(await store.all("notes"))]; } catch (e) { console.warn(e); }
+  const ahora = Date.now();
+  const dias = copia ? Math.max(0, Math.floor((ahora - copia) / DIA)) : null;
+  const cambiados = copia ? todos.filter((i) => (i.updated || i.created || 0) > copia).length : todos.length;
+  const nivel = !todos.length ? "vacio" : !copia || (cambiados && dias >= 7) ? "riesgo" : cambiados ? "aviso" : "ok";
+  const cuando = !copia ? "Sin copia de seguridad" : dias === 0 ? "Copia de hoy" : dias === 1 ? "Copia de ayer" : `Copia de hace ${dias} días`;
+  const pl = (n, uno, varios) => `${n} ${n === 1 ? uno : varios}`;
+  const cambios = !todos.length ? "" : !copia ? pl(todos.length, "documento sin copiar", "documentos sin copiar") : cambiados ? pl(cambiados, "cambiado desde entonces", "cambiados desde entonces") : "todo está copiado";
+  return { copia, dias, cambiados, total: todos.length, nivel, texto: [cuando, cambios].filter(Boolean).join(" · ") };
+}
+
+/** La línea de «Protección» del inicio (al final de la lista) y de Ajustes. */
+async function pintarProteccion() {
+  const est = await estadoCopia();
+  const pie = $("#proteccion");
+  if (pie) {
+    pie.hidden = est.nivel === "vacio";
+    pie.className = "proteccion " + est.nivel;
+    pie.replaceChildren(
+      el("span", { class: "prot-ic", html: icon("escudo") }),
+      el("span", { class: "prot-txt" }, el("b", { text: "Protección: " }), est.texto),
+      est.nivel === "ok" ? null : el("button", { class: "text-btn", id: "prot-copia", text: "Hacer copia", onclick: () => exportBackup() }));
+  }
+  const aj = $("#ajustes-proteccion");
+  if (aj) { aj.className = "proteccion " + est.nivel; aj.replaceChildren(el("span", { class: "prot-ic", html: icon("escudo") }), el("span", { class: "prot-txt", text: est.texto })); }
+  return est;
+}
+
 async function pintarAvisoCopia() {
+  pintarProteccion();
   const hint = $("#backup-hint");
   const copia = Number(lsGet("atril.copia", "0")) || 0;
   const cambio = Number(lsGet("atril.cambio", "0")) || 0;
@@ -1630,10 +1672,14 @@ function openSettings() {
   const toque = el("input", { type: "checkbox", role: "switch" });
   toque.checked = settings.presToque !== false;
   toque.addEventListener("change", () => { settings.presToque = toque.checked; saveSettings(); });
+  const comprobar = el("input", { type: "checkbox", role: "switch", id: "ajustes-comprobar" });
+  comprobar.checked = settings.presComprobar !== false;
+  comprobar.addEventListener("change", () => { settings.presComprobar = comprobar.checked; saveSettings(); });
   openSheet([
     el("h2", { text: "Ajustes" }),
     el("label", { class: "switch-row" }, el("span", { text: "Mantener la pantalla encendida al leer" }), wake),
     el("label", { class: "switch-row" }, el("span", { text: "Al presentar, tocar abajo pasa la página (y arriba vuelve)" }), toque),
+    el("label", { class: "switch-row" }, el("span", { text: "Comprobar la letra y el tiempo antes de presentar" }), comprobar),
     puedeGrabar() ? el("label", { class: "switch-row" }, el("span", { text: "Grabar audio al ensayar con el cronómetro" }), grabar) : null,
     el("div", { class: "group" },
       el("span", { class: "label", text: "Citas bíblicas" }),
@@ -1656,7 +1702,7 @@ function openSettings() {
     el("div", { class: "group" },
       el("span", { class: "label", text: "Copia de seguridad" }),
       el("p", { class: "small-print", text: "Atril guarda solo cada cambio en este dispositivo, pero si se borra la app o se pierde el iPad, se pierde todo. La copia es un archivo con todos tus discursos y notas: guárdalo en OneDrive o iCloud. Te lo recordará cada semana si has cambiado algo." }),
-      el("p", { class: "small-print", text: Number(lsGet("atril.copia", "0")) ? `Última copia: ${fmtDate(Number(lsGet("atril.copia", "0")))}.` : "Aún no has hecho ninguna copia." }),
+      el("p", { class: "proteccion", id: "ajustes-proteccion", text: "…" }),
       el("div", { class: "actions" },
         el("button", { class: "action", html: icon("download") + "<span>Hacer copia de seguridad</span>", onclick: () => { closeSheet(); exportBackup(); } }),
         el("button", { class: "action", html: icon("upload") + "<span>Restaurar una copia</span>", onclick: () => { closeSheet(); $("#backup-input").click(); } })
@@ -1668,6 +1714,7 @@ function openSettings() {
       el("div", { class: "actions" }, el("button", { class: "action", id: "buscar-act", html: icon("download") + "<span>Buscar actualizaciones</span>", onclick: (e) => buscarActualizaciones(e.currentTarget) }))),
     el("div", { class: "actions" }, el("button", { class: "action plain", text: "Cerrar", onclick: () => closeSheet() })),
   ].filter(Boolean));
+  pintarProteccion();
 }
 
 /* ============================================================
@@ -1868,6 +1915,7 @@ const MAX_GRABACIONES = 5;   // por discurso
 const ensayo = {
   activo: false, kind: null, id: null, titulo: "", partes: [], ms: [], parte: 0, ultimo: 0, objetivoSeg: null,
   grab: null, grabListo: false, grabInicio: 0, marcas: [],
+  soloParte: null, // {k, titulo, o}: practicando una parte suelta (no se guarda como ensayo)
 
   grabando() { return !!(this.grab && this.grabListo && this.grab.activa); },
 
@@ -1882,7 +1930,7 @@ const ensayo = {
     this.parte = reader.parteActual() ?? 0;
     this.ultimo = Date.now();
     this.marcas = [];
-    if (settings.grabar && puedeGrabar() && !sinGrabar) this.empezarGrabacion();
+    if (settings.grabar && puedeGrabar() && !sinGrabar && !this.soloParte) this.empezarGrabacion();
   },
 
   async empezarGrabacion() {
@@ -1919,6 +1967,8 @@ const ensayo = {
       const k = currentView === "reader" && reader.id === this.id ? reader.parteActual() : null;
       if (k != null && k !== this.parte) { this.parte = k; this.marca(); }
       this.ms[this.parte] += now - this.ultimo;
+      // Practicando una parte: al pasar a la siguiente, se para solo
+      if (this.soloParte && k != null && k > this.soloParte.k) { this.ultimo = now; setTimeout(() => timer.reset(), 0); return; }
     }
     this.ultimo = now;
   },
@@ -1937,6 +1987,17 @@ const ensayo = {
     const g = this.grab;
     this.grab = null; this.grabListo = false;
     const seg = Math.round(ms / 1000);
+    if (this.soloParte) {
+      // Una parte suelta: se dice cómo ha ido, pero no cuenta como ensayo
+      const sp = this.soloParte;
+      this.soloParte = null;
+      if (g) g.cancelar();
+      if (seg < 3) return null;
+      const d = sp.o ? seg - sp.o : null;
+      const txt = d == null ? "" : Math.abs(d) < 8 ? " · en tiempo" : d > 0 ? ` · +${mmss(d)}` : ` · −${mmss(-d)}`;
+      toast(`«${sp.titulo}»: ${mmss(seg)}${sp.o ? ` de ${mmss(sp.o)}` : ""}${txt}`, { action: "Otra vez", onAction: () => reader.practicarParte(sp.titulo), ms: 8000 });
+      return null;
+    }
     if (seg < MIN_ENSAYO) { if (g) g.cancelar(); return null; }
     const kind = this.kind, id = this.id;
     const registro = {
@@ -2187,7 +2248,7 @@ const reader = {
     const ratio = aPresentar ? 0 : parseFloat(lsGet(this.posKey(), "0")) || 0;
     this.lateral.abrir();
     requestAnimationFrame(() => { this.scrollEl.scrollTop = ratio * this.scrollEl.scrollHeight; this.paintProgress(); this.paintEstado(); this.paintPace(); this.lateral.pintarActual(); });
-    if (aPresentar) presentar.entrar();
+    if (aPresentar) presentar.comprobar({ desdeInicio: true });
     keepAwake(true);
   },
 
@@ -2495,26 +2556,26 @@ const reader = {
   irAqui() { if (this.aqui != null) this.goToBlock(this.aqui); },
 
   /* ---- Menú ⋯ ---- */
+  /** «Más»: agrupado en Practicar, Documento, Compartir y guardar, y Ayuda (no una caja de restos). */
   openMenu() {
     const n = (this.item.ensayos || []).length;
-    const acciones = [
-      { label: "Compartir (WhatsApp, correo…)", icon: "share", run: () => abrirCompartir(this.kind, this.item) },
-      { label: "Buscar en el texto", icon: "search", run: () => buscador.abrir() },
+    const d = (this.item.dado || []).length;
+    actionSheet(null, [
+      { grupo: "Practicar" },
+      { label: n ? `Ensayos (${n})` : "Ensayos", icon: "history", run: () => this.openEnsayos() },
       { label: "Tarjetas: una parte por pantalla", icon: "cards", run: () => tarjetas.abrir() },
       { label: "Desplazamiento automático", icon: "scroll", run: () => prompter.abrir() },
-      { label: n ? `Ensayos (${n})` : "Ensayos", icon: "history", run: () => this.openEnsayos() },
-    ];
-    if (this.aqui != null) acciones.push({ label: "Ir a «voy por aquí»", icon: "bookmark", run: () => this.irAqui() });
-    if (this.kind === "docs") {
-      const d = (this.item.dado || []).length;
-      acciones.push({ label: d ? `Dónde lo he dado (${d})` : "Apuntar que lo he dado", icon: "calendar", run: () => abrirDado(this.kind, this.id) });
-    }
-    acciones.push(
+      { grupo: "Documento" },
+      { label: "Buscar en el texto", icon: "search", run: () => buscador.abrir() },
+      this.aqui != null ? { label: "Ir a «voy por aquí»", icon: "bookmark", run: () => this.irAqui() } : null,
+      this.kind === "docs" ? { label: d ? `Dónde lo he dado (${d})` : "Apuntar que lo he dado", icon: "calendar", run: () => abrirDado(this.kind, this.id) } : null,
+      { grupo: "Compartir y guardar" },
+      { label: "Compartir (WhatsApp, correo…)", icon: "share", run: () => abrirCompartir(this.kind, this.item) },
       { label: "Guardar como Word", icon: "word", run: () => exportWord(this.kind, this.item) },
       { label: "Guardar como PDF", icon: "pdf", run: () => exportPdf(this.kind, this.item) },
+      { grupo: "Ayuda" },
       { label: "Guía de Atril", icon: "guia", run: () => abrirGuia("leer") },
-    );
-    actionSheet(null, acciones);
+    ]);
   },
 
   /* ---- Ensayos ---- */
@@ -2538,6 +2599,7 @@ const reader = {
       contenido.push(el("p", { text: "Aún no hay ensayos. Pon en marcha el cronómetro y lee el discurso. Al ponerlo a cero (↺) se guarda el ensayo con el tiempo de cada parte." }));
     } else {
       const media = Math.round(lista.reduce((a, e) => a + e.seg, 0) / lista.length);
+      contenido.push(this.analisisEnsayos(lista, objetivo));
       contenido.push(el("p", { class: "ens-resumen", text: [`Último ${mmss(lista[0].seg)}`, `media ${mmss(media)}`, objetivo ? `objetivo ${mmss(objetivo)}` : ""].filter(Boolean).join(" · ") }));
       // Barras de los últimos ensayos, del más antiguo al más reciente
       const ult = lista.slice(0, 12).reverse();
@@ -2554,6 +2616,66 @@ const reader = {
     }
     contenido.push(el("div", { class: "actions" }, el("button", { class: "action plain", text: "Cerrar", onclick: () => closeSheet() })));
     openSheet(contenido);
+  },
+
+  /** «Cómo vas»: mediana de los últimos ensayos, la parte que más se pasa y qué practicar. */
+  analisisEnsayos(lista, objetivo) {
+    // Lo previsto para cada parte sin «(N min)»: el objetivo repartido según las palabras
+    let previstos = null;
+    if (objetivo && this.contentEl) {
+      const est = estimarPartes([...this.contentEl.children], objetivo / 60, ppm());
+      if (est.palabras) previstos = new Map(est.partes.map((p) => [p.titulo, p.objetivoSeg || Math.round((objetivo * p.palabras) / est.palabras)]));
+    }
+    const a = analizarEnsayos(lista, objetivo, { previstos });
+    if (!a) return null;
+    const difTxt = (d) => (d == null ? "" : Math.abs(d) < 15 ? "en tiempo" : d > 0 ? `+${mmss(d)}` : `−${mmss(-d)}`);
+    const tono = (d) => (d == null ? "" : d > 15 ? "over" : d < -15 ? "ahead" : "ok");
+    const caja = el("section", { class: "ens-analisis", "aria-label": "Cómo vas" },
+      el("h3", { text: "Cómo vas" }),
+      el("p", { class: "ens-mediana" },
+        el("span", { text: `${a.n > 1 ? `Mediana de los ${a.n} últimos` : "Último ensayo"}: ` }),
+        el("strong", { text: mmss(a.mediana) }),
+        a.dif != null ? el("span", { class: "ens-dif " + tono(a.dif), text: Math.abs(a.dif) < 15 ? "en tiempo" : `${difTxt(a.dif)} del objetivo` }) : null),
+      a.rango != null || a.tendencia != null ? el("p", { class: "small-print", text: [
+        a.rango != null ? `Del más corto al más largo hay ${mmss(a.rango)}` : "",
+        a.tendencia != null ? `los 2 últimos van ${mmss(Math.abs(a.tendencia))} más ${a.tendencia < 0 ? "rápidos" : "lentos"} que los anteriores` : "",
+      ].filter(Boolean).join("; ") + "." }) : null,
+      el("p", { class: "ens-consejo", html: icon("bookmark") + `<span>${escapeHtml(a.consejo)}</span>` }));
+    const foco = a.peor || a.corta;
+    if (foco && this.kind === "docs") caja.append(el("button", { class: "btn primary ens-practicar", html: icon("play") + `<span>Practicar «${escapeHtml(foco.t)}»</span>`, onclick: () => this.practicarParte(foco.t) }));
+    if (a.partes.length > 1) {
+      caja.append(el("div", { class: "ens-partes" }, a.partes.map((p) => el("button", {
+        class: "ens-parte ens-parte-btn", title: "Practicar esta parte", onclick: () => this.practicarParte(p.t),
+      },
+        el("span", { class: "ens-pt", text: p.t }),
+        el("span", { class: "ens-ps " + tono(p.dif), text: mmss(p.s) + (p.o ? ` de ${mmss(p.o)}` : "") + (p.dif != null && Math.abs(p.dif) >= 15 ? ` · ${difTxt(p.dif)}` : "") })))));
+      caja.append(el("p", { class: "small-print", text: "Toca una parte para practicarla sola: el cronómetro se para al llegar a la siguiente y no cuenta como ensayo." }));
+    }
+    return caja;
+  },
+
+  /** Practicar una parte suelta: va a su título y pone en marcha el cronómetro. */
+  practicarParte(titulo) {
+    closeSheet();
+    if (presentar.activo) return;
+    const partes = this.partesEnsayo();
+    const k = partes.findIndex((p) => p.titulo === titulo);
+    if (k < 0) { toast("No encuentro esa parte en el texto. ¿Le has cambiado el título?"); return; }
+    if (timer.running || timer.elapsed) timer.reset();
+    const b = this.contentEl.children[partes[k].bloque];
+    if (b) {
+      const top = b.getBoundingClientRect().top - this.scrollEl.getBoundingClientRect().top;
+      this.scrollEl.scrollTop += top - Math.min(80, this.scrollEl.clientHeight * 0.15);
+    }
+    let o = partes[k].objetivoSeg;
+    if (!o && this.plan) {
+      const est = estimarPartes([...this.contentEl.children], this.plan.objetivoSeg / 60, ppm());
+      const p = est.partes[k];
+      if (p && est.palabras) o = Math.round((this.plan.objetivoSeg * p.palabras) / est.palabras);
+    }
+    ensayo.soloParte = { k, titulo, o: o || null };
+    timer.toggle();
+    toast(`Practicando «${titulo}»${o ? ` (${mmss(o)})` : ""}. Al llegar a la parte siguiente, el cronómetro se para.`, { ms: 5000 });
   },
 
   filaEnsayo(e, item) {
@@ -2665,9 +2787,8 @@ const reader = {
     });
     this.outlineEl.addEventListener("click", (e) => this.clicEsquema(e, this.outlineEl));
     $("#reader-outline-btn").addEventListener("click", () => this.toggleOutline());
-    $("#reader-presentar").addEventListener("click", () => presentar.entrar());
+    $("#reader-presentar").addEventListener("click", () => presentar.comprobar());
     $("#reader-more").addEventListener("click", () => this.openMenu());
-    $("#reader-share").addEventListener("click", () => abrirCompartir(this.kind, this.item));
     $("#float-timer").addEventListener("click", () => timer.toggle());
     $("#reader-back").addEventListener("click", () => go("#/"));
     $("#reader-edit").addEventListener("click", () => go(`#/editar/${this.kind}/${this.id}`));
@@ -2740,6 +2861,62 @@ const presentar = {
       toast("Toca la parte de abajo para avanzar una pantalla y la de arriba para volver.", { ms: 6000 });
     }
   },
+  /**
+   * Comprobación antes de presentar: duración, letra, desde dónde, pantalla encendida y cómo no salirse.
+   * «Presentar ahora» es la acción principal; se puede quitar en Ajustes.
+   */
+  comprobar({ desdeInicio = false } = {}) {
+    if (this.activo || !reader.item) return;
+    if (settings.presComprobar === false) {
+      if (desdeInicio) reader.scrollEl.scrollTop = 0;
+      this.entrar();
+      return;
+    }
+    const s = reader.scrollEl;
+    const max = s.scrollHeight - s.clientHeight;
+    const pct = max > 0 ? Math.round((s.scrollTop / max) * 100) : 0;
+    let desde = desdeInicio || pct < 3 ? "inicio" : "aqui";
+    const botonesDesde = el("div", { class: "chips pc-desde" });
+    const pintarDesde = () => $$("button", botonesDesde).forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.desde === desde)));
+    botonesDesde.append(...[
+      el("button", { class: "chip", "data-desde": "inicio", text: "Desde el principio", onclick: () => { desde = "inicio"; pintarDesde(); } }),
+      pct >= 3 ? el("button", { class: "chip", "data-desde": "aqui", text: `Desde donde estoy (${pct} %)`, onclick: () => { desde = "aqui"; pintarDesde(); } }) : null,
+    ].filter(Boolean));
+    pintarDesde();
+    const wake = el("input", { type: "checkbox", role: "switch", id: "pc-wake" });
+    wake.checked = !!settings.wakeLock;
+    wake.addEventListener("change", () => { settings.wakeLock = wake.checked; saveSettings(); });
+    const siempre = el("input", { type: "checkbox", role: "switch", id: "pc-siempre" });
+    siempre.checked = true;
+    siempre.addEventListener("change", () => { settings.presComprobar = siempre.checked; saveSettings(); });
+    const tema = { claro: "claro", sepia: "sepia", oscuro: "oscuro" }[settings.theme] || settings.theme;
+    const fila = (ic, titulo, ...resto) => el("div", { class: "pc-fila" }, el("span", { class: "pc-ic", html: icon(ic) }), el("div", { class: "pc-cuerpo" }, el("b", { text: titulo }), ...resto));
+    const movil = esIOS() || esAndroid();
+    const { close } = openSheet([
+      el("h2", { text: "Antes de presentar" }),
+      el("p", { class: "co-titulo", text: reader.item.title || "" }),
+      el("div", { class: "pc-lista" },
+        fila("timer", "Tiempo", reader.timeGroup()),
+        fila("aa", "Letra", el("div", { class: "pc-linea" }, el("p", { class: "pc-txt", text: `Tamaño ${settings.fontSize} · tema ${tema}` }),
+          el("button", { class: "chip", text: "Cambiar", onclick: () => { close(); openAaSheet(); } }))),
+        fila("play", "Empezar", botonesDesde),
+        fila("book", "Pantalla", el("label", { class: "switch-row pc-switch" }, el("span", { text: "Que no se apague" }), wake)),
+        fila("lock", "Que no te saque de aquí",
+          el("p", { class: "pc-txt", text: "Para pasar página, toca abajo; para salir, toca el centro y mantén «Salir»." }),
+          movil ? el("p", { class: "pc-txt", text: esAndroid() ? "El gesto de inicio solo se bloquea con «Fijar aplicaciones»." : "El gesto de inicio solo se bloquea con «Acceso guiado» (tres pulsaciones del botón superior o de inicio)." }) : null,
+          movil ? el("button", { class: "text-btn", text: "¿Cómo se activa?", onclick: () => { close(); this.consejo(); } }) : null)),
+      el("label", { class: "switch-row pc-switch small" }, el("span", { text: "Comprobar siempre antes de presentar" }), siempre),
+      el("div", { class: "actions pc-acciones" },
+        el("button", { class: "action primary pc-ya", id: "pc-ya", html: icon("play") + "<span>Presentar ahora</span>", onclick: () => {
+          close();
+          if (desde === "inicio") reader.scrollEl.scrollTop = 0;
+          this.entrar({ consejo: false });
+        } }),
+        el("button", { class: "action plain", text: "Cancelar", onclick: () => close() })),
+    ]);
+    requestAnimationFrame(() => { const b = $("#pc-ya"); if (b) b.focus({ preventScroll: true }); });
+  },
+
   salir({ guardar = true, quitarPaso = false } = {}) {
     if (!this.activo) return;
     this.activo = false;

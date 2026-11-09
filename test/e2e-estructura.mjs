@@ -94,7 +94,7 @@ const alFinal = (page) => page.evaluate(() => { const s = document.querySelector
   const pos = await page.evaluate(() => { const s = document.querySelector("#reader-scroll"); return s.scrollTop / (s.scrollHeight - s.clientHeight); });
   ok("«Seguir leyendo» vuelve al sitio", pos > 0.3 && pos < 0.5, pos.toFixed(2));
   await abrir(page, "#/", "home");
-  await page.click("#seguir-presentar");
+  await page.click("#seguir-presentar"); await page.click("#pc-ya");
   await page.waitForSelector("#pres-bar:not([hidden])");
   await page.waitForTimeout(300);
   ok("«Presentar» desde el inicio entra en Presentar desde el principio", (await page.evaluate(() => document.querySelector("#reader-scroll").scrollTop)) < 5 && (await page.textContent("#pres-parte")).startsWith("Parte 1 de 4"));
@@ -124,7 +124,7 @@ const alFinal = (page) => page.evaluate(() => { const s = document.querySelector
   // ---- Presentar: semáforo, hora, quedan y pasar página ----
   await abrir(page, "#/leer/docs/p1", "reader");
   await page.evaluate(() => { window.__atril.setFontSize(30); document.querySelector("#reader-scroll").scrollTop = 0; });
-  await page.click("#reader-presentar");
+  await page.click("#reader-presentar"); await page.click("#pc-ya");
   await page.waitForSelector("#pres-bar:not([hidden])");
   ok("Presentar enseña la hora", /^\d\d:\d\d$/.test((await page.textContent("#pres-reloj")).trim()), await page.textContent("#pres-reloj"));
   ok("Antes de empezar enseña el objetivo", (await page.textContent("#pres-quedan")) === "Objetivo 14:00");
@@ -180,7 +180,7 @@ const alFinal = (page) => page.evaluate(() => { const s = document.querySelector
   await page.evaluate(() => { const s = document.querySelector("#reader-scroll"); const h = [...document.querySelectorAll("#reader-content h2")][1]; s.scrollTop += h.getBoundingClientRect().top - s.getBoundingClientRect().top - 100; });
   await page.waitForTimeout(250);
   const antes = await page.evaluate(() => [...document.querySelectorAll("#reader-content h2")][1].getBoundingClientRect().top);
-  await page.click("#reader-presentar");
+  await page.click("#reader-presentar"); await page.click("#pc-ya");
   await page.waitForSelector("#pres-bar:not([hidden])");
   const despues = await page.evaluate(() => [...document.querySelectorAll("#reader-content h2")][1].getBoundingClientRect().top);
   ok("Al presentar se quita el panel sin perder el sitio", (await page.isHidden("#reader-side")) && Math.abs(despues - antes) < 140, `${Math.round(antes)} → ${Math.round(despues)}`);
@@ -246,7 +246,7 @@ const alFinal = (page) => page.evaluate(() => { const s = document.querySelector
   const { ctx, page } = await nueva({ width: 384, height: 832 });
   await abrir(page, "#/leer/docs/p1", "reader");
   ok("Móvil: la barra de estado cabe encima de los botones", (await page.isVisible("#reader-estado")) && (await page.evaluate(() => document.querySelector("#reader-estado").getBoundingClientRect().bottom <= document.querySelector(".reader-tools").getBoundingClientRect().top + 1)));
-  await page.click("#reader-presentar");
+  await page.click("#reader-presentar"); await page.click("#pc-ya");
   await page.waitForSelector("#pres-bar:not([hidden])");
   await page.click("#pres-timer");
   ok("Móvil: Presentar cabe a lo ancho", await page.evaluate(() => { const b = document.querySelector("#pres-bar"); return b.scrollWidth <= b.clientWidth + 1 && [...b.querySelectorAll(".pres-fila > *:not([hidden])")].every((x) => x.getBoundingClientRect().right <= innerWidth); }));

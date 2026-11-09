@@ -132,18 +132,15 @@ const HTML = `<h2>Introducción (2 min)</h2><p>Hola <strong>a todos </strong>y <
   await page.evaluate(() => window.__atril.abrirCompartir("notes", { title: "Vacía", html: "<p><br></p>" }));
   ok("Sin texto, avisa en vez de abrir la hoja", (await page.textContent("#toast")).includes("Todavía no hay texto"));
 
-  // Lector: botón «Compartir» en el iPad en horizontal
+  // Lector: «Compartir» está en «Más», en su grupo
   await ir(page, `#/leer/docs/${doc.id}`, "reader");
-  ok("Lector en horizontal: «Compartir» con nombre en la barra", (await page.isVisible("#reader-share")) && (await page.isVisible("#reader-share .lbl")));
   const cabe = await page.evaluate(() => { const b = document.querySelector(".reader-bar"); return b.scrollWidth <= b.clientWidth + 1; });
   ok("La barra del lector sigue cabiendo", cabe);
-  await page.screenshot({ path: `${OUTDIR}/121-lector-compartir.png` });
-  await page.click("#reader-share");
+  await page.click("#reader-more");
+  ok("En «Más» del lector, «Compartir» abre el grupo «Compartir y guardar»", await page.evaluate(() => { const h = [...document.querySelectorAll(".sheet .menu-grupo")].find((x) => x.textContent === "Compartir y guardar"); return !!h && h.nextElementSibling.querySelector(".action").textContent.includes("Compartir"); }));
+  await page.click(".sheet .action:has-text('Compartir (WhatsApp')");
   ok("…y abre la hoja de compartir", await page.isVisible(".sheet .co-wa"));
   await page.click(".sheet >> text=Cerrar");
-  await page.click("#reader-more");
-  ok("En «Más» del lector, «Compartir» va el primero", (await page.textContent(".sheet .actions.menu .action >> nth=0")).includes("Compartir"));
-  await page.click(".sheet >> text=Cancelar");
   // Editor: botón arriba
   await ir(page, `#/editar/docs/${doc.id}`, "editor");
   ok("El editor tiene el botón de compartir arriba", await page.isVisible("#editor-share"));
@@ -157,17 +154,13 @@ const HTML = `<h2>Introducción (2 min)</h2><p>Hola <strong>a todos </strong>y <
   await ctx.close();
 }
 
-// iPad en vertical y móvil: el botón cabe (o pasa a «Más»)
+// iPad en vertical: la barra del lector cabe con sus nombres
 {
   const { ctx, page } = await nuevo({ width: 810, height: 1080 });
   const doc = await crear(page, "docs", { title: "Vertical", html: "<h2>Uno</h2><p>Texto.</p>" });
   await ir(page, `#/leer/docs/${doc.id}`, "reader");
-  ok("iPad en vertical: «Compartir» solo con el icono", (await page.isVisible("#reader-share")) && !(await page.isVisible("#reader-share .lbl")));
-  ok("…y la barra cabe", await page.evaluate(() => { const b = document.querySelector(".reader-bar"); return b.scrollWidth <= b.clientWidth + 1; }));
+  ok("iPad en vertical: la barra cabe con los nombres", await page.evaluate(() => { const b = document.querySelector(".reader-bar"); return b.scrollWidth <= b.clientWidth + 1 && [...document.querySelectorAll(".reader-tools .lbl")].every((l) => l.offsetWidth > 0); }));
   await page.screenshot({ path: `${OUTDIR}/122-lector-vertical.png` });
-  await page.setViewportSize({ width: 390, height: 844 });
-  await page.waitForTimeout(200);
-  ok("Móvil: «Compartir» no ocupa sitio en la barra de abajo (está en «Más»)", !(await page.isVisible("#reader-share")));
   await ctx.close();
 }
 
@@ -193,7 +186,7 @@ const HTML = `<h2>Introducción (2 min)</h2><p>Hola <strong>a todos </strong>y <
   const doc = await crear(page, "docs", { title: "Presentar", html: Array.from({ length: 12 }, (_, i) => `<h2>Parte ${i + 1} (1 min)</h2><p>${"Texto de la parte para llenar la pantalla. ".repeat(14)}</p>`).join("") });
   await ir(page, "#/", "home");
   await ir(page, `#/leer/docs/${doc.id}`, "reader");
-  await page.click("#reader-presentar");
+  await page.click("#reader-presentar"); await page.click("#pc-ya");
   await page.waitForSelector("#pres-bar:not([hidden])");
   ok("Al presentar, la burbuja de salir no está", await page.isHidden("#pres-salir"));
   ok("Se pone un paso en el historial para que «atrás» no salga", await page.evaluate(() => history.state && history.state.atril === "presentar"));
@@ -249,9 +242,13 @@ for (const [nombre, ua, clave] of [["iPad", UA_IPAD, "Acceso guiado"], ["Android
   const doc = await crear(page, "docs", { title: "Consejo", html: "<h2>Uno</h2><p>Texto.</p>" });
   await ir(page, `#/leer/docs/${doc.id}`, "reader");
   await page.click("#reader-presentar");
+  await page.waitForSelector("#pc-ya");
+  const antes = await page.textContent(".sheet");
+  ok(`${nombre}: la comprobación previa recuerda ${clave} y cómo salir`, antes.includes(clave) && antes.includes("toca el centro"));
+  await page.click(".sheet >> text=¿Cómo se activa?");
   await page.waitForSelector(".sheet >> text=Para no salirte del discurso", { timeout: 3000 }).catch(() => {});
   const txt = await page.textContent(".sheet").catch(() => "");
-  ok(`${nombre}: la primera vez explica ${clave}`, txt.includes(clave));
+  ok(`${nombre}: «¿Cómo se activa?» explica ${clave} paso a paso`, txt.includes(clave));
   ok(`${nombre}: y cómo salir (tocar el centro y mantener pulsado)`, txt.includes("toca el centro de la pantalla"));
   if (nombre === "Android") await page.screenshot({ path: `${OUTDIR}/124-consejo-android.png` });
   await ctx.close();

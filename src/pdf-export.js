@@ -1,6 +1,8 @@
 // Genera un PDF a partir del HTML del documento (se carga solo al exportar).
-// Usa las letras estándar del PDF (Times o Helvetica), que cubren el español.
+// Incrusta las mismas letras de Atril (Carlito o Literata, con latín, latín ampliado y griego, en fonts/pdf/),
+// recortadas a lo que se usa. Si no se pueden cargar, usa las estándar del PDF (Times o Helvetica).
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
+import fontkit from "@pdf-lib/fontkit";
 
 const A4 = [595.28, 841.89];
 const MARGEN = 56; // ≈ 2 cm
@@ -12,6 +14,7 @@ const NEGRO = rgb(0.1, 0.1, 0.1), GRIS = rgb(0.45, 0.45, 0.45);
 // Color de la letra (los mismos que en Word)
 const hexA = (h) => rgb(parseInt(h.slice(1, 3), 16) / 255, parseInt(h.slice(3, 5), 16) / 255, parseInt(h.slice(5, 7), 16) / 255);
 const COLOR_LETRA = { rojo: hexA("#C00000"), azul: hexA("#0070C0"), verde: hexA("#00873C"), naranja: hexA("#D86400") };
+// Solo para lo que la letra no tiene
 const EQUIVALENCIAS = { "‖": "||", "≈": "~", "→": "->", "←": "<-", "✓": "v", "✔": "v", "‐": "-", "‑": "-", "−": "-", " ": " ", " ": " ", " ": " ", "\t": " " };
 const NIVEL = { H1: 1.6, H2: 1.3, H3: 1.12, H4: 1.12 };
 
@@ -85,7 +88,21 @@ function bloquesDe(html) {
   return bloques;
 }
 
-export async function buildPdf({ title = "Documento", html = "", size = 12, family = "serif", highlights = true } = {}) {
+/** Las cuatro letras (normal, negrita, cursiva, negrita cursiva) de Carlito o Literata, o null si no se pueden cargar. */
+async function letrasPropias(pdf, family, base) {
+  try {
+    const nombre = family === "sans" ? "carlito" : "literata";
+    const archivos = ["400-normal", "700-normal", "400-italic", "700-italic"].map((v) => new URL(`fonts/pdf/${nombre}-${v}.woff`, base).href);
+    const datos = await Promise.all(archivos.map(async (u) => { const r = await fetch(u); if (!r.ok) throw new Error(u); return r.arrayBuffer(); }));
+    pdf.registerFontkit(fontkit);
+    return await Promise.all(datos.map((d) => pdf.embedFont(d, { subset: true })));
+  } catch (e) {
+    console.warn("PDF: sin letras propias, uso las estándar", e);
+    return null;
+  }
+}
+
+export async function buildPdf({ title = "Documento", html = "", size = 12, family = "serif", highlights = true, base = globalThis.document ? document.baseURI : undefined } = {}) {
   const pdf = await PDFDocument.create();
   pdf.setTitle(title);
   pdf.setCreator("Atril");
@@ -95,12 +112,14 @@ export async function buildPdf({ title = "Documento", html = "", size = 12, fami
   const nombres = family === "sans"
     ? [S.Helvetica, S.HelveticaBold, S.HelveticaOblique, S.HelveticaBoldOblique]
     : [S.TimesRoman, S.TimesRomanBold, S.TimesRomanItalic, S.TimesRomanBoldItalic];
-  const [r, b, i, bi] = await Promise.all(nombres.map((n) => pdf.embedFont(n)));
+  const [r, b, i, bi] = (base && (await letrasPropias(pdf, family, base))) || (await Promise.all(nombres.map((n) => pdf.embedFont(n))));
   const fuente = (e) => (e.b && e.i ? bi : e.b ? b : e.i ? i : r);
-  const admitidos = new Set(r.getCharacterSet());
+  // Lo que tienen las cuatro letras (así ninguna pinta un cuadrado)
+  const juegos = [r, b, i, bi].map((f) => new Set(f.getCharacterSet()));
+  const admitidos = new Set([...juegos[0]].filter((c) => juegos.every((j) => j.has(c))));
   const limpiar = (s) => [...s].map((ch) => {
-    if (EQUIVALENCIAS[ch] != null) return EQUIVALENCIAS[ch];
     if (admitidos.has(ch.codePointAt(0))) return ch;
+    if (EQUIVALENCIAS[ch] != null) return EQUIVALENCIAS[ch];
     const base = ch.normalize("NFD").replace(/[̀-ͯ]/g, "");
     return base && [...base].every((c) => admitidos.has(c.codePointAt(0))) ? base : "";
   }).join("");
