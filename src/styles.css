@@ -319,6 +319,23 @@ button:focus:not(:focus-visible) { outline: none; }
 /* ---------- Editor: como Word ---------- */
 .title-input { flex: 1; min-width: 0; height: 40px; border: 0; outline: 0; background: transparent; font-size: 17px; font-weight: 600; padding: 0 6px; border-radius: 4px; }
 .title-input:focus { background: var(--bar-soft); }
+/* «Seguir mi voz» (prototipo): la frase por la que vas, la palabra y el aviso de abajo */
+::highlight(voz-frase) { background-color: color-mix(in srgb, var(--accent-vivo) 14%, transparent); }
+::highlight(voz-palabra) { background-color: color-mix(in srgb, var(--accent-vivo) 38%, transparent); color: var(--text); }
+.voz-bloque { box-shadow: inset 4px 0 0 var(--accent-vivo); background: color-mix(in srgb, var(--accent-vivo) 8%, transparent); border-radius: 4px; }
+.voz-chip { position: fixed; z-index: 12; left: 50%; transform: translateX(-50%); bottom: calc(max(16px, env(safe-area-inset-bottom)) + 52px); display: flex; align-items: center; gap: 10px; padding: 6px 6px 6px 16px; border-radius: 999px; background: rgba(20,20,22,.88); color: #fff; font-size: 16px; font-weight: 600; box-shadow: 0 6px 20px rgba(0,0,0,.25); max-width: calc(100vw - 24px); }
+.voz-chip[hidden] { display: none; }
+.voz-txt { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.voz-punto { width: 10px; height: 10px; border-radius: 50%; background: #34c759; flex: none; animation: rec 1.4s ease-in-out infinite; }
+.voz-chip.perdido .voz-punto { background: #f2a51a; }
+.voz-parar { min-height: 40px; padding: 0 16px; border-radius: 999px; background: #fff; color: #1b2033; font-weight: 700; flex: none; }
+.voz-progreso { height: 10px; border-radius: 5px; background: var(--surface-2); overflow: hidden; margin: 8px 0; }
+.voz-progreso i { display: block; height: 100%; width: 0; background: var(--accent-vivo); transition: width .2s; }
+/* Novedades */
+.novedades { list-style: none; margin: 0 0 6px; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.novedades li { display: grid; grid-template-columns: 36px 1fr; gap: 10px; align-items: start; font-size: 16px; line-height: 1.4; }
+.nov-ic { width: 36px; height: 36px; border-radius: 9px; background: var(--accent-soft); color: var(--accent); display: flex; align-items: center; justify-content: center; }
+.nov-ic svg { width: 20px; height: 20px; }
 /* Versión de pruebas: una etiqueta junto al nombre para no confundirla con la de siempre */
 .marca-pruebas { display: none; }
 html.canal-pruebas .marca-pruebas { display: inline-block; margin-left: 10px; vertical-align: middle; padding: 3px 10px; border-radius: 999px; background: #f2a51a; color: #241600; font-size: 14px; font-weight: 750; letter-spacing: .02em; text-transform: uppercase; }
@@ -760,6 +777,12 @@ html.canal-pruebas .marca-pruebas { display: inline-block; margin-left: 10px; ve
 .pres-prog i { flex: 1; height: 5px; border-radius: 3px; background: var(--surface-2); }
 .pres-prog i.hecha { background: var(--accent); opacity: .45; }
 .pres-prog i.actual { background: var(--accent); }
+/* Al pasar página en Presentar: las líneas por las que se sigue, iluminadas un momento */
+.pres-sigue-aqui { position: fixed; z-index: 4; pointer-events: none; box-sizing: border-box; border-left: 5px solid var(--accent-vivo); border-radius: 6px; background: color-mix(in srgb, var(--accent-vivo) 13%, transparent); }
+.pres-sigue-aqui[hidden] { display: none; }
+.pres-sigue-aqui.ve { animation: sigue-aqui 1.8s ease-out forwards; }
+@keyframes sigue-aqui { 0%, 55% { opacity: 1; } 100% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .pres-sigue-aqui.ve { animation: none; } }
 /* Salir y poner a cero: en el centro de la pantalla (abajo del todo el iPad se queda los toques para su gesto de inicio) */
 .pres-salir {
   position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 30;

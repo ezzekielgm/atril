@@ -6,7 +6,7 @@
     "build": "node build.mjs",
     "serve": "npx --yes http-server dist -p 8080 -c-1",
     "icons": "python3 scripts/iconos.py",
-    "test": "node test/biblia.test.mjs && node test/contraste.test.mjs && node --no-warnings test/unidad.test.mjs && node --no-warnings test/docx-colores.test.mjs && node --no-warnings test/word-datos.test.mjs && node test/e2e.mjs && node test/e2e-funciones.mjs && node --no-warnings test/e2e-mejoras.mjs && node test/e2e-mejoras2.mjs && node test/e2e-word.mjs && node --no-warnings test/e2e-presentar.mjs && node --no-warnings test/e2e-estructura.mjs && node --no-warnings test/e2e-edicion.mjs && node --no-warnings test/e2e-pc.mjs && node --no-warnings test/e2e-dibujo.mjs && node --no-warnings test/e2e-compartir.mjs && node --no-warnings test/e2e-auditoria.mjs && node --no-warnings test/e2e-citas.mjs && node --no-warnings test/e2e-escritorio.mjs && node --no-warnings test/e2e-crono-editor.mjs && node --no-warnings test/e2e-volver.mjs && node --no-warnings test/canales.mjs",
+    "test": "node test/biblia.test.mjs && node test/contraste.test.mjs && node --no-warnings test/unidad.test.mjs && node --no-warnings test/docx-colores.test.mjs && node --no-warnings test/word-datos.test.mjs && node test/e2e.mjs && node test/e2e-funciones.mjs && node --no-warnings test/e2e-mejoras.mjs && node test/e2e-mejoras2.mjs && node test/e2e-word.mjs && node --no-warnings test/e2e-presentar.mjs && node --no-warnings test/e2e-estructura.mjs && node --no-warnings test/e2e-edicion.mjs && node --no-warnings test/e2e-pc.mjs && node --no-warnings test/e2e-dibujo.mjs && node --no-warnings test/e2e-compartir.mjs && node --no-warnings test/e2e-auditoria.mjs && node --no-warnings test/e2e-citas.mjs && node --no-warnings test/e2e-escritorio.mjs && node --no-warnings test/e2e-crono-editor.mjs && node --no-warnings test/e2e-volver.mjs && node --no-warnings test/canales.mjs && node --no-warnings test/e2e-novedades.mjs && node --no-warnings test/seguir-voz.test.mjs && node --no-warnings test/e2e-voz.mjs",
     "tauri": "tauri",
     "escritorio": "npm run build && tauri build"
   },
@@ -23,6 +23,7 @@
     "@fontsource-variable/atkinson-hyperlegible-next": "^5.3.0",
     "@fontsource-variable/literata": "^5.3.0",
     "@fontsource/carlito": "^5.3.0",
-    "@tauri-apps/cli": "^2.12.4"
+    "@tauri-apps/cli": "^2.12.4",
+    "vosk-browser": "^0.0.8"
   }
 }

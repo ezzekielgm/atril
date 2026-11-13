@@ -2,6 +2,7 @@
 // Código sin frameworks. Los datos se guardan en IndexedDB, en el propio dispositivo.
 
 import { enlazarCitas, buscarCitas, enlaceCita, citaCompleta, esDeLaCita, limpiarVersiculo } from "./biblia.js";
+import { NOVEDADES, novedadesDesde } from "./novedades.js";
 import { crearPlan, tiempoPrevisto, palabraActual, mmss, contarPalabras, minutosEstimados, minutosDeTitulo, tituloSinMinutos, ritmoDeEnsayos, analizarEnsayos, PALABRAS_POR_MINUTO } from "./tiempo.js";
 import { limpiarDibujo, figuraDibujo, svgDibujo } from "./dibujo-svg.js";
 import { COLORES, LETRAS, claseValida, claseDeFondo, colorDeMark, claseLetraValida, claseDeLetra, rgbDe } from "./colores.js";
@@ -99,6 +100,7 @@ function safeFileName(name) {
    ============================================================ */
 const P = {
   back: '<path d="M15 18l-6-6 6-6"/>',
+  chispa: '<path d="M11 3l1.9 5.6L18.5 10.5l-5.6 1.9L11 18l-1.9-5.6L3.5 10.5l5.6-1.9z"/><path d="M18.5 15.5l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z"/>',
   settings: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
   search: '<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.6-4.6"/>',
   share: '<path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7"/><path d="M16 6l-4-4-4 4"/><path d="M12 2v13"/>',
@@ -604,10 +606,10 @@ function downloadFile(file) {
   setTimeout(() => URL.revokeObjectURL(url), 30000);
 }
 
-async function copyText(text) {
+async function copyText(text, { aviso = "Texto copiado. Ya puedes pegarlo donde quieras." } = {}) {
   try {
     await navigator.clipboard.writeText(text);
-    toast("Texto copiado. Ya puedes pegarlo donde quieras.");
+    toast(aviso, { ms: 6000 });
   } catch {
     // Alternativa para navegadores sin permiso de portapapeles
     const ta = el("textarea", { style: "position:fixed;top:-1000px;opacity:0" });
@@ -617,7 +619,7 @@ async function copyText(text) {
     let ok = false;
     try { ok = document.execCommand("copy"); } catch {}
     ta.remove();
-    toast(ok ? "Texto copiado." : "No se pudo copiar. Usa «Compartir».");
+    toast(ok ? aviso : "No se pudo copiar. Usa «Compartir».", { ms: 6000 });
   }
 }
 
@@ -719,6 +721,43 @@ function enviarWhatsApp(titulo, texto) {
 }
 
 /** Compartir: a WhatsApp, a otra app o copiado (como texto), o como Word o PDF (como archivo). */
+/**
+ * «Para Claude» (a petición de Ezequiel: tomar notas en una asamblea y pasárselas a Claude para que las ordene).
+ * Copia el texto con la petición delante; si hay escritura a mano, el PDF (Claude lee la letra).
+ */
+const PETICIONES_CLAUDE = {
+  ordenar: (t) => `Son notas que tomé en una asamblea o un discurso${t ? ` («${t}»)` : ""}. Ordénalas por temas, con las ideas principales de cada parte y los textos bíblicos que se citaron, y señala lo que haya quedado a medias.`,
+  mejorar: (t, min) => `Es mi discurso${t ? ` «${t}»` : ""}${min ? ` y debe durar ${min} minutos` : ""}. Dime cambios concretos para que quede más claro: las transiciones entre las partes, las ilustraciones, la aplicación práctica y que encaje en el tiempo.`,
+  resumir: (t) => `Resume en puntos breves${t ? ` «${t}»` : " este texto"}:`,
+  aMano: (t) => `Te paso en PDF unas notas${t ? ` («${t}»)` : ""}, en parte escritas a mano. Pásalas a texto y ordénalas por temas, con las ideas principales y los textos bíblicos que se citaron.`,
+};
+function textoParaClaude(kind, item, tipo) {
+  const p = PETICIONES_CLAUDE[tipo](item.title || "", kind === "docs" ? Number(item.target) || 0 : 0);
+  return p + "\n\n" + textoParaCompartir(kind, item, { formato: false });
+}
+function opcionesClaude(kind, item, cerrar) {
+  const op = (ic, titulo, sub, run, clase) => el("button", {
+    class: "action co-op " + clase,
+    html: icon(ic) + `<span class="co-t"><span class="co-n">${escapeHtml(titulo)}</span><small>${escapeHtml(sub)}</small></span>`,
+    onclick: run,
+  });
+  const copiar = (tipo) => () => { const t = textoParaClaude(kind, item, tipo); cerrar(); copyText(t, { aviso: "Copiado con lo que le pides. Abre Claude y pégalo." }); };
+  const aMano = /<figure[^>]*class="dibujo/i.test(item.html || "");
+  return [
+    kind === "notes"
+      ? op("chispa", "Ordenar estas notas", "Copia las notas con la petición; luego las pegas en Claude", copiar("ordenar"), "co-claude-ordenar")
+      : op("chispa", "Mejorar el discurso", "Copia el discurso con la petición; luego lo pegas en Claude", copiar("mejorar"), "co-claude-mejorar"),
+    op("list", "Resumir", "Lo mismo, pidiéndole un resumen en puntos", copiar("resumir"), "co-claude-resumir"),
+    aMano ? op("pluma", "Con lo escrito a mano (PDF)", "Copia la petición y prepara el PDF para mandárselo", async () => {
+      const pedido = PETICIONES_CLAUDE.aMano(item.title || "");
+      cerrar();
+      try { await navigator.clipboard.writeText(pedido); } catch {}
+      exportPdf(kind, item);
+      toast("Petición copiada. Manda el PDF a Claude y pega la petición.", { ms: 7000 });
+    }, "co-claude-pdf") : null,
+  ].filter(Boolean);
+}
+
 function abrirCompartir(kind, item) {
   if (!item) return;
   if (!htmlToText(item.html || "").trim() && !/<figure/i.test(item.html || "")) { toast("Todavía no hay texto que compartir."); return; }
@@ -740,6 +779,8 @@ function abrirCompartir(kind, item) {
       op("share", "Otra app", "Correo, Mensajes, Telegram, Notas, Claude…", () => { const t = texto(); close(); shareText(item.title, t); }, " co-otra"),
       op("copy", "Copiar el texto", "Y lo pegas donde quieras", () => { const t = texto(); close(); copyText(t); }, " co-copiar")),
     el("label", { class: "switch-row" }, el("span", { html: "Con negritas y cursivas de WhatsApp <small class=\"co-ej\">*así* y _así_</small>" }), formato),
+    el("h3", { class: "co-sec", text: "Para Claude (que te lo ordene o te ayude)" }),
+    el("div", { class: "actions menu" }, ...opcionesClaude(kind, item, () => close())),
     el("h3", { class: "co-sec", text: "Como archivo (igual que se ve aquí)" }),
     el("div", { class: "actions menu" },
       op("word", "Word", "Se abre en Word, Pages o Google Docs", () => { close(); exportWord(kind, item, { compartir: true }); }, " co-word"),
@@ -1641,6 +1682,93 @@ function nuevoDiscurso() {
   ]);
 }
 
+/* ============================================================
+   «Seguir mi voz» al ensayar (prototipo, solo en la versión de pruebas o con el ajuste del laboratorio).
+   La parte pesada (voz.js, el reconocedor y el modelo) se carga solo al usarla.
+   ============================================================ */
+const voz = { activo: false, motor: null, mod: null };
+const vozDisponible = () => !escritorio.activo && (enPruebas() || !!settings.labVoz) && !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia) && "caches" in window;
+
+function pintarVozChip(texto) {
+  let c = $("#voz-chip");
+  if (!texto && !voz.activo) { if (c) c.hidden = true; return; }
+  if (!c) {
+    c = el("div", { class: "voz-chip", id: "voz-chip", role: "status" },
+      el("span", { class: "voz-punto", "aria-hidden": "true" }),
+      el("span", { class: "voz-txt" }),
+      el("button", { class: "voz-parar", text: "Parar", onclick: () => pararVoz() }));
+    views.reader.append(c);
+  }
+  c.hidden = false;
+  $(".voz-txt", c).textContent = texto || "Te sigo";
+  c.classList.toggle("perdido", /No te oigo/.test(texto || ""));
+}
+
+function pararVoz() {
+  if (!voz.activo) return;
+  voz.activo = false;
+  if (voz.motor) voz.motor.parar();
+  pintarVozChip("");
+}
+
+async function alternarVoz() {
+  if (voz.activo) { pararVoz(); return; }
+  if (currentView !== "reader" || presentar.activo) return;
+  voz.mod = voz.mod || (await import("./voz.js"));
+  if (!(await voz.mod.descargada())) {
+    const si = await confirmDialog({
+      title: "Seguir tu voz (prueba)",
+      message: `Atril escucha mientras ensayas, resalta la frase por la que vas y mueve el texto para que no la pierdas. Para eso descarga una vez un reconocedor de voz en español (unos ${voz.mod.TAMANO_MB} MB; mejor con wifi). Funciona sin internet y tu voz no sale del iPad.`,
+      ok: "Descargar", cancel: "Ahora no",
+    });
+    if (!si) return;
+    if (!(await descargarVoz())) return;
+  }
+  voz.activo = true;
+  voz.motor = voz.mod.seguirVoz;
+  pintarVozChip("Preparando la voz…");
+  try {
+    await voz.motor.empezar({ scrollEl: reader.scrollEl, contentEl: reader.contentEl, alCambiar: (t) => { if (voz.activo) pintarVozChip(t); } });
+    if (voz.activo && lsGet("atril.vozConsejo") !== "1") {
+      lsSet("atril.vozConsejo", "1");
+      toast("Si se pierde, toca la palabra por la que vas. Para terminar, «Parar».", { ms: 7000 });
+    }
+  } catch (e) {
+    console.warn(e);
+    voz.activo = false;
+    pintarVozChip("");
+    const sinMicro = e && (e.name === "NotAllowedError" || e.name === "NotFoundError");
+    toast(sinMicro ? "Atril no puede usar el micrófono. Revisa el permiso en los Ajustes del iPad." : "No se pudo poner en marcha el reconocedor de voz.", { ms: 7000 });
+  }
+}
+
+/** Descarga el reconocedor con una hoja de progreso. true si ha terminado. */
+async function descargarVoz() {
+  const ctrl = new AbortController();
+  const barra = el("i");
+  const txt = el("p", { class: "small-print", text: "Empezando…" });
+  let cancelado = false;
+  const { close } = openSheet([
+    el("h2", { text: "Descargando el reconocedor de voz" }),
+    el("div", { class: "voz-progreso" }, barra),
+    txt,
+    el("div", { class: "actions" }, el("button", { class: "action plain", text: "Cancelar", onclick: () => { cancelado = true; ctrl.abort(); close(); } })),
+  ], { dismissable: false });
+  try {
+    await voz.mod.descargar((n, t) => {
+      const f = t ? Math.min(1, n / t) : 0;
+      barra.style.width = `${Math.round(f * 100)}%`;
+      txt.textContent = `${(n / 1048576).toFixed(0)} de ${(t / 1048576).toFixed(0)} MB`;
+    }, ctrl.signal);
+    close();
+    return true;
+  } catch (e) {
+    close();
+    if (!cancelado) toast(e && e.message === "no-disponible" ? "El reconocedor de voz no está en esta versión." : "No se pudo descargar. Prueba con wifi.", { ms: 6000 });
+    return false;
+  }
+}
+
 /** «Nuevo» del lector y del editor (a petición de Ezequiel): discurso con plantilla, en blanco o nota. */
 function nuevoDocumento() {
   actionSheet("Nuevo documento", [
@@ -2048,7 +2176,9 @@ function openSettings() {
     ),
     el("div", { class: "group" },
       el("span", { class: "label", text: "Ayuda" }),
-      el("div", { class: "actions" }, el("button", { class: "action", id: "ajustes-guia", html: icon("guia") + "<span>Guía de Atril: qué hace cada cosa</span>", onclick: () => { closeSheet(); abrirGuia(); } }))),
+      el("div", { class: "actions" },
+        el("button", { class: "action", id: "ajustes-guia", html: icon("guia") + "<span>Guía de Atril: qué hace cada cosa</span>", onclick: () => { closeSheet(); abrirGuia(); } }),
+        el("button", { class: "action", id: "ajustes-contar", html: icon("chat") + "<span>Contar un problema o una idea a Ezequiel</span>", onclick: () => contarProblema() }))),
     el("div", { class: "group" },
       el("span", { class: "label", text: "Colores" }),
       el("div", { class: "actions" }, el("button", { class: "action", html: icon("marker") + "<span>Qué significa cada color</span>", onclick: () => abrirLeyenda() }))),
@@ -2061,10 +2191,20 @@ function openSettings() {
         el("button", { class: "action", html: icon("upload") + "<span>Restaurar una copia</span>", onclick: () => { closeSheet(); $("#backup-input").click(); } })
       )
     ),
+    enPruebas() ? el("div", { class: "group", id: "ajustes-lab" },
+      el("span", { class: "label", text: "Laboratorio (solo en la versión de pruebas)" }),
+      el("p", { class: "small-print", text: "«Seguir mi voz» (Lector → Más → Practicar): mientras ensayas, resalta la frase por la que vas y mueve el texto. Reconoce la voz en el propio iPad (Vosk, de Alpha Cephei, licencia Apache 2.0); la descarga ocupa unos 40 MB." }),
+      el("div", { class: "actions" }, el("button", { class: "action", id: "voz-borrar", html: icon("trash") + "<span>Borrar el reconocedor descargado</span>", onclick: async () => {
+        pararVoz();
+        voz.mod = voz.mod || (await import("./voz.js"));
+        await voz.mod.borrarDescarga();
+        toast("Reconocedor de voz borrado. Se vuelve a descargar si lo usas.");
+      } }))) : null,
     el("div", { class: "group" },
       el("span", { class: "label", text: "Versión" }),
       el("p", { class: "small-print", id: "version-txt", text: `Atril ${fechaDeVersion(APP_VERSION)} (${APP_VERSION})${enPruebas() ? " · versión de pruebas" : ""}.` }),
       el("p", { class: "autor", id: "autor-txt", text: AUTOR }),
+      el("div", { class: "actions" }, el("button", { class: "action", id: "ajustes-novedades", html: icon("history") + "<span>Novedades</span>", onclick: () => abrirNovedades({ todas: true }) })),
       el("div", { class: "actions" }, el("button", { class: "action", id: "buscar-act", html: icon("download") + "<span>Buscar actualizaciones</span>", onclick: (e) => buscarActualizaciones(e.currentTarget) }))),
     el("div", { class: "actions" }, el("button", { class: "action plain", text: "Cerrar", onclick: () => closeSheet() })),
   ].filter(Boolean));
@@ -2627,6 +2767,7 @@ const reader = {
     this.item = item;
     this.conteo = null; this.partesCache = null;
     mantenerSitio(this.scrollEl, this.contentEl, () => this.pintarContenido(item.html));
+    if (voz.activo && voz.motor) voz.motor.reindexar();
     this.cargarAqui();
     this.buildPlan();
     if (this.mode === "esquema") this.renderOutline(this.outlineEl);
@@ -2687,6 +2828,7 @@ const reader = {
   },
 
   leave() {
+    pararVoz();
     keepAwake(false);
     if (presentar.activo) presentar.salir({ guardar: false });
     sesion.guardar({ enLector: false });
@@ -3000,6 +3142,7 @@ const reader = {
       { label: n ? `Ensayos (${n})` : "Ensayos", icon: "history", run: () => this.openEnsayos() },
       { label: "Tarjetas: una parte por pantalla", icon: "cards", run: () => tarjetas.abrir() },
       { label: "Desplazamiento automático", icon: "scroll", run: () => prompter.abrir() },
+      vozDisponible() ? { label: voz.activo ? "Dejar de seguir mi voz" : "Seguir mi voz (prueba)", icon: "mic", run: () => alternarVoz() } : null,
       { grupo: "Documento" },
       { label: "Buscar en el texto", icon: "search", run: () => buscador.abrir() },
       this.aqui != null ? { label: "Ir a «voy por aquí»", icon: "bookmark", run: () => this.irAqui() } : null,
@@ -3201,6 +3344,7 @@ const reader = {
     this.contentEl.addEventListener("click", (e) => {
       // Presentando: los toques solo pasan página (y los enlaces no sacan de la app)
       if (presentar.activo) { e.preventDefault(); presentar.toque(e); return; }
+      if (voz.activo && voz.motor && voz.motor.tocar(e)) { e.preventDefault(); return; }
       const cita = e.target.closest("a.bref");
       if (cita) { e.preventDefault(); this.menuCita(cita); return; }
       if (e.target.closest("a")) return;
@@ -3274,6 +3418,7 @@ const presentar = {
     prompter.cerrar();
     if (tarjetas.activo) tarjetas.cerrar();
     if (reader.mode !== "texto") reader.setMode("texto", { keepScroll: true });
+    pararVoz();
     this.activo = true;
     this.partes = reader.partesEnsayo();
     this.aviso = "";
@@ -3370,6 +3515,7 @@ const presentar = {
       document.documentElement.classList.remove("presentando");
       $("#pres-bar").hidden = true;
       $("#pres-salir").hidden = true;
+      $("#pres-sigue-aqui").hidden = true;
     });
     if (guardar) sesion.guardar();
     reader.paintPace();
@@ -3415,8 +3561,35 @@ const presentar = {
     if (settings.presToque === false || (y >= 0.3 && y <= 0.55)) { this.mostrarSalir(); return; } // el centro enseña cómo salir
     const linea = settings.fontSize * settings.lineHeight;
     const salto = Math.max(linea * 2, s.clientHeight - linea * 2); // deja a la vista las dos últimas líneas
-    if (y > 0.55) s.scrollBy({ top: salto, behavior: "smooth" });
+    if (y > 0.55) this.pasarPagina(salto, linea);
     else s.scrollBy({ top: -salto, behavior: "smooth" });
+  },
+  /**
+   * Avanza una pantalla y, al terminar, ilumina un momento las líneas por las que se sigue (las dos que
+   * estaban abajo del todo y ahora están arriba), para encontrar el sitio al volver a mirar el texto.
+   */
+  pasarPagina(salto, linea) {
+    const s = reader.scrollEl;
+    const antes = s.scrollTop;
+    const d = Math.max(0, Math.min(salto, s.scrollHeight - s.clientHeight - antes));
+    s.scrollBy({ top: salto, behavior: "smooth" });
+    clearTimeout(this.marcaT);
+    clearTimeout(this.marcaFin);
+    const m = $("#pres-sigue-aqui");
+    m.hidden = true;
+    if (d < linea) return; // ya estaba al final
+    this.marcaT = setTimeout(() => {
+      if (!this.activo) return;
+      const r = s.getBoundingClientRect();
+      const arriba = s.clientHeight - 2 * linea - d; // donde han quedado esas dos líneas
+      const top = Math.max(0, arriba), alto = 2 * linea + Math.min(0, arriba);
+      if (alto < linea * 0.5) return;
+      const c = reader.contentEl.getBoundingClientRect(); // a lo ancho de la hoja del texto
+      Object.assign(m.style, { top: `${r.top + top}px`, left: `${Math.max(r.left, c.left)}px`, width: `${Math.min(r.right, c.right) - Math.max(r.left, c.left)}px`, height: `${alto}px` });
+      m.hidden = false;
+      m.classList.remove("ve"); void m.offsetWidth; m.classList.add("ve");
+      this.marcaFin = setTimeout(() => { m.hidden = true; }, 1800);
+    }, 480);
   },
   pintar({ estado, corto, largo, aviso, seg, started }) {
     const b = $("#pres-timer");
@@ -5345,6 +5518,7 @@ function init() {
   document.addEventListener("keydown", (e) => disenoPC.atajos(e), true);
   route();
   registerSW();
+  setTimeout(() => novedadesAlAbrir().catch(() => {}), 1500);
   if (escritorio.activo) {
     document.documentElement.classList.add("escritorio");
     escritorio.seguirTitulo();
@@ -5377,6 +5551,61 @@ function atajosGenerales() {
 }
 
 /** «20261109-336d0a44» → «del 9 de noviembre de 2026». */
+/** Qué aparato es, para «Contar un problema» (sin nada que identifique a la persona). */
+function queAparato() {
+  if (escritorio.activo) return `Atril para ${escritorio.mac ? "Mac" : "Windows"}`;
+  const ua = navigator.userAgent;
+  const base = /iPhone/.test(ua) ? "iPhone" : esIOS() ? "iPad" : esAndroid() ? (/Mobile/.test(ua) ? "móvil Android" : "tableta Android") : "ordenador";
+  const instalada = matchMedia("(display-mode: standalone)").matches || navigator.standalone ? "instalada" : "en el navegador";
+  return `${base}, ${instalada}, pantalla ${screen.width}×${screen.height}`;
+}
+
+/**
+ * «Contar un problema o una idea a Ezequiel» (Atril ya lo usan más personas). No guarda ningún número:
+ * WhatsApp se abre con el mensaje escrito y se elige el chat de Ezequiel.
+ */
+function contarProblema() {
+  const datos = `(Atril ${fechaDeVersion(APP_VERSION)} · ${APP_VERSION}${enPruebas() ? " · pruebas" : ""} · ${queAparato()})`;
+  const texto = `Hola, Ezequiel. Te escribo por Atril.\n\nQué ha pasado o qué se me ocurre: \n\n${datos}`;
+  actionSheet("Contar un problema o una idea a Ezequiel", [
+    { label: "Por WhatsApp (eliges su chat)", icon: "chat", run: () => enviarWhatsApp("Atril", texto) },
+    { label: "Otra app", icon: "share", run: () => shareText("Atril", texto) },
+    { label: "Copiar el mensaje", icon: "copy", run: () => copyText(texto) },
+  ]);
+}
+
+/**
+ * «Novedades»: una vez por versión nueva (al abrir la app en el inicio) y siempre desde Ajustes → Versión.
+ * `atril.novedades` = id del último grupo visto. A quien estrena Atril no se le enseñan.
+ */
+const VISTO_NOVEDADES = "atril.novedades";
+function abrirNovedades({ todas = false } = {}) {
+  const grupos = todas ? NOVEDADES : novedadesDesde(lsGet(VISTO_NOVEDADES, ""));
+  if (!grupos.length) return false;
+  lsSet(VISTO_NOVEDADES, NOVEDADES[0].id);
+  openSheet([
+    el("h2", { text: "Novedades de Atril" }),
+    ...grupos.flatMap((g) => [
+      el("h3", { class: "co-sec", text: g.fecha }),
+      el("ul", { class: "novedades" }, g.lineas.map(([ic, t]) => el("li", {}, el("span", { class: "nov-ic", html: icon(ic) }), el("span", { text: t })))),
+    ]),
+    el("div", { class: "actions" }, el("button", { class: "action primary", id: "novedades-ok", text: "Entendido", onclick: () => closeSheet() })),
+  ]);
+  return true;
+}
+async function novedadesAlAbrir() {
+  // Las pruebas automáticas no la ven salvo que la pidan (window.__atrilProbarNovedades)
+  if (navigator.webdriver && !window.__atrilProbarNovedades) return;
+  const visto = lsGet(VISTO_NOVEDADES, "");
+  if (visto === NOVEDADES[0].id) return;
+  let usado = false;
+  try { usado = (await store.all("docs")).length + (await store.all("notes")).length > 0; } catch {}
+  if (!usado) { lsSet(VISTO_NOVEDADES, NOVEDADES[0].id); return; }
+  // Solo en el inicio y sin nada abierto (nunca en medio de un discurso)
+  if (currentView !== "home" || !$("#overlay").hidden || presentar.activo) return;
+  abrirNovedades();
+}
+
 /** Quién la ha hecho (a petición de Ezequiel), en Ajustes junto a la versión y en «Acerca de Atril». */
 const AUTOR = "Creado por Ezequiel";
 
@@ -5468,4 +5697,5 @@ init();
 window.__atril = {
   sanitize, htmlToText, textToHtml, store, settings: () => settings, setFontSize, importFiles, exportWord, crearPdf,
   timer, reader, editor, ensayo, buscador, tarjetas, prompter, crearPlantilla, abrirDado, pintarAvisoCopia, reemplazo, presentar, sesion, textoParaCompartir, abrirCompartir, abrirGuia,
+  novedadesAlAbrir, contarProblema, textoParaClaude, APP_CANAL, voz, alternarVoz, pararVoz,
 };

@@ -71,7 +71,7 @@ const HTML = `<h2>Introducción (2 min)</h2><p>Hola <strong>a todos </strong>y <
   await page.click(".sheet >> text=Compartir (WhatsApp, correo…)");
   await page.waitForSelector(".sheet .co-wa");
   const ops = await page.$$eval(".sheet .co-n", (xs) => xs.map((x) => x.textContent));
-  ok("La hoja ofrece WhatsApp, otra app, copiar, Word y PDF", ops.join(",") === "WhatsApp,Otra app,Copiar el texto,Word,PDF", ops.join(","));
+  ok("La hoja ofrece WhatsApp, otra app, copiar, Para Claude (ordenar y resumir), Word y PDF", ops.join(",") === "WhatsApp,Otra app,Copiar el texto,Ordenar estas notas,Resumir,Word,PDF", ops.join(","));
   const altos = await page.$$eval(".sheet .co-op", (bs) => Math.min(...bs.map((b) => b.getBoundingClientRect().height)));
   ok("Botones grandes para el dedo", altos >= 44, `${altos}px`);
   await page.waitForTimeout(450);

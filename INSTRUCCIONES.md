@@ -75,6 +75,17 @@ Haz una de vez en cuando y guárdala en Archivos o iCloud. **Si borras el icono 
 
 Cada cambio que se sube a GitHub se publica solo en unos minutos. Al abrir Atril en el iPad saldrá «Hay una versión nueva» → **Actualizar**. Tus datos no se tocan.
 
+## La versión de pruebas (solo para ti)
+
+Desde que Atril lo usan más personas hay dos direcciones:
+
+- **La de siempre:** https://ezzekielgm.github.io/atril/ — la que tienen todos. Solo cambia cuando tú dices que algo está probado.
+- **La de pruebas:** https://ezzekielgm.github.io/atril/pruebas/ — lo nuevo llega aquí primero. Ábrela en Safari y *Compartir → Añadir a pantalla de inicio*: sale como **«Atril pruebas»**, con una etiqueta naranja «PRUEBAS» junto al nombre.
+
+Las dos ven **los mismos discursos y notas** (están en el mismo sitio del iPad). Cuando hayas probado algo en «Atril pruebas» y esté bien, dile a Claude «pásalo a todos» y llegará a la de siempre, con sus **Novedades**. La primera vez que abras la de pruebas puede salir «Preparando Atril…» un segundo: es normal.
+
+En la de pruebas también está el **laboratorio**: «Seguir mi voz» (Lector → Más → Practicar). Mientras ensayas en voz alta, resalta la frase por la que vas y mueve el texto. La primera vez descarga unos 40 MB (mejor con wifi); después funciona sin internet y tu voz no sale del iPad. Si se pierde, toca la palabra por la que vas.
+
 ## 5. Seguir mejorándola con Claude Code en tu PC
 
 1. El proyecto está en `C:\Users\ermak\Proyectos\Atril`.

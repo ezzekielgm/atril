@@ -41,6 +41,21 @@ jobs:
       - name: Versión de siempre (rama estable)
         working-directory: estable
         run: npm ci && npm run build
+      # «Seguir mi voz» (prototipo, solo en pruebas): el modelo en español no está en git
+      - name: Modelo de voz (caché)
+        uses: actions/cache@v4
+        with:
+          path: pruebas/voz
+          key: vosk-model-small-es-0.3
+      - name: Modelo de voz (descarga si no está)
+        run: |
+          mkdir -p pruebas/voz
+          f=pruebas/voz/vosk-model-small-es-0.3.tar.gz
+          if [ ! -s "$f" ]; then
+            curl -fsSL --retry 3 -o "$f" https://github.com/ccoreilly/vosk-browser/raw/gh-pages/models/vosk-model-small-es-0.3.tar.gz \
+              || { rm -f "$f"; echo "::warning::No se pudo bajar el modelo de voz: «Seguir mi voz» no estará disponible"; }
+          fi
+          ls -la pruebas/voz
       - name: Versión de pruebas (rama main)
         working-directory: pruebas
         run: npm ci && CANAL=pruebas npm run build

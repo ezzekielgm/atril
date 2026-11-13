@@ -41,6 +41,7 @@ const SECCIONES = (p) => [
       ["play", "Empezar", "Antes sale una comprobación rápida: el tiempo, la letra, si empiezas desde el principio o desde donde estás y que la pantalla no se apague. Toca «Presentar ahora». Verás el cronómetro, cuánto queda, la hora, en qué parte vas y cuál sigue.", "Lector → Presentar (el botón azul)"],
       ["timer", "El cronómetro, como un semáforo", "Tócalo para empezar; para pausarlo, mantenlo pulsado. Verde mientras hay tiempo, ámbar en el último minuto y rojo si te pasas."],
       ["down", "Pasar página", "Toca la parte de abajo de la pantalla para avanzar y la de arriba para volver. También puedes deslizar el dedo.", "Se puede quitar en Ajustes"],
+      ["next", "Por dónde sigues", "Al pasar página, las dos líneas por las que sigues (las que estaban abajo) se iluminan un momento arriba, para encontrar el sitio al volver a mirar."],
       ["lock", "Salir y poner a cero", "Toca «Salir» arriba a la derecha, o el centro de la pantalla: en medio aparece «Mantén pulsado para salir» (mantén el dedo hasta que se llene; si solo lo tocas, te pregunta) y «Cronómetro a cero». Ni los toques sueltos ni el gesto de «atrás» te sacan del discurso."],
       ["lock", "Que no se salga de la app", p.android
         ? "El gesto de ir a la pantalla de inicio es del sistema y ninguna app lo puede bloquear. Usa «Fijar aplicaciones» de Android (Ajustes → Seguridad)."
@@ -95,6 +96,7 @@ const SECCIONES = (p) => [
     items: [
       ["chat", "Mandar por WhatsApp", "Se abre WhatsApp con el texto escrito y eliges el chat. Sale con negritas y cursivas (*así*); si lo prefieres, quítalas con el interruptor.", "⋯ → Compartir, Lector → Más → Compartir, o el botón de compartir del editor"],
       ["share", "A otra app o copiado", "«Otra app» abre la lista del sistema: correo, Mensajes, Telegram, Notas, Claude… «Copiar el texto» lo deja listo para pegar donde quieras.", "⋯ → Compartir"],
+      ["chispa", "Para Claude", "Copia tus notas o tu discurso con la petición ya escrita (ordenar las notas, mejorar el discurso o resumir); abres Claude y lo pegas. Si escribiste a mano, prepara el PDF y copia la petición para pegarla al mandárselo.", "⋯ → Compartir → Para Claude"],
       ["word", "Como archivo", "Word (se abre en Word, Pages o Google Docs) o PDF (para leerlo o imprimirlo tal cual, con letra normal, grande o muy grande y las mismas letras de Atril, con todas las tildes y comillas).", "⋯ → Compartir → Como archivo"],
       ["word", "El Word del PC, al día", p.escritorio
         ? "«Guardar como Word» lo guarda encima del Word que abriste (si lo tienes abierto en Word, ciérralo antes). Si ese Word ha cambiado fuera de Atril, te avisa antes de sustituirlo."
@@ -103,7 +105,8 @@ const SECCIONES = (p) => [
       ["escudo", "Copia de seguridad", "Todo está solo en este dispositivo: si borras la app, se borra. Abajo en el inicio ves la «Protección»: cuándo fue la última copia y cuánto has cambiado desde entonces. Guarda la copia en OneDrive o iCloud; Atril te lo recuerda cada semana.", "Inicio, abajo; Ajustes → Hacer copia de seguridad"],
       ["download", "Actualizaciones", p.escritorio
         ? "Cuando hay una versión nueva para el ordenador, Atril te avisa: descarga el instalador y ábrelo; se instala encima y conserva tus discursos y notas."
-        : "Atril se actualiza sola y tus datos no se tocan. Para mirarlo ahora mismo, «Buscar actualizaciones».", "Ajustes → Versión"],
+        : "Atril se actualiza sola y tus datos no se tocan. Para mirarlo ahora mismo, «Buscar actualizaciones». Cuando cambia algo, al abrirla te enseña las «Novedades».", "Ajustes → Versión"],
+      ["chat", "Contar un problema o una idea", "Abre WhatsApp (u otra app) con un mensaje para Ezequiel, que ha hecho Atril, con la versión que tienes; eliges su chat y escribes qué ha pasado.", "Ajustes → Ayuda"],
     ],
   },
 ];

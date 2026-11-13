@@ -13,3 +13,5 @@ reloj/local.properties
 reloj/build.log
 *.jks
 *.keystore
+# Modelo de voz (34 MB): no va en git; lo baja publicar.yml
+voz/

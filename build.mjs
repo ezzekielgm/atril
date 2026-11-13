@@ -44,6 +44,18 @@ if (CANAL === "pruebas") {
     .replace('<meta name="twitter:card" content="summary_large_image">\n', "");
   fs.writeFileSync(path.join(OUT, "index.html"), html);
 }
+// «Seguir mi voz» (prototipo): el reconocedor (vosk-browser) y el modelo en español, solo en la versión de
+// pruebas (o con VOZ=1). No van en la descarga para usar sin conexión: se bajan al usarlo por primera vez.
+// El modelo no está en git (34 MB): en local, en voz/; en la nube lo baja publicar.yml.
+const CON_VOZ = CANAL === "pruebas" || process.env.VOZ === "1";
+if (CON_VOZ) {
+  fs.mkdirSync(path.join(OUT, "voz"), { recursive: true });
+  fs.copyFileSync("node_modules/vosk-browser/dist/vosk.js", path.join(OUT, "voz", "vosk.js"));
+  const modelo = path.join("voz", "vosk-model-small-es-0.3.tar.gz");
+  if (fs.existsSync(modelo)) fs.copyFileSync(modelo, path.join(OUT, "voz", "vosk-model-small-es-0.3.tar.gz"));
+  else console.warn("Aviso: falta voz/vosk-model-small-es-0.3.tar.gz; «Seguir mi voz» dirá que no está disponible.");
+  fs.writeFileSync(path.join(OUT, "voz", "AVISO.txt"), "Reconocimiento de voz: Vosk (https://alphacephei.com/vosk), modelo vosk-model-small-es-0.3, y vosk-browser (https://github.com/ccoreilly/vosk-browser). Licencia Apache 2.0. Copyright 2019 Alpha Cephei Inc.\n");
+}
 fs.writeFileSync(path.join(OUT, "_headers"), "/sw.js\n  Cache-Control: no-cache\n/index.html\n  Cache-Control: no-cache\n");
 
 // 3. Versión = huella del contenido (cambia sola con cada cambio)
@@ -68,7 +80,7 @@ const idx = path.join(OUT, "index.html");
 fs.writeFileSync(idx, fs.readFileSync(idx, "utf8").replace('<html lang="es"', `<html lang="es" data-version="${version}"`));
 
 // 5. Service worker con la lista de archivos a guardar para usar sin conexión
-const assets = ["./", ...files.filter((f) => f !== "_headers").map((f) => "./" + f)];
+const assets = ["./", ...files.filter((f) => f !== "_headers" && !f.startsWith("voz/")).map((f) => "./" + f)];
 const sw = fs.readFileSync(path.join(SRC, "sw.js"), "utf8")
   .replace("__APP_VERSION__", version)
   .replace("__APP_CANAL__", CANAL)
