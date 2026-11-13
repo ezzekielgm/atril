@@ -28,7 +28,8 @@ const SECCIONES = (p) => [
       ["outline", "Esquema", "Los títulos y lo que has resaltado; toca uno para ir allí. Con el iPad en horizontal se queda al lado del texto y marca por dónde vas.", "Lector → Esquema"],
       ["bookmark", "Voy por aquí", "Dos toques en un párrafo lo marcan con una raya azul y se recuerda al volver. Un toque en el texto oculta las barras para tener toda la pantalla."],
       ["timer", "Cronómetro y ritmo", "Tócalo para empezar o pararlo. Con una duración puesta verás si vas adelantado o retrasado. Si un título termina en «(5 min)», el ritmo se calcula por partes. Abajo ves en qué parte vas y cuánto queda.", "Lector o editor → arriba"],
-      ["search", "Buscar, tarjetas y desplazamiento automático", "Busca una palabra (da igual tildes y mayúsculas), ve una parte por pantalla en tarjetas o deja que el texto suba solo a tu ritmo. «Más» está ordenado en Practicar, Documento, Compartir y guardar, y Ayuda.", "Lector → Más"],
+      ["scroll", "Desplazamiento automático", "El texto sube solo a tu ritmo (si el discurso tiene duración, a la velocidad justa para acabar a tiempo). Un toque lo pausa.", "Lector → Desplazar (al lado de Presentar)"],
+      ["search", "Buscar y tarjetas", "Busca una palabra (da igual tildes y mayúsculas) o ve una parte por pantalla en tarjetas. «Más» está ordenado en Practicar, Documento, Compartir y guardar, y Ayuda.", "Lector → Más"],
       ["book", "Citas bíblicas", "Las citas como «Sal 37:4» salen subrayadas: tócalas para abrir el versículo en JW Library o en jw.org.", "Toca la cita · Ajustes → Citas bíblicas"],
       ["paste", "El versículo debajo de la cita", "Abre la cita, copia el versículo y vuelve a Atril: te ofrece pegarlo debajo (o toca la cita → «Pegar el versículo copiado»). Queda en el discurso, en otro color, y sale en el Word. Atril no lo descarga solo: lo copias tú.", "Toca la cita"],
     ],
@@ -40,7 +41,7 @@ const SECCIONES = (p) => [
       ["play", "Empezar", "Antes sale una comprobación rápida: el tiempo, la letra, si empiezas desde el principio o desde donde estás y que la pantalla no se apague. Toca «Presentar ahora». Verás el cronómetro, cuánto queda, la hora, en qué parte vas y cuál sigue.", "Lector → Presentar (el botón azul)"],
       ["timer", "El cronómetro, como un semáforo", "Tócalo para empezar; para pausarlo, mantenlo pulsado. Verde mientras hay tiempo, ámbar en el último minuto y rojo si te pasas."],
       ["down", "Pasar página", "Toca la parte de abajo de la pantalla para avanzar y la de arriba para volver. También puedes deslizar el dedo.", "Se puede quitar en Ajustes"],
-      ["lock", "Salir", "Toca el centro de la pantalla y aparece «Mantén pulsado para salir»: mantén el dedo hasta que se llene. Ni los toques sueltos ni el gesto de «atrás» te sacan del discurso."],
+      ["lock", "Salir y poner a cero", "Toca «Salir» arriba a la derecha, o el centro de la pantalla: en medio aparece «Mantén pulsado para salir» (mantén el dedo hasta que se llene; si solo lo tocas, te pregunta) y «Cronómetro a cero». Ni los toques sueltos ni el gesto de «atrás» te sacan del discurso."],
       ["lock", "Que no se salga de la app", p.android
         ? "El gesto de ir a la pantalla de inicio es del sistema y ninguna app lo puede bloquear. Usa «Fijar aplicaciones» de Android (Ajustes → Seguridad)."
         : "El gesto de ir a la pantalla de inicio es del sistema y ninguna app lo puede bloquear. Usa «Acceso guiado»: Ajustes → Accesibilidad → Acceso guiado; luego, en Atril, tres pulsaciones del botón superior (o del de inicio). En Android: «Fijar aplicaciones»."],

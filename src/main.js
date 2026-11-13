@@ -1610,6 +1610,15 @@ function nuevoDiscurso() {
   ]);
 }
 
+/** «Nuevo» del lector y del editor (a petición de Ezequiel): discurso con plantilla, en blanco o nota. */
+function nuevoDocumento() {
+  actionSheet("Nuevo documento", [
+    { label: "Discurso con plantilla: introducción, puntos y conclusión", icon: "template", run: plantillaDialog },
+    { label: "Discurso en blanco", icon: "note", run: () => newItem("docs") },
+    { label: "Nota", icon: "edit", run: () => newItem("notes") },
+  ]);
+}
+
 /** Plantilla: título, duración y número de puntos; reparte los minutos entre las partes. */
 function plantillaDialog() {
   let minutos = 10, puntos = 3;
@@ -3180,6 +3189,8 @@ const reader = {
     this.outlineEl.addEventListener("click", (e) => this.clicEsquema(e, this.outlineEl));
     $("#reader-outline-btn").addEventListener("click", () => this.toggleOutline());
     $("#reader-presentar").addEventListener("click", () => presentar.comprobar());
+    $("#reader-desplazar").addEventListener("click", () => prompter.abrir());
+    $("#reader-nuevo").addEventListener("click", nuevoDocumento);
     $("#reader-more").addEventListener("click", () => this.openMenu());
     $("#float-timer").addEventListener("click", () => timer.toggle());
     $("#reader-back").addEventListener("click", () => go("#/"));
@@ -3237,6 +3248,7 @@ const presentar = {
       document.documentElement.classList.add("presentando");
       $("#pres-bar").hidden = false;
       $("#pres-salir").hidden = true;
+      $("#pres-salir-btn").classList.remove("cargando");
     });
     // El gesto o el botón de «atrás» (Android, o deslizar desde el borde) no sale: enseña cómo salir
     this.hash = location.hash;
@@ -3295,7 +3307,7 @@ const presentar = {
         fila("play", "Empezar", botonesDesde),
         fila("book", "Pantalla", el("label", { class: "switch-row pc-switch" }, el("span", { text: "Que no se apague" }), wake)),
         fila("lock", "Que no te saque de aquí",
-          el("p", { class: "pc-txt", text: "Para pasar página, toca abajo; para salir, toca el centro y mantén «Salir»." }),
+          el("p", { class: "pc-txt", text: "Para pasar página, toca abajo; para salir, toca «Salir» arriba (o el centro de la pantalla) y mantén pulsado." }),
           movil ? el("p", { class: "pc-txt", text: esAndroid() ? "El gesto de inicio solo se bloquea con «Fijar aplicaciones»." : "El gesto de inicio solo se bloquea con «Acceso guiado» (tres pulsaciones del botón superior o de inicio)." }) : null,
           movil ? el("button", { class: "text-btn", text: "¿Cómo se activa?", onclick: () => { close(); this.consejo(); } }) : null)),
       el("label", { class: "switch-row pc-switch small" }, el("span", { text: "Comprobar siempre antes de presentar" }), siempre),
@@ -3332,10 +3344,29 @@ const presentar = {
   mostrarSalir() {
     if (!this.activo) return;
     const s = $("#pres-salir");
+    $("#pres-cero").hidden = !(timer.running || timer.elapsed > 0);
     s.hidden = false;
     s.classList.remove("aparece"); void s.offsetWidth; s.classList.add("aparece");
+    this.salirDesde = Date.now();
+    this.ocultarLuego(6000);
+  },
+  ocultarLuego(ms) {
     clearTimeout(this.ocultarSalir);
-    this.ocultarSalir = setTimeout(() => { if (!s.classList.contains("cargando")) s.hidden = true; }, 5000);
+    this.ocultarSalir = setTimeout(() => { if (this.activo && !$("#pres-salir-btn").classList.contains("cargando")) $("#pres-salir").hidden = true; }, ms);
+  },
+  /** Si mantener pulsado no funciona (o se toca sin querer), se pregunta antes de salir. */
+  async confirmarSalir() {
+    clearTimeout(this.ocultarSalir);
+    $("#pres-salir").hidden = true;
+    const si = await confirmDialog({ title: "¿Dejar de presentar?", message: "Volverás al discurso con la barra de arriba. El cronómetro sigue como está.", ok: "Salir", cancel: "Seguir presentando" });
+    if (si && this.activo) this.salir({ quitarPaso: true });
+  },
+  async ponerACero() {
+    clearTimeout(this.ocultarSalir);
+    $("#pres-salir").hidden = true;
+    const seg = Math.round(timer.ms() / 1000);
+    const si = await confirmDialog({ title: "¿Poner el cronómetro a cero?", message: seg >= MIN_ENSAYO ? `Lleva ${mmss(seg)}. Se guarda como ensayo y empieza de cero.` : `Lleva ${mmss(seg)}.`, ok: "Poner a cero", cancel: "Cancelar" });
+    if (si) { timer.reset(); toast("Cronómetro a cero. Tócalo para empezar."); }
   },
   /** La hora, como en el modo «Predicar» de Logos: para saber cuándo hay que terminar. */
   pintarReloj() {
@@ -3388,7 +3419,7 @@ const presentar = {
     openSheet([
       el("h2", { text: "Para no salirte del discurso" }),
       el("p", { text: "Mientras presentas, Atril no sale con toques sueltos ni con el gesto de «atrás»." }),
-      el("p", { class: "consejo-salir", text: "Para salir: toca el centro de la pantalla y mantén pulsado «Salir» hasta que se llene." }),
+      el("p", { class: "consejo-salir", text: "Para salir: toca «Salir» arriba a la derecha (o el centro de la pantalla) y mantén pulsado hasta que se llene. Ahí también puedes poner el cronómetro a cero." }),
       el("p", { text: android
         ? "El gesto de ir a la pantalla de inicio es del sistema y ninguna app lo puede bloquear. Para que tampoco funcione, usa «Fijar aplicaciones» de Android:"
         : "El gesto de ir a la pantalla de inicio es del iPad y ninguna app lo puede bloquear. Para que tampoco funcione, usa «Acceso guiado»:" }),
@@ -3425,27 +3456,36 @@ const presentar = {
       if (!timer.running) timer.toggle();
       else toast("Para pausar, mantén pulsado el cronómetro.");
     });
-    // Salir: mantener pulsado
-    const s = $("#pres-salir");
-    let salida = 0;
+    // Salir: mantener pulsado (en el centro de la pantalla, lejos del borde de abajo, donde el iPad
+    // se queda los toques para su gesto de inicio). Un toque normal pregunta antes de salir.
+    const s = $("#pres-salir-btn");
+    let salida = 0, salio = false;
     s.addEventListener("pointerdown", (e) => {
       e.preventDefault();
+      salio = false;
       s.classList.add("cargando");
       clearTimeout(salida);
       clearTimeout(this.ocultarSalir);
-      salida = setTimeout(() => { s.classList.remove("cargando"); this.salir({ quitarPaso: true }); }, 800);
+      salida = setTimeout(() => { s.classList.remove("cargando"); salio = true; this.salir({ quitarPaso: true }); }, 800);
     });
     const cancelar = () => {
       clearTimeout(salida);
       if (!s.classList.contains("cargando")) return;
       s.classList.remove("cargando");
-      this.ocultarSalir = setTimeout(() => { if (this.activo) s.hidden = true; }, 3000);
+      this.ocultarLuego(4000);
     };
     s.addEventListener("pointerup", cancelar);
     s.addEventListener("pointercancel", cancelar);
     s.addEventListener("pointerleave", cancelar);
     s.addEventListener("contextmenu", (e) => e.preventDefault());
-    s.addEventListener("click", () => { if (this.activo) toast("Mantén pulsado para salir."); });
+    s.addEventListener("click", () => {
+      if (!this.activo || salio) return;
+      // Un doble toque en el centro no debe llegar aquí: el segundo toque llega enseguida y se ignora
+      if (Date.now() - (this.salirDesde || 0) < 500) return;
+      this.confirmarSalir();
+    });
+    $("#pres-cero").addEventListener("click", () => { if (this.activo) this.ponerACero(); });
+    $("#pres-opciones").addEventListener("click", () => this.mostrarSalir());
     // «Atrás» mientras se presenta: se vuelve a poner el paso y se enseña cómo salir
     window.addEventListener("popstate", () => {
       if (!this.activo || location.hash !== this.hash) return;
@@ -4532,6 +4572,7 @@ const editor = {
     });
     $("#editor-read").addEventListener("click", async () => { await this.flush(); go(`#/leer/${this.kind}/${this.id}`); });
     $("#editor-share").addEventListener("click", async () => { await this.flush(); abrirCompartir(this.kind, this.item); });
+    $("#editor-nuevo").addEventListener("click", async () => { await this.flush(); nuevoDocumento(); });
     $("#editor-more").addEventListener("click", async () => {
       await this.flush();
       const item = this.item;

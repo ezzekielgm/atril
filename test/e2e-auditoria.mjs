@@ -42,7 +42,7 @@ const DISCURSO = `<h1>Prueba</h1><h2>Introducción (2 min)</h2>${parrafos(3)}<h2
   const doc = await crear(page, "docs", { title: "Prueba", html: DISCURSO, target: 8 });
   await ir(page, `#/leer/docs/${doc.id}`, "reader");
   const nombres = await page.$$eval(".reader-tools .tool .lbl", (xs) => xs.map((x) => x.textContent));
-  ok("El lector tiene 5 botones: Esquema, Letra, Presentar, Editar y Más", nombres.join(",") === "Esquema,Letra,Presentar,Editar,Más", nombres.join(","));
+  ok("El lector tiene 7 botones: Nuevo, Esquema, Letra, Desplazar, Presentar, Editar y Más (Nuevo y Desplazar los pidió Ezequiel)", nombres.join(",") === "Nuevo,Esquema,Letra,Desplazar,Presentar,Editar,Más", nombres.join(","));
   await page.evaluate(() => { const s = document.querySelector("#reader-scroll"); s.scrollTop = (s.scrollHeight - s.clientHeight) * 0.5; });
   await page.waitForTimeout(200);
   await page.click("#reader-presentar");

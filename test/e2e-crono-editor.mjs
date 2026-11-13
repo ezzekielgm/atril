@@ -124,9 +124,43 @@ const nota = await page.evaluate(async () => {
 await page.evaluate((id) => { location.hash = `#/editar/notes/${id}`; }, nota);
 await page.waitForSelector("#view-editor:not([hidden])");
 ok("Las notas también tienen el cronómetro", await page.isVisible("#editor-timer-toggle"));
-await page.setViewportSize({ width: 820, height: 1180 });
+
+// ============ Botones «Nuevo» y «Desplazar» (a petición de Ezequiel) ============
+await page.click("#editor-nuevo");
+await page.waitForSelector(".sheet >> text=Nuevo documento");
+ok("El editor tiene «Nuevo documento» con discurso (plantilla o en blanco) y nota", await page.isVisible(".sheet >> text=Discurso en blanco") && await page.isVisible(".sheet >> text=Discurso con plantilla") && await page.isVisible('.sheet button:has-text("Nota")'));
+await page.click(".sheet >> text=Discurso en blanco");
+await page.waitForFunction(() => /#\/editar\/docs\//.test(location.hash) && !document.querySelector("#view-editor").hidden);
+const nuevoId = await idActual();
+ok("…y crea el discurso nuevo", nuevoId && nuevoId !== ID && nuevoId !== "n-crono");
+await page.fill("#editor-title", "Otro discurso");
+await page.click("#editor").catch(() => {});
+await page.keyboard.type("Primera frase del discurso nuevo para probar el desplazamiento automático. ".repeat(3));
+await page.click("#editor-read");
+await page.waitForSelector("#view-reader:not([hidden])");
+ok("El lector tiene «Desplazar» junto a «Presentar»", await page.isVisible("#reader-desplazar") && await page.evaluate(() => document.querySelector("#reader-desplazar").nextElementSibling.id === "reader-presentar"));
+await page.click("#reader-desplazar");
 await page.waitForTimeout(300);
-ok("iPad en vertical: cabe en la barra", await page.evaluate(() => { const b = document.querySelector("#view-editor .word-bar"); return b.scrollWidth <= b.clientWidth + 1 && document.querySelector("#editor-more").getBoundingClientRect().right <= b.getBoundingClientRect().right + 0.5; }));
+ok("«Desplazar» pone en marcha el desplazamiento automático", await page.evaluate(() => window.__atril.prompter.activo) && await page.isVisible("#tp-bar"));
+await page.evaluate(() => window.__atril.prompter.cerrar());
+ok("El lector tiene «Nuevo»", await page.isVisible("#reader-nuevo"));
+await page.click("#reader-nuevo");
+await page.waitForSelector(".sheet >> text=Nuevo documento");
+await page.click('.sheet button:has-text("Nota")');
+await page.waitForFunction(() => /#\/editar\/notes\//.test(location.hash) && !document.querySelector("#view-editor").hidden);
+ok("«Nuevo» → Nota abre una nota nueva en el editor", true);
+for (const w of [1080, 1024]) {
+  await page.setViewportSize({ width: w, height: 768 });
+  await page.evaluate((id) => { location.hash = `#/leer/docs/${id}`; }, nuevoId);
+  await page.waitForSelector("#view-reader:not([hidden])");
+  await page.waitForTimeout(200);
+  ok(`iPad en horizontal (${w}): caben todos los botones del lector`, await page.evaluate(() => [...document.querySelectorAll(".reader-bar button")].every((b) => !b.offsetParent || b.getBoundingClientRect().right <= innerWidth + 0.5)));
+}
+await page.setViewportSize({ width: 810, height: 1080 });
+await page.evaluate((id) => { location.hash = `#/editar/docs/${id}`; }, nuevoId);
+await page.waitForSelector("#view-editor:not([hidden])");
+await page.waitForTimeout(300);
+ok("iPad en vertical: la barra del editor (con cronómetro y «Nuevo») cabe", await page.isVisible("#editor-nuevo") &&  await page.evaluate(() => { const b = document.querySelector("#view-editor .word-bar"); return b.scrollWidth <= b.clientWidth + 1 && document.querySelector("#editor-more").getBoundingClientRect().right <= b.getBoundingClientRect().right + 0.5; }));
 await ctx.close();
 
 // ============ Móvil ============
@@ -145,8 +179,12 @@ const caja = await pm.evaluate(() => {
   const bar = r("#view-editor .word-bar"), tm = r("#editor-timer-toggle"), ti = r("#editor-title"), mas = r("#editor-more");
   return { visible: tm.width > 0 && tm.right <= bar.right, titulo: ti.width, alto: tm.height, mas: mas.right <= bar.right + 0.5, desborda: document.querySelector("#view-editor .word-bar").scrollWidth > bar.width + 1 };
 });
+ok("Móvil: «Nuevo» no va en la barra del editor (está en el inicio)", await pm.isHidden("#editor-nuevo"));
 ok("Móvil: cabe en la barra del editor sin desbordar", caja.visible && caja.mas && !caja.desborda && caja.titulo >= 110 && caja.alto >= 36, JSON.stringify(caja));
 await pm.screenshot({ path: `${OUTDIR}/crono-editor-movil.png` });
+await pm.click("#editor-read");
+await pm.waitForSelector("#view-reader:not([hidden])");
+ok("Móvil: «Desplazar» y «Nuevo» no van en la barra de abajo (sigue en «Más»)", await pm.isHidden("#reader-desplazar") && await pm.isHidden("#reader-nuevo"));
 await ctxM.close();
 
 // ============ Ordenador (diseño de escritorio) ============
@@ -160,6 +198,7 @@ await pd.click(".sheet >> text=En blanco");
 await pd.waitForSelector("#view-editor:not([hidden])");
 await pd.fill("#editor-title", "Discurso del PC");
 ok("Ordenador: el editor tiene el cronómetro", await pd.isVisible("#editor-timer-toggle"));
+ok("Ordenador: sin «Nuevo» en la barra (está en la biblioteca)", await pd.isHidden("#editor-nuevo") && await pd.isVisible("#bib-nuevo"));
 await pd.click("#menubar >> text=Discurso");
 await pd.click(".menu-lista >> text=Poner en marcha el cronómetro");
 await pd.waitForTimeout(200);

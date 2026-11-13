@@ -89,8 +89,10 @@
     </div>
     <span class="pace" id="pace" role="status" hidden></span>
     <nav class="reader-tools" aria-label="Herramientas del discurso">
-      <button class="tool" id="reader-outline-btn" aria-pressed="false"><span data-icon="outline"></span><span class="lbl">Esquema</span></button>
-      <button class="tool" id="reader-aa"><span data-icon="aa"></span><span class="lbl">Letra</span></button>
+      <button class="tool" id="reader-nuevo" aria-label="Nuevo documento"><span data-icon="plus"></span><span class="lbl">Nuevo</span></button>
+      <button class="tool" id="reader-outline-btn" aria-pressed="false" aria-label="Esquema"><span data-icon="outline"></span><span class="lbl">Esquema</span></button>
+      <button class="tool" id="reader-aa" aria-label="Letra"><span data-icon="aa"></span><span class="lbl">Letra</span></button>
+      <button class="tool" id="reader-desplazar" aria-label="Desplazamiento automático"><span data-icon="scroll"></span><span class="lbl">Desplazar</span></button>
       <button class="tool tool-presentar" id="reader-presentar"><span data-icon="play"></span><span class="lbl">Presentar</span></button>
       <button class="tool" id="reader-edit"><span data-icon="edit"></span><span class="lbl">Editar</span></button>
       <button class="tool" id="reader-more"><span data-icon="more"></span><span class="lbl">Más</span></button>
@@ -103,6 +105,7 @@
         <span class="pace" id="pres-pace" role="status" hidden></span>
         <span class="pres-quedan" id="pres-quedan" hidden></span>
         <span class="pres-reloj" id="pres-reloj" aria-label="Hora"></span>
+        <button class="pres-opciones" id="pres-opciones" aria-label="Salir o poner el cronómetro a cero"><span data-icon="close"></span><span>Salir</span></button>
       </div>
       <div class="pres-parte" id="pres-parte"></div>
       <div class="pres-sigue" id="pres-sigue"></div>
@@ -136,7 +139,10 @@
     <span class="re-quedan" id="re-quedan"></span>
   </footer>
   <button class="float-timer" id="float-timer" aria-label="Cronómetro" hidden></button>
-  <button class="pres-salir" id="pres-salir" hidden><span data-icon="lock"></span><span>Mantén pulsado para salir</span><i class="pres-carga"></i></button>
+  <div class="pres-salir" id="pres-salir" role="dialog" aria-label="Salir de Presentar" hidden>
+    <button class="pres-op" id="pres-salir-btn"><span data-icon="lock"></span><span>Mantén pulsado para salir</span><i class="pres-carga"></i></button>
+    <button class="pres-op" id="pres-cero" hidden><span data-icon="reset"></span><span>Cronómetro a cero</span></button>
+  </div>
   <div class="tp-guide" id="tp-guide" aria-hidden="true" hidden></div>
   <div class="tp-bar" id="tp-bar" role="toolbar" aria-label="Desplazamiento automático" hidden>
     <button class="icon-btn" id="tp-play" aria-label="Pausa"></button>
@@ -176,6 +182,7 @@
       <button class="timer-btn" id="editor-timer-toggle" aria-label="Cronómetro"><span data-icon="timer"></span><span id="editor-timer-text">00:00</span></button>
       <button class="icon-btn small" id="editor-timer-reset" aria-label="Poner a cero" data-icon="reset" hidden></button>
     </div>
+    <button class="icon-btn" id="editor-nuevo" aria-label="Nuevo documento" data-icon="plus"></button>
     <button class="icon-btn" id="editor-share" aria-label="Compartir (WhatsApp, correo…)" data-icon="share"></button>
     <button class="icon-btn" id="editor-read" aria-label="Modo lectura" data-icon="book"></button>
     <button class="icon-btn" id="editor-more" aria-label="Archivo: guardar, compartir…" data-icon="more"></button>

@@ -159,7 +159,7 @@ const HTML = `<h2>Introducción (2 min)</h2><p>Hola <strong>a todos </strong>y <
   const { ctx, page } = await nuevo({ width: 810, height: 1080 });
   const doc = await crear(page, "docs", { title: "Vertical", html: "<h2>Uno</h2><p>Texto.</p>" });
   await ir(page, `#/leer/docs/${doc.id}`, "reader");
-  ok("iPad en vertical: la barra cabe con los nombres", await page.evaluate(() => { const b = document.querySelector(".reader-bar"); return b.scrollWidth <= b.clientWidth + 1 && [...document.querySelectorAll(".reader-tools .lbl")].every((l) => l.offsetWidth > 0); }));
+  ok("iPad en vertical: la barra cabe, con nombre en Desplazar, Presentar, Editar y Más", await page.evaluate(() => { const b = document.querySelector(".reader-bar"); const vis = (id) => document.querySelector(`#${id} .lbl`).offsetWidth > 0; return b.scrollWidth <= b.clientWidth + 1 && ["reader-desplazar", "reader-presentar", "reader-edit", "reader-more"].every(vis) && [...document.querySelectorAll(".reader-tools .tool")].every((t) => t.getBoundingClientRect().right <= innerWidth + 0.5 && t.getAttribute("aria-label") !== "" ); }));
   await page.screenshot({ path: `${OUTDIR}/122-lector-vertical.png` });
   await ctx.close();
 }
@@ -200,7 +200,7 @@ const HTML = `<h2>Introducción (2 min)</h2><p>Hola <strong>a todos </strong>y <
   await page.goBack();
   await page.waitForTimeout(300);
   ok("Un segundo «atrás» tampoco sale", await page.evaluate(() => window.__atril.presentar.activo));
-  await page.waitForTimeout(5300);
+  await page.waitForTimeout(6300);
   ok("La burbuja se va sola a los pocos segundos", await page.isHidden("#pres-salir"));
   // Toque en el centro
   const pos = async (f) => page.$eval("#reader-scroll", (s, f) => { const b = s.getBoundingClientRect(); return { x: b.left + b.width / 2, y: b.top + b.height * f }; }, f);
@@ -225,7 +225,7 @@ const HTML = `<h2>Introducción (2 min)</h2><p>Hola <strong>a todos </strong>y <
   ok("Con los toques de pasar página quitados, cualquier toque la enseña", await page.isVisible("#pres-salir"));
   await page.evaluate(() => { window.__atril.settings().presToque = true; });
   // Salir de verdad
-  await pulsar(page, "#pres-salir", 1100);
+  await pulsar(page, "#pres-salir-btn", 1100);
   await page.waitForTimeout(400);
   ok("Mantener pulsado «Salir» sale", !(await page.evaluate(() => window.__atril.presentar.activo)) && (await page.isHidden("#pres-bar")));
   ok("Al salir se quita el paso del historial", await page.evaluate(() => !(history.state && history.state.atril === "presentar")));
@@ -244,12 +244,12 @@ for (const [nombre, ua, clave] of [["iPad", UA_IPAD, "Acceso guiado"], ["Android
   await page.click("#reader-presentar");
   await page.waitForSelector("#pc-ya");
   const antes = await page.textContent(".sheet");
-  ok(`${nombre}: la comprobación previa recuerda ${clave} y cómo salir`, antes.includes(clave) && antes.includes("toca el centro"));
+  ok(`${nombre}: la comprobación previa recuerda ${clave} y cómo salir`, antes.includes(clave) && antes.includes("toca «Salir» arriba") && antes.includes("el centro de la pantalla"));
   await page.click(".sheet >> text=¿Cómo se activa?");
   await page.waitForSelector(".sheet >> text=Para no salirte del discurso", { timeout: 3000 }).catch(() => {});
   const txt = await page.textContent(".sheet").catch(() => "");
   ok(`${nombre}: «¿Cómo se activa?» explica ${clave} paso a paso`, txt.includes(clave));
-  ok(`${nombre}: y cómo salir (tocar el centro y mantener pulsado)`, txt.includes("toca el centro de la pantalla"));
+  ok(`${nombre}: y cómo salir («Salir» arriba o el centro, y mantener pulsado)`, txt.includes("toca «Salir» arriba") && txt.includes("el centro de la pantalla") && txt.includes("mantén pulsado"));
   if (nombre === "Android") await page.screenshot({ path: `${OUTDIR}/124-consejo-android.png` });
   await ctx.close();
 }
