@@ -2064,6 +2064,7 @@ function openSettings() {
     el("div", { class: "group" },
       el("span", { class: "label", text: "Versión" }),
       el("p", { class: "small-print", id: "version-txt", text: `Atril ${fechaDeVersion(APP_VERSION)} (${APP_VERSION}).` }),
+      el("p", { class: "autor", id: "autor-txt", text: AUTOR }),
       el("div", { class: "actions" }, el("button", { class: "action", id: "buscar-act", html: icon("download") + "<span>Buscar actualizaciones</span>", onclick: (e) => buscarActualizaciones(e.currentTarget) }))),
     el("div", { class: "actions" }, el("button", { class: "action plain", text: "Cerrar", onclick: () => closeSheet() })),
   ].filter(Boolean));
@@ -4928,6 +4929,7 @@ const disenoPC = {
       el("h2", { text: "Atril" }),
       el("p", { text: "Para leer, ensayar, presentar y editar tus discursos. Todo se queda en este dispositivo." }),
       el("p", { class: "small-print", text: (v ? `Atril para ${escritorio.mac ? "Mac" : "Windows"} ${v} · ` : "") + `contenido ${fechaDeVersion(APP_VERSION)} (${APP_VERSION})` }),
+      el("p", { class: "autor", text: AUTOR }),
       el("div", { class: "actions" }, el("button", { class: "action plain", text: "Cerrar", onclick: () => closeSheet() })),
     ]);
   },
@@ -5353,6 +5355,9 @@ function atajosGenerales() {
 }
 
 /** «20261109-336d0a44» → «del 9 de noviembre de 2026». */
+/** Quién la ha hecho (a petición de Ezequiel), en Ajustes junto a la versión y en «Acerca de Atril». */
+const AUTOR = "Creado por Ezequiel";
+
 function fechaDeVersion(v) {
   const m = /^(\d{4})(\d{2})(\d{2})/.exec(v || "");
   if (!m) return "";

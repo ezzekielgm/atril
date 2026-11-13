@@ -319,6 +319,7 @@ button:focus:not(:focus-visible) { outline: none; }
 /* ---------- Editor: como Word ---------- */
 .title-input { flex: 1; min-width: 0; height: 40px; border: 0; outline: 0; background: transparent; font-size: 17px; font-weight: 600; padding: 0 6px; border-radius: 4px; }
 .title-input:focus { background: var(--bar-soft); }
+.sheet .autor, .autor { margin: 4px 0 0; font-size: 16px; font-weight: 650; color: var(--text); }
 .save-state { font-size: 13px; color: var(--muted); white-space: nowrap; padding: 0 6px; }
 /* Pestañas de la cinta */
 .ribbon-tabs { flex: none; display: flex; gap: 2px; padding: 0 max(8px, env(safe-area-inset-left)); background: var(--desk); overflow-x: auto; scrollbar-width: none; }

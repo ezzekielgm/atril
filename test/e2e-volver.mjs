@@ -90,6 +90,11 @@ await page.click("#editor-back");
 await vista("home");
 ok("Una nota nueva abierta desde otro discurso: «‹» va a la lista", true);
 
+// Ajustes: junto a la versión, quién la ha hecho (a petición de Ezequiel)
+await page.click('button:has-text("Ajustes")');
+await page.waitForSelector("#autor-txt");
+ok("Ajustes dice «Creado por Ezequiel» junto a la versión", (await page.textContent("#autor-txt")) === "Creado por Ezequiel" && await page.evaluate(() => document.querySelector("#version-txt").nextElementSibling.id === "autor-txt"));
+
 await browser.close();
 ok("Sin errores en la consola", errors.length === 0, errors.slice(0, 3).join(" | "));
 const fallos = results.filter((r) => !r.pass);
