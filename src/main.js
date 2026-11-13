@@ -1423,10 +1423,41 @@ function go(hash, { replace = false } = {}) {
   else location.hash = hash;
 }
 
+/*
+ * Recorrido dentro de un documento (a petición de Ezequiel: «al salir del modo lectura me saca del documento»).
+ * Si se pasa del editor al modo lectura, «‹» del lector vuelve al editor, y al revés; «atrás» del sistema también.
+ * Solo cuenta el mismo documento: al abrir otro, o el inicio, empieza de nuevo.
+ */
+const rastro = [];
+let rastroHecho = false;
+const docDeRuta = (h) => h.split("/").slice(2).join("/");
+function apuntarRastro(hash) {
+  if (rastroHecho) { rastroHecho = false; return; }
+  if (!/^#\/(leer|editar)\/(docs|notes)\/./.test(hash)) { rastro.length = 0; return; }
+  const n = rastro.length;
+  if (n && docDeRuta(rastro[n - 1]) !== docDeRuta(hash)) rastro.length = 0;
+  if (rastro.length >= 2 && rastro[rastro.length - 2] === hash) rastro.pop(); // «atrás»
+  else if (rastro[rastro.length - 1] !== hash) rastro.push(hash);
+  if (rastro.length > 12) rastro.shift();
+}
+/** Adónde lleva «‹» desde la pantalla actual: la anterior del mismo documento o, si no hay, `defecto`. */
+function destinoAtras(defecto) {
+  return rastro.length >= 2 ? rastro[rastro.length - 2] : defecto;
+}
+function volverAtras(defecto) {
+  const destino = destinoAtras(defecto);
+  rastro.pop();
+  if (!/^#\/(leer|editar)\//.test(destino)) rastro.length = 0;
+  else if (rastro[rastro.length - 1] !== destino) { rastro.length = 0; rastro.push(destino); }
+  rastroHecho = true;
+  go(destino, { replace: true });
+}
+
 let routeSeq = 0;
 async function route() {
   // Si llega otra navegación mientras esta espera, gana siempre la última
   const seq = ++routeSeq;
+  apuntarRastro(location.hash || "#/");
   const stale = () => seq !== routeSeq;
   if (currentView === "editor") {
     reemplazo.cerrar();
@@ -2551,6 +2582,10 @@ const reader = {
     const title = item.title || htmlToText(item.html).split("\n")[0].slice(0, 60) || "Sin título";
     $("#reader-title").textContent = title;
     document.title = title + " · Atril";
+    const aEditar = destinoAtras("#/").startsWith("#/editar/");
+    $("#reader-back .lbl").textContent = aEditar ? "Editar" : "Discursos";
+    $("#reader-back").classList.toggle("a-editar", aEditar);
+    $("#reader-back").setAttribute("aria-label", aEditar ? "Salir del modo lectura y volver a editar" : "Volver a tus discursos");
     this.pintarContenido(item.html);
     this.cargarAqui();
     this.setMode("texto", { keepScroll: true });
@@ -3193,7 +3228,7 @@ const reader = {
     $("#reader-nuevo").addEventListener("click", nuevoDocumento);
     $("#reader-more").addEventListener("click", () => this.openMenu());
     $("#float-timer").addEventListener("click", () => timer.toggle());
-    $("#reader-back").addEventListener("click", () => go("#/"));
+    $("#reader-back").addEventListener("click", () => volverAtras("#/"));
     $("#reader-edit").addEventListener("click", () => go(`#/editar/${this.kind}/${this.id}`));
     $("#reader-aa").addEventListener("click", openAaSheet);
     $("#timer-toggle").addEventListener("click", () => timer.toggle());
@@ -4568,7 +4603,7 @@ const editor = {
     }
     $("#editor-back").addEventListener("click", async () => {
       await this.flush();
-      go(this.kind === "docs" ? `#/leer/docs/${this.id}` : "#/", { replace: true });
+      volverAtras(this.kind === "docs" ? `#/leer/docs/${this.id}` : "#/");
     });
     $("#editor-read").addEventListener("click", async () => { await this.flush(); go(`#/leer/${this.kind}/${this.id}`); });
     $("#editor-share").addEventListener("click", async () => { await this.flush(); abrirCompartir(this.kind, this.item); });

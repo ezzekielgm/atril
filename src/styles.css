@@ -1162,6 +1162,8 @@ button:focus:not(:focus-visible) { outline: none; }
 html.ancho #reader-nuevo, html.ancho #editor-nuevo { display: none; }
 /* iPad en vertical: Nuevo, Esquema y Letra solo con icono para que quepa todo (y en el mini, también Desplazar) */
 @media (max-width: 1140px) and (min-width: 701px) { #reader-nuevo .lbl, #reader-back .lbl { display: none; } #reader-back { padding-right: 8px; } }
+/* Si «‹» vuelve al editor, se dice siempre (en el iPad, con poco sitio, el título cede) */
+#reader-back.a-editar .lbl { display: inline !important; }
 @media (max-width: 1060px) and (min-width: 701px) { #reader-outline-btn .lbl, #reader-aa .lbl { display: none; } }
 @media (max-width: 760px) and (min-width: 701px) { #reader-desplazar .lbl { display: none; } }
 @media (max-width: 1000px) and (min-width: 701px) {
