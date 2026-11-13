@@ -669,6 +669,8 @@ button:focus:not(:focus-visible) { outline: none; }
   .cards-bar .title { font-size: 14px; }
   .tp-speed { min-width: 88px; font-size: 14px; }
   #view-editor .save-state { display: none; }
+  .word-bar .timer-btn { padding: 0 10px; font-size: 16px; }
+  .word-bar .timer-btn svg { display: none; } /* más sitio para el título */
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1109,6 +1111,16 @@ button:focus:not(:focus-visible) { outline: none; }
 .reader-bar .title { font-size: 17px; font-weight: 700; }
 .timer-btn { height: 42px; padding: 0 15px; border-radius: 21px; background: var(--bg); border: 1px solid var(--border); font-size: 18px; box-shadow: 0 1px 2px rgba(27,32,51,.04); }
 .timer.running .timer-btn { border-color: var(--accent); }
+/* Cronómetro en la barra marina del editor */
+.word-bar .timer { margin-left: 4px; }
+.word-bar .timer-btn { height: 40px; font-size: 17px; background: var(--bar-soft); border-color: rgba(255,255,255,.3); color: var(--bar-text); box-shadow: none; }
+.word-bar .timer-btn svg { color: var(--bar-text); opacity: .85; }
+.word-bar .timer.running .timer-btn { background: var(--accent-vivo); border-color: var(--accent-vivo); color: var(--on-vivo); }
+.word-bar .timer.running .timer-btn svg { color: var(--on-vivo); opacity: 1; }
+.word-bar .timer.warn .timer-btn { background: #f2a51a; border-color: #f2a51a; color: #241600; }
+.word-bar .timer.warn .timer-btn svg { color: #241600; }
+.word-bar .timer.over .timer-btn { background: var(--danger); border-color: var(--danger); color: #fff; }
+.word-bar .timer.over .timer-btn svg { color: #fff; }
 .tool-presentar { background: var(--accent-vivo); color: var(--on-vivo); }
 .tool-presentar svg { color: var(--on-vivo); }
 .tool.active, .tool[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); }
@@ -1359,7 +1371,7 @@ html.ancho #btn-guia, html.ancho #btn-settings, html.ancho #install-hint { displ
 html.ancho .topbar { min-height: 52px; }
 html.ancho .reader-bar .tool { height: 34px; padding: 0 11px; font-size: 14px; }
 html.ancho .reader-bar .tool svg { width: 17px; height: 17px; }
-html.ancho .reader-bar .timer-btn { height: 34px; font-size: 15px; }
+html.ancho .reader-bar .timer-btn, html.ancho .word-bar .timer-btn { height: 34px; font-size: 15px; }
 html.ancho .btn { min-height: 36px; font-size: 14.5px; }
 html.ancho .statusbar { min-height: 30px; font-size: 13px; }
 html.ancho .home-wrap { max-width: 1040px; }

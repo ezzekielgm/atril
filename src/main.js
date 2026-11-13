@@ -2140,6 +2140,7 @@ async function keepAwake(on) {
    ============================================================ */
 const timer = {
   running: false, startedAt: 0, elapsed: 0, int: 0, docKey: "",
+  libre: false, // puesto en marcha en el editor: un cronómetro sin más, no cuenta como ensayo
   ms() { return this.elapsed + (this.running ? Date.now() - this.startedAt : 0); },
   toggle() {
     if (this.running) {
@@ -2152,8 +2153,12 @@ const timer = {
       this.startedAt = Date.now();
       this.running = true;
       this.int = setInterval(() => this.paint(), 500);
-      if (desdeCero) { this.docKey = reader.kind + "/" + reader.id; ensayo.empezar(); }
-      else ensayo.seguir();
+      const enEditor = currentView === "editor";
+      if (desdeCero) {
+        this.docKey = enEditor ? editor.kind + "/" + editor.id : reader.kind + "/" + reader.id;
+        this.libre = enEditor;
+        if (!enEditor) ensayo.empezar();
+      } else if (!this.libre) ensayo.seguir();
     }
     this.paint();
     sesion.guardar();
@@ -2174,6 +2179,7 @@ const timer = {
     const ms = this.ms();
     this.running = false;
     this.elapsed = 0;
+    this.libre = false;
     clearInterval(this.int);
     ensayo.terminar(ms, { otroDoc });
     this.paint();
@@ -2184,12 +2190,12 @@ const timer = {
     const s = Math.floor(this.ms() / 1000);
     const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
     const txt = (h ? h + ":" + String(m).padStart(2, "0") : String(m).padStart(2, "0")) + ":" + String(sec).padStart(2, "0");
-    $("#timer-text").textContent = txt;
-    $("#cards-timer-text").textContent = txt;
+    for (const id of ["#timer-text", "#cards-timer-text", "#editor-timer-text"]) $(id).textContent = txt;
     const rec = ensayo.grabando();
-    for (const n of [$("#timer"), $("#cards-timer")]) { n.classList.toggle("running", this.running); n.classList.toggle("rec", rec); }
-    $("#timer-reset").hidden = this.running || this.elapsed === 0;
+    for (const n of [$("#timer"), $("#cards-timer"), $("#editor-timer")]) { n.classList.toggle("running", this.running); n.classList.toggle("rec", rec); }
+    $("#timer-reset").hidden = $("#editor-timer-reset").hidden = this.running || this.elapsed === 0;
     if (currentView === "reader") reader.paintPace();
+    else if (currentView === "editor") editor.pintarCrono();
     if (this.running && Date.now() - (this.ultimaSesion || 0) > 5000) { this.ultimaSesion = Date.now(); sesion.guardar(); }
   },
 };
@@ -3732,6 +3738,8 @@ const editor = {
     const item = await store.get(kind, id);
     if (stale()) return;
     if (!item) { toast("Ese documento ya no existe."); throw new Error("no existe"); }
+    // Como en el lector: si el cronómetro era de otro documento, se guarda ese ensayo y se empieza de cero
+    if ((timer.running || timer.elapsed) && timer.docKey !== kind + "/" + id) timer.reset({ otroDoc: true });
     this.kind = kind; this.id = id; this.item = item; this.dirty = false;
     this.original = item; this.versionHecha = false; // para «Versiones anteriores»
     this.titleInput.value = item.title || "";
@@ -3746,6 +3754,7 @@ const editor = {
     this.cinta("inicio");
     this.pintarTiempo();
     showView("editor");
+    timer.paint();
     this.scrollEl.scrollTop = 0;
     this.lateral.abrir();
     this.paintToolbar();
@@ -3786,6 +3795,18 @@ const editor = {
       estado = e.seg > e.objetivoSeg + 30 ? "over" : e.partes.some((p) => p.objetivoSeg && p.seg > p.objetivoSeg + 20) ? "warn" : "ok";
     }
     chip.className = "time-chip" + (estado ? " " + estado : "");
+  },
+
+  /** Colores del cronómetro según la duración del discurso: ámbar al acercarse, rojo al pasarse (como en el lector). */
+  pintarCrono() {
+    const n = $("#editor-timer");
+    n.classList.remove("warn", "over");
+    const obj = this.kind === "docs" && this.item && Number(this.item.target) > 0 ? Number(this.item.target) * 60 : 0;
+    $("#editor-timer-toggle").title = obj ? `Objetivo ${mmss(obj)}` : "Cronómetro";
+    if (!obj || !(timer.running || timer.elapsed)) return;
+    const resta = obj - timer.ms() / 1000;
+    if (resta <= 0) n.classList.add("over");
+    else if (resta <= Math.max(60, obj * 0.1)) n.classList.add("warn");
   },
 
   /** Palabras del documento y, si hay texto seleccionado, cuántas y cuánto se tarda en decirlas (como Word). */
@@ -4498,6 +4519,13 @@ const editor = {
       b.addEventListener("mousedown", (e) => e.preventDefault());
       b.addEventListener("click", () => { if (b.dataset.color === "cerrar") this.togglePalette(false); else this.aplicarColor(b.dataset.color); });
     });
+    // Cronómetro: tocarlo no quita el teclado ni el cursor del texto
+    for (const [id, fn] of [["#editor-timer-toggle", () => timer.toggle()], ["#editor-timer-reset", () => timer.reset()]]) {
+      const b = $(id);
+      b.addEventListener("pointerdown", (e) => e.preventDefault());
+      b.addEventListener("mousedown", (e) => e.preventDefault());
+      b.addEventListener("click", fn);
+    }
     $("#editor-back").addEventListener("click", async () => {
       await this.flush();
       go(this.kind === "docs" ? `#/leer/docs/${this.id}` : "#/", { replace: true });
@@ -4790,6 +4818,9 @@ const disenoPC = {
         { label: "Letra, tema y duración…", run: openAaSheet },
       ]],
       ["Discurso", [
+        { label: timer.running ? "Parar el cronómetro" : "Poner en marcha el cronómetro", si: hay && !presentar.activo, run: () => timer.toggle() },
+        { label: "Cronómetro a cero", si: hay && (timer.running || timer.elapsed > 0), run: () => timer.reset() },
+        "-",
         { label: "Ensayos", si: esDiscurso, run: () => this.enLector(() => reader.openEnsayos()) },
         { label: "Tarjetas: una parte por pantalla", si: hay, run: () => this.enLector(() => tarjetas.abrir()) },
         { label: "Desplazamiento automático", si: hay, run: () => this.enLector(() => prompter.abrir()) },

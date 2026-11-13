@@ -27,7 +27,7 @@ const SECCIONES = (p) => [
       ["aa", "Letra, tema y duración", "Cambia el tamaño, el tema (claro, sepia u oscuro), el tipo de letra y el interlineado. Ahí también pones cuántos minutos tienes para el discurso.", "Lector → Letra"],
       ["outline", "Esquema", "Los títulos y lo que has resaltado; toca uno para ir allí. Con el iPad en horizontal se queda al lado del texto y marca por dónde vas.", "Lector → Esquema"],
       ["bookmark", "Voy por aquí", "Dos toques en un párrafo lo marcan con una raya azul y se recuerda al volver. Un toque en el texto oculta las barras para tener toda la pantalla."],
-      ["timer", "Cronómetro y ritmo", "Tócalo para empezar o pararlo. Con una duración puesta verás si vas adelantado o retrasado. Si un título termina en «(5 min)», el ritmo se calcula por partes. Abajo ves en qué parte vas y cuánto queda.", "Lector → arriba"],
+      ["timer", "Cronómetro y ritmo", "Tócalo para empezar o pararlo. Con una duración puesta verás si vas adelantado o retrasado. Si un título termina en «(5 min)», el ritmo se calcula por partes. Abajo ves en qué parte vas y cuánto queda.", "Lector o editor → arriba"],
       ["search", "Buscar, tarjetas y desplazamiento automático", "Busca una palabra (da igual tildes y mayúsculas), ve una parte por pantalla en tarjetas o deja que el texto suba solo a tu ritmo. «Más» está ordenado en Practicar, Documento, Compartir y guardar, y Ayuda.", "Lector → Más"],
       ["book", "Citas bíblicas", "Las citas como «Sal 37:4» salen subrayadas: tócalas para abrir el versículo en JW Library o en jw.org.", "Toca la cita · Ajustes → Citas bíblicas"],
       ["paste", "El versículo debajo de la cita", "Abre la cita, copia el versículo y vuelve a Atril: te ofrece pegarlo debajo (o toca la cita → «Pegar el versículo copiado»). Queda en el discurso, en otro color, y sale en el Word. Atril no lo descarga solo: lo copias tú.", "Toca la cita"],
@@ -62,6 +62,7 @@ const SECCIONES = (p) => [
     intro: "Como en Word: arriba, pestañas con los botones. Se guarda solo mientras escribes.",
     items: [
       ["edit", "Abrir el editor", "Desde el lector, o desde ⋯ en la lista.", "Lector → Editar"],
+      ["timer", "Cronómetro mientras escribes", "También en el editor, aunque el discurso sea nuevo: tócalo para empezar o pararlo sin que se cierre el teclado. Ámbar en el último minuto de la duración y rojo si te pasas. Lo que cronometras escribiendo no cuenta como ensayo; si vienes del lector con un ensayo en marcha, sigue contando.", "Editor → arriba"],
       ["marker", "Dar formato", "Estilos (Normal, Título 1, 2 y 3), negrita, cursiva, subrayado, tachado, resaltador de 4 colores, color de letra y listas. Selecciona el texto y toca el botón.", "Editor → Inicio"],
       ["plus", "Insertar", "Una parte nueva con sus minutos, los minutos de una parte, una pausa «‖» (al leer sale destacada), el texto bíblico de la cita donde está el cursor, un dibujo o escritura a mano, y dictar.", "Editor → Insertar"],
       ["search", "Revisar", "Buscar y reemplazar, y cuánto dura. Si seleccionas texto, abajo dice cuántas palabras son y cuánto tardas en decirlas.", "Editor → Revisar"],
