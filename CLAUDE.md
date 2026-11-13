@@ -59,6 +59,7 @@ test/word-datos.test.mjs  Word con los datos de Atril y el estilo «Texto bíbli
 test/e2e-escritorio.mjs  diseño de escritorio: menús, biblioteca, panel del discurso, Ctrl+K, F5 y que el iPad no cambia
 test/e2e-crono-editor.mjs cronómetro en el editor (discurso nuevo, notas, móvil y ordenador): no quita el teclado, no cuenta como ensayo, sigue al pasar a leer
 test/e2e-volver.mjs   «‹» dentro de un documento: del modo lectura vuelve al editor si se venía de editar; si se empezó leyendo, a la lista
+test/canales.mjs      los dos canales juntos (/ y /pruebas/): cada uno con su service worker y su caché, mismos datos, sin conexión (construye los dos en una carpeta temporal)
 test/escritorio-smoke.mjs Atril para el ordenador de verdad (Linux + Xvfb + tauri-driver); no está en `npm test`
 src-tauri/            Atril para el ordenador (Tauri 2): main.rs (órdenes nativas), tauri.conf.json, tauri.macos.conf.json (asociación .docx en el Mac), windows/abrir-con.wxs y .nsh («Abrir con» en Windows), icons/
 .github/workflows/escritorio.yml  compila Windows (.msi y -setup.exe) y Mac (.dmg universal, en macos-15-intel: las máquinas Apple Silicon de GitHub a veces no tienen hueco) y los publica en Releases (escritorio-v1.0.<n>)
@@ -161,7 +162,8 @@ dist/                 lo que se sube a internet (se genera; no editar a mano)
 - Botones táctiles de al menos 44 px, textos grandes y sin depender de pasar el ratón por encima.
 - No usar `alert/confirm/prompt`: hay diálogos propios (`confirmDialog`, `promptDialog`, `actionSheet`).
 - Nada de servidores ni de enviar datos fuera: los discursos y las notas no salen del dispositivo salvo que el usuario los comparta.
-- Después de cambiar algo: `npm run build` y pasa las pruebas. Para publicar, haz push a `main`: `.github/workflows/publicar.yml` construye la app y la publica en GitHub Pages (`https://<usuario>.github.io/<repo>/`). Todas las rutas son relativas, así que funciona en una subcarpeta. Alternativa sin GitHub: subir `dist/` a Netlify (ver INSTRUCCIONES.md).
+- Después de cambiar algo: `npm run build` y pasa las pruebas. Todas las rutas son relativas, así que funciona en una subcarpeta. Alternativa sin GitHub: subir `dist/` a Netlify (ver INSTRUCCIONES.md).
+- **Dos canales** (desde que Atril lo usan más personas): `.github/workflows/publicar.yml` publica en GitHub Pages la rama **`estable`** en `https://ezzekielgm.github.io/atril/` (la que usa todo el mundo) y la rama **`main`** en `…/atril/pruebas/` (`CANAL=pruebas npm run build`: se llama «Atril pruebas» en la pantalla de inicio y lleva la etiqueta «pruebas» junto al nombre). **Lo nuevo va siempre a `main`** (push a `main` = solo Ezequiel lo ve). **Pasarlo a todos** solo cuando Ezequiel diga que lo ha probado: `git push origin main:estable` (o, si algo urge solo en la estable, una rama desde `estable`). Antes de pasarlo, añade sus líneas en «Novedades» (`src/novedades.js`). Comparten origen, así que **comparten datos** (IndexedDB y localStorage): no subas la versión de la base de datos en pruebas sin pasarla enseguida a la estable (la estable no podría abrir una base más nueva). Cada canal tiene su service worker y sus cachés (`atril-<canal>-<versión>`); el estable no atiende `pruebas/`. Si index.html y el código no son de la misma versión (`data-version` que mete el build), `comprobarMezcla()` registra el service worker de la carpeta y recarga una vez. Atril para el ordenador se compila desde `main`.
 
 ## Ideas pendientes (solo si las pide)
 

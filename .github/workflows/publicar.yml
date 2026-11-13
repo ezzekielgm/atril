@@ -1,9 +1,17 @@
-# Publica Atril en GitHub Pages cada vez que hay cambios en la rama main.
+# Publica Atril en GitHub Pages con dos canales:
+#   https://<usuario>.github.io/<repo>/          <- rama «estable» (lo que usa todo el mundo)
+#   https://<usuario>.github.io/<repo>/pruebas/  <- rama «main» (lo nuevo, primero para Ezequiel)
+# Pasar lo probado a todos: git push origin main:estable
+# (El entorno github-pages solo deja publicar desde main: un push a estable lanza «Estable actualizada»,
+#  y al terminar esta se vuelve a publicar desde main con las dos ramas.)
 name: Publicar Atril
 
 on:
   push:
     branches: [main]
+  workflow_run:
+    workflows: ["Estable actualizada"]
+    types: [completed]
   workflow_dispatch:
 
 permissions:
@@ -20,16 +28,32 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: estable
+          path: estable
+      - uses: actions/checkout@v6
+        with:
+          ref: main
+          path: pruebas
       - uses: actions/setup-node@v6
         with:
           node-version: 22
-          cache: npm
-      - run: npm ci
-      - run: npm run build
+      - name: Versión de siempre (rama estable)
+        working-directory: estable
+        run: npm ci && npm run build
+      - name: Versión de pruebas (rama main)
+        working-directory: pruebas
+        run: npm ci && CANAL=pruebas npm run build
+      - name: Juntar las dos
+        run: |
+          mkdir site
+          cp -r estable/dist/. site/
+          mkdir site/pruebas
+          cp -r pruebas/dist/. site/pruebas/
       - uses: actions/configure-pages@v6
       - uses: actions/upload-pages-artifact@v5
         with:
-          path: dist
+          path: site
 
   deploy:
     needs: build

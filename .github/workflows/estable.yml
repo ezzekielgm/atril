@@ -1,0 +1,13 @@
+# Cuando cambia la rama «estable» (la versión que usa todo el mundo), avisa a «Publicar Atril»,
+# que se ejecuta desde main (el único sitio desde el que se puede publicar en GitHub Pages).
+name: Estable actualizada
+
+on:
+  push:
+    branches: [estable]
+
+jobs:
+  avisar:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "La rama estable ha cambiado; «Publicar Atril» la vuelve a publicar."

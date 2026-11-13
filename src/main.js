@@ -2063,7 +2063,7 @@ function openSettings() {
     ),
     el("div", { class: "group" },
       el("span", { class: "label", text: "Versión" }),
-      el("p", { class: "small-print", id: "version-txt", text: `Atril ${fechaDeVersion(APP_VERSION)} (${APP_VERSION}).` }),
+      el("p", { class: "small-print", id: "version-txt", text: `Atril ${fechaDeVersion(APP_VERSION)} (${APP_VERSION})${enPruebas() ? " · versión de pruebas" : ""}.` }),
       el("p", { class: "autor", id: "autor-txt", text: AUTOR }),
       el("div", { class: "actions" }, el("button", { class: "action", id: "buscar-act", html: icon("download") + "<span>Buscar actualizaciones</span>", onclick: (e) => buscarActualizaciones(e.currentTarget) }))),
     el("div", { class: "actions" }, el("button", { class: "action plain", text: "Cerrar", onclick: () => closeSheet() })),
@@ -4740,6 +4740,26 @@ const reemplazo = {
    Arranque
    ============================================================ */
 const APP_VERSION = "__APP_VERSION__";
+/** «estable» (la dirección de siempre) o «pruebas» (subcarpeta pruebas/: lo nuevo llega antes a Ezequiel). */
+const APP_CANAL = "__APP_CANAL__";
+const enPruebas = () => APP_CANAL === "pruebas";
+
+/**
+ * Si index.html y el código son de versiones distintas (p. ej. la primera vez que se abre pruebas/ con el
+ * service worker de la versión de siempre mandando), se registra el service worker de esta carpeta y se recarga.
+ */
+function comprobarMezcla() {
+  const v = document.documentElement.dataset.version;
+  // Sin data-version: index.html de antes de los canales, servido por el service worker viejo
+  if (v === APP_VERSION || escritorio.activo || !("serviceWorker" in navigator) || location.protocol === "file:") return false;
+  try { if (sessionStorage.getItem("atril.mezcla") === APP_VERSION) return false; sessionStorage.setItem("atril.mezcla", APP_VERSION); } catch { return false; }
+  document.body.innerHTML = '<p style="font: 18px system-ui; padding: 40px; text-align: center">Preparando Atril…</p>';
+  navigator.serviceWorker.register("sw.js")
+    .then(() => navigator.serviceWorker.ready)
+    .catch(() => {})
+    .finally(() => setTimeout(() => location.reload(), 300));
+  return true;
+}
 
 /* ============================================================
    Diseño de escritorio (a petición de Ezequiel: «en Windows se ve una aplicación muy simple»).
@@ -5260,6 +5280,8 @@ const disenoPC = {
 };
 
 function init() {
+  if (comprobarMezcla()) return;
+  if (enPruebas()) document.documentElement.classList.add("canal-pruebas");
   applySettings();
   paintIcons();
   // Evita el zoom de página de Safari en toda la app (el zoom de letra lo gestionamos nosotros)
