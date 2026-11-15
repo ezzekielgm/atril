@@ -162,7 +162,7 @@ const toastTxt = (page) => page.locator("#toast").textContent();
   const { ctx, page } = await nuevo();
   const doc = await crear(page, "docs", { title: "Ed", html: "<p>Primero.</p><p>Como dice Hebreos 11:1, la fe es real.</p><p>Último.</p>" });
   await ir(page, `#/editar/docs/${doc.id}`, "editor");
-  await page.click('[data-rtab="insertar"]').catch(() => {});
+  await page.click('[data-rtab="referencias"]').catch(() => {});
   await page.evaluate(() => {
     const p = [...document.querySelectorAll("#editor p")][0];
     const r = document.createRange(); r.setStart(p.firstChild, 2); r.collapse(true);

@@ -54,7 +54,7 @@ const SECCIONES = (p) => [
   {
     id: "ensayar", icon: "history", titulo: "Ensayar",
     items: [
-      ["clock", "Minutos de cada parte", "Pon la duración del discurso en «Letra». En el editor, «Minutos de la parte» añade «(5 min)» al título de cada parte para llevar el ritmo por partes.", "Editor → Insertar"],
+      ["clock", "Minutos de cada parte", "Pon la duración del discurso en «Letra». En el editor, «Minutos de la parte» añade «(5 min)» al título de cada parte para llevar el ritmo por partes.", "Editor → Discurso"],
       ["history", "Ensayos", "Cada vez que pones el cronómetro a cero tras 30 segundos o más se guarda el ensayo, con el tiempo de cada parte comparado con tu objetivo.", "Lector → Practicar → Ensayos"],
       ["bookmark", "Cómo vas", "Con tus últimos ensayos, Atril te dice tu tiempo habitual, qué parte se pasa más y qué practicar. Toca una parte para practicarla sola: el cronómetro se para al llegar a la siguiente y no cuenta como ensayo.", "Lector → Practicar → Ensayos"],
       ["mic", "Grabar tu voz", "Se graba mientras corre el cronómetro; luego te escuchas y saltas a cada parte. Las grabaciones se quedan en el dispositivo.", "Ajustes → Grabar audio al ensayar"],
@@ -69,11 +69,14 @@ const SECCIONES = (p) => [
       ["timer", "Cronómetro mientras escribes", "También en el editor, aunque el discurso sea nuevo: tócalo para empezar o pararlo sin que se cierre el teclado. Ámbar en el último minuto de la duración y rojo si te pasas. Lo que cronometras escribiendo no cuenta como ensayo; si vienes del lector con un ensayo en marcha, sigue contando.", "Editor → arriba"],
       ["paste", "Portapapeles", "Pegar (con su formato, como Word), «Solo texto», Cortar, Copiar y «Formato»: copia el formato de donde está el cursor y se lo da a lo siguiente que selecciones.", "Editor → Inicio → Portapapeles"],
       ["marker", "Fuente", "Tipo y tamaño de letra (8 a 36, como en Word), agrandar y encoger (A▴ A▾), negrita, cursiva, subrayado, tachado, subíndice y superíndice, resaltador de 4 colores, color de letra, mayúsculas y minúsculas («Aa») y borrar formato. Selecciona el texto y toca el botón. La cinta va en dos filas y se desliza de lado: arrastra con el dedo para ver más botones.", "Editor → Inicio → Fuente"],
-      ["justif", "Párrafo, estilos y edición", "Viñetas y numeración, sangría, alinear (izquierda, centro, derecha, justificar), interlineado (1,0 a 3,0) y ordenar de la A a la Z; estilos Normal, Título 1 a 4 y Cita; buscar, reemplazar y seleccionar todo. Todo sale igual en el Word, y al abrir un Word se conservan la alineación y la sangría.", "Editor → Inicio"],
-      ["plus", "Insertar", "Una parte nueva con sus minutos, los minutos de una parte, una pausa «‖», el texto bíblico de la cita donde está el cursor, una tabla (dentro de ella, filas y columnas), una imagen de Fotos o una foto con la cámara, un dibujo o escritura a mano, una línea, un salto de página, la fecha o la hora, un símbolo, un vínculo (y quitarlo), un índice con los títulos, o dictar.", "Editor → Insertar"],
+      ["justif", "Párrafo, estilos y edición", "Viñetas y numeración, sangría, ordenar de la A a la Z, marcas de párrafo (¶), alinear (izquierda, centro, derecha, justificar) e interlineado (1,0 a 3,0); estilos Normal, Título 1 a 4 y Cita; buscar, reemplazar y seleccionar todo; y Dictar. Todo sale igual en el Word, y al abrir un Word se conservan la alineación y la sangría.", "Editor → Inicio"],
+      ["word", "La cinta, como en Word", "Las mismas pestañas que Word y en el mismo orden: Archivo (nuevo, guardar como Word o PDF, compartir y versiones), Inicio, Insertar, Disposición (saltos, sangría, interlineado y alinear), Referencias (índice y texto bíblico), Revisar y Vista. Al final, «Discurso», la de Atril: partes con sus minutos, pausas y duración. Las pestañas y la cinta se deslizan de lado con el dedo.", "Editor → pestañas de arriba"],
+      ["plus", "Insertar", "Un salto de página, una tabla (dentro de ella, filas y columnas), una imagen de Fotos o una foto con la cámara, un dibujo o escritura a mano, un vínculo (y quitarlo), la fecha o la hora, una línea o un símbolo.", "Editor → Insertar"],
+      ["book", "Referencias", "Tabla de contenido (un índice con los títulos) y el texto bíblico de la cita donde está el cursor.", "Editor → Referencias"],
+      ["clock", "Discurso", "Una parte nueva con sus minutos, los minutos de la parte donde estás, una pausa «‖» y cuánto dura cada parte.", "Editor → Discurso"],
       ["search", "Revisar", "Ortografía (las palabras mal escritas, subrayadas; se puede apagar), leer en voz alta (lo seleccionado o desde el cursor), buscar y reemplazar, y cuánto dura. Si seleccionas texto, abajo dice cuántas palabras son y cuánto tardas en decirlas.", "Editor → Revisar"],
-      ["panel", "Vista", "Panel de navegación (con el iPad en horizontal, a la izquierda: cada parte con lo que dura y flechas para subirla o bajarla), modo concentración (esconde la cinta), marcas de párrafo (¶), letra más grande o más pequeña y volver al 100 %.", "Editor → Vista"],
-      ["history", "Versiones anteriores", "Atril guarda una copia cada vez que empiezas a editar. Si te equivocas, recupera la que quieras (se guardan las 10 últimas).", "Editor → Revisar → Versiones"],
+      ["panel", "Vista", "Modo de lectura, enfoque (esconde la cinta), panel de navegación (con el iPad en horizontal, a la izquierda: cada parte con lo que dura y flechas para subirla o bajarla), letra más grande o más pequeña, volver al 100 % y letra y tema.", "Editor → Vista"],
+      ["history", "Versiones anteriores", "Atril guarda una copia cada vez que empiezas a editar. Si te equivocas, recupera la que quieras (se guardan las 10 últimas).", "Editor → Archivo → Historial de versiones"],
       ["marker", "Qué significa cada color", "Ponle nombre a cada color (por ejemplo, amarillo = ideas clave). Sale en los botones del editor y en el filtro del esquema.", "Ajustes, o ⋯ del editor"],
       ["template", "Con teclado", "⌘B negrita, ⌘I cursiva, ⌘F buscar, ⌘⌥1, 2 y 3 títulos…", "Editor → ⋯ → Atajos de teclado"],
     ],
@@ -83,7 +86,7 @@ const SECCIONES = (p) => [
     items: [
       ["pluma", "Escribir con el lápiz y que pase a letra", "En «Nota a mano», con «A texto» (de serie), escribe con el Apple Pencil y el iPad lo convierte en letra; cada línea queda como un párrafo de la nota. Para borrar, un garabato encima. También funciona en el editor. Tiene que estar activado en Ajustes del iPad → Apple Pencil → Escribir a mano.", "Notas → Nota a mano → A texto"],
       ["rotulador", "Nota a mano, tal como la escribes", "En «Nota a mano», toca «A mano»: se guarda tu letra, como un dibujo (el bolígrafo es fino de serie; hay tres grosores). Si luego quieres el texto, Compartir → Para Claude → «Con lo escrito a mano (PDF)».", "Notas → Nota a mano → A mano"],
-      ["mic", "Dictar", "Se abre el teclado: toca su micrófono y habla. Di «coma», «punto» o «nuevo párrafo».", "Notas → Dictar, o Editor → Insertar → Dictar"],
+      ["mic", "Dictar", "Se abre el teclado: toca su micrófono y habla. Di «coma», «punto» o «nuevo párrafo».", "Notas → Dictar, o Editor → Inicio → Dictar"],
     ],
   },
   {

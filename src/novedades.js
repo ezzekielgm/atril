@@ -16,6 +16,7 @@ export const NOVEDADES = [
       ["up", "La barra de herramientas del lector y la cinta del editor se pueden minimizar con la flecha de arriba a la derecha."],
       ["chispa", "Diseño nuevo: icono y cabecera nuevos, colores más claros, barras claras en el editor y el lector, y en el inicio la pestaña «Recientes» (discursos y notas juntos) con «+ Nuevo» al lado."],
       ["edit", "Editor como Word: Pegar, Cortar, Copiar y Copiar formato; tipo y tamaño de letra, subíndice, superíndice y mayúsculas; sangría y alinear (izquierda, centro, derecha, justificar); estilo Cita."],
+      ["word", "La cinta del editor tiene las mismas pestañas que Word y en su orden: Archivo, Inicio, Insertar, Disposición, Referencias, Revisar y Vista, con los grupos de Word (Portapapeles, Fuente, Párrafo, Estilos, Edición…). Lo propio de Atril (partes, minutos y pausas) está en la pestaña «Discurso», al final."],
       ["next", "Las barras de herramientas del lector y del editor van en dos filas y se deslizan de lado con el dedo para que quepa todo. En el lector, además: Voy por aquí, Pantalla completa, Dónde lo he dado, Word, PDF y Guía. En el editor, más herramientas: agrandar y encoger la letra, interlineado, ordenar, Título 4, reemplazar, seleccionar todo, foto con la cámara, vínculos, hora, índice, marcas de párrafo, modo concentración y zoom al 100 %."],
       ["template", "Insertar: tabla, imagen, línea, salto de página, fecha y símbolos. Revisar: ortografía y leer en voz alta. Todo sale en el Word, y al abrir un Word se conservan la alineación y la sangría."],
     ],

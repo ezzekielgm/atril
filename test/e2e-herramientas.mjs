@@ -64,7 +64,7 @@ const elegir = (n, palabra, { cursor = false } = {}) => page.evaluate(([n, palab
   return false;
 }, [n, palabra, cursor]);
 const guardado = () => page.evaluate(async () => { await window.__atril.editor.flush(); return (await window.__atril.store.get("docs", "w")).html; });
-const boton = (cmd) => page.click(`#view-editor [data-cmd="${cmd}"]`);
+const boton = (cmd) => page.click(`#view-editor [data-cmd="${cmd}"]:visible`);
 const opcion = (aria) => page.click(`#palette-opciones .opc[aria-label="${aria}"]`);
 
 // Alineación
@@ -279,7 +279,7 @@ ok("…sin marcas raras en el texto", abierto && !/[-]/.test(abierto.html)
   const cinta = await page.evaluate(() => { const t = document.querySelector("#toolbar"); return { desliza: t.scrollWidth > t.clientWidth, una: Math.max(...[...t.querySelectorAll(".rgr")].map((g) => g.getBoundingClientRect().top)) - Math.min(...[...t.querySelectorAll(".rgr")].map((g) => g.getBoundingClientRect().top)) < 2, sombra: t.classList.contains("mas-derecha") }; });
   ok("La cinta va en una fila y se desliza de lado, con una sombra que avisa de que hay más", cinta.desliza && cinta.una && cinta.sombra, JSON.stringify(cinta));
   await page.evaluate(() => { const t = document.querySelector("#toolbar"); t.style.scrollBehavior = "auto"; t.scrollLeft = t.scrollWidth; t.dispatchEvent(new Event("scroll")); });
-  ok("…al deslizarla se ven los últimos botones", await page.evaluate(() => { const b = document.querySelector('#toolbar [data-cmd="todo"]').getBoundingClientRect(); return b.right <= innerWidth && b.left >= 0; }));
+  ok("…al deslizarla se ven los últimos botones", await page.evaluate(() => { const b = document.querySelector('#toolbar [data-cmd="dictar"]').getBoundingClientRect(); return b.right <= innerWidth && b.left >= 0; }));
   const g2 = (n) => page.evaluate((n) => (window.__atril.editor.flush(), new Promise((r) => setTimeout(async () => r((await window.__atril.store.get("docs", "w3")).html), 50))), n);
   const sel = (n, palabra) => elegir(n, palabra);
   // Agrandar y encoger
@@ -327,15 +327,18 @@ ok("…sin marcas raras en el texto", abierto && !/[-]/.test(abierto.html)
   ok("Quitar vínculo", !h3.includes("<a "), h3.slice(0, 80));
   await page.evaluate(() => { const p = document.querySelector("#editor p"); const r = document.createRange(); r.setStart(p, 0); r.collapse(true); const s = getSelection(); s.removeAllRanges(); s.addRange(r); document.querySelector("#editor").focus(); });
   await boton("hora");
+  await page.click('[data-rtab="referencias"]');
   await boton("indice");
   h3 = await g2();
   ok("Hora e índice (las partes y, dentro, sus apartados)", /\d{2}:\d{2}/.test(h3) && /\d{2}:\d{2}[^<]*<\/p><p><strong>Índice<\/strong><\/p><ul><li>Parte uno<\/li><ul><li>Apartado<\/li><\/ul><\/ul>/.test(h3), h3.slice(0, 300));
+  await page.click('[data-rtab="insertar"]');
   ok("Insertar tiene Foto (con la cámara)", (await page.getAttribute("#editor-foto", "capture")) === "environment" && (await page.isVisible('[data-cmd="foto"]')));
-  // Vista: marcas de párrafo, concentración y 100 %
-  await page.click('[data-rtab="vista"]');
+  // Inicio → Párrafo: marcas de párrafo (¶, «Mostrar todo» de Word); Vista: concentración y 100 %
+  await page.click('[data-rtab="inicio"]');
   await boton("marcas");
   ok("Marcas de párrafo (¶)", await page.evaluate(() => getComputedStyle(document.querySelector("#editor p"), "::after").content.includes("¶")));
   await boton("marcas");
+  await page.click('[data-rtab="vista"]');
   await boton("mas");
   await boton("zoom100");
   ok("Zoom al 100 %", (await page.textContent("#ed-zoom")) === "100 %");

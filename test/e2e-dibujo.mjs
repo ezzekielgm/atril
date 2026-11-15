@@ -51,8 +51,9 @@ await page.evaluate(() => {
   const r = document.createRange(); r.selectNodeContents(p); r.collapse(false);
   const s = getSelection(); s.removeAllRanges(); s.addRange(r); document.querySelector("#editor").focus();
 });
+ok("Inicio tiene «Dictar» (grupo Voz, como en Word)", await page.isVisible('[data-cmd="dictar"]'));
 await page.click(".ribbon-tabs [data-rtab=insertar]");
-ok("Insertar tiene «Dibujo o a mano» y «Dictar»", (await page.isVisible('[data-cmd="dibujo"]')) && (await page.isVisible('[data-cmd="dictar"]')));
+ok("Insertar tiene «Dibujo o a mano»", await page.isVisible('[data-cmd="dibujo"]'));
 await page.click('[data-cmd="dibujo"]');
 await page.waitForSelector(".lienzo .lz-svg");
 ok("Se abre el lienzo a pantalla completa con sus herramientas", (await page.$$(".lienzo [data-h]")).length === 3 && (await page.$$(".lienzo .lz-color")).length === 4);

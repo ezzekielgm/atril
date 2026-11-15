@@ -99,8 +99,8 @@ const sel = await page.textContent("#ed-palabras");
 ok("Con texto seleccionado dice cuántas palabras y cuánto se tarda", /^6 de \d+ palabras · ≈ 3 s$/.test(sel), sel);
 
 // ============ Insertar: pausa, parte nueva y minutos ============
-await page.click(".ribbon-tabs [data-rtab=insertar]");
-ok("Hay pestaña «Insertar» con parte nueva, minutos y pausa", (await page.isVisible('[data-rpanel=insertar] [data-cmd="parte"]')) && (await page.isVisible('[data-cmd="minutos"]')) && (await page.isVisible('[data-cmd="pausa"]')));
+await page.click(".ribbon-tabs [data-rtab=discurso]");
+ok("Hay pestaña «Discurso» con parte nueva, minutos y pausa", (await page.isVisible('[data-rpanel=discurso] [data-cmd="parte"]')) && (await page.isVisible('[data-cmd="minutos"]')) && (await page.isVisible('[data-cmd="pausa"]')));
 await page.evaluate(() => {
   const p = [...document.querySelectorAll("#editor p")][0];
   const t = p.lastChild.nodeType === 3 ? p.lastChild : p.firstChild;
@@ -147,7 +147,7 @@ ok("Bajar una parte también funciona", orden[0] === "Un ejemplo" && orden[1] ==
 html = await guardado();
 
 // ============ Versiones anteriores ============
-await page.click(".ribbon-tabs [data-rtab=revisar]");
+await page.click(".ribbon-tabs [data-rtab=archivo]");
 await page.click('[data-cmd="versiones"]');
 await page.waitForSelector(".sheet .version");
 ok("Se guardó la versión de antes de editar", (await page.textContent(".sheet .versiones")).includes("Antes de editar"));
@@ -199,7 +199,7 @@ ok("Y el texto normal sigue normal", /<p>Normal <span/.test(imp) && !/[-]/
 await page.setViewportSize({ width: 384, height: 832 });
 await page.goto(URL + "#/editar/docs/e1");
 await page.waitForSelector("#view-editor:not([hidden])");
-ok("Móvil: la pestaña Insertar cabe", await page.evaluate(() => { const t = document.querySelector(".ribbon-tabs"); return t.scrollWidth <= t.clientWidth + 1; }));
+ok("Móvil: las pestañas se deslizan y deshacer, rehacer y minimizar siguen a la vista", await page.evaluate(() => { const t = document.querySelector(".ribbon-tabs"); t.scrollLeft = t.scrollWidth; const r = document.querySelector("#cinta-plegar").getBoundingClientRect(); const ins = document.querySelector('[data-rtab="insertar"]').getBoundingClientRect(); return r.right <= innerWidth + 1 && r.left >= 0 && ins.width > 0; }));
 await page.click('[data-cmd="navegacion"]').catch(() => {});
 await page.click(".ribbon-tabs [data-rtab=vista]");
 await page.click('[data-cmd="navegacion"]');

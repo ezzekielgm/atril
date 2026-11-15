@@ -1935,3 +1935,24 @@ html:not(.ancho) #reader-plegar { display: inline-flex; order: 4; width: 44px; h
 /* Lector: con la cinta que se desliza caben más cosas (Voy por aquí, Pantalla completa, Dónde lo he dado,
    Word, PDF y Guía). En la cinta plegada y en el móvil no salen (.solo-cinta). */
 html:not(.ancho) .reader-tools .rg-ayuda .tool-mas { grid-row: 1 / -1; }
+
+/* =====================================================================
+   CINTA CON LA DISTRIBUCIÓN DE WORD (a petición de Ezequiel: «copia la distribución de Word»): pestañas
+   Archivo, Inicio, Insertar, Disposición, Referencias, Revisar, Vista y Discurso (la de Atril, al final, como
+   las de los complementos). La fila de pestañas se desliza y deshacer/rehacer/minimizar se quedan a la derecha.
+   Los botones grandes llevan el nombre en dos líneas, como en Word; los estilos, en una fila de muestras.
+   ===================================================================== */
+.ribbon-tabs .rt-acciones { position: sticky; right: 0; background: var(--bar); padding-left: 4px; }
+.ribbon-tabs button.rt-archivo:not([aria-selected="true"]) { color: var(--accent); font-weight: 650; }
+@media (min-width: 701px) {
+  .ribbon-tabs button[role="tab"] { padding: 0 13px; font-size: 16px; }
+  #view-editor .toolbar button.grande { min-width: 64px; max-width: 104px; white-space: normal; text-align: center; line-height: 1.15; }
+  #view-editor .toolbar .estilos { grid-template-rows: 86px; }
+  #view-editor .toolbar .estilo { width: 78px; height: 86px; gap: 6px; }
+  #view-editor .estilo .muestra { font-size: 14px; }
+  #view-editor .estilo.e-h1 .muestra { font-size: 17px; }
+  #view-editor .estilo .nom { font-size: 11.5px; }
+}
+@media (min-width: 701px) and (max-width: 1000px) {
+  .ribbon-tabs button[role="tab"] { padding: 0 10px; font-size: 15px; }
+}

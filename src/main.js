@@ -4403,6 +4403,11 @@ const editor = {
       pausa: () => this.insertarPausa(),
       versiculo: () => this.textoBiblico(),
       versiones: () => this.abrirVersiones(),
+      // Archivo (como la pestaña Archivo de Word)
+      nuevo: async () => { await this.flush(); nuevoDocumento(); },
+      guardarWord: async () => { await this.flush(); exportWord(this.kind, this.item); },
+      guardarPdf: async () => { await this.flush(); exportPdf(this.kind, this.item); },
+      compartir: async () => { await this.flush(); abrirCompartir(this.kind, this.item); },
       // Herramientas de Word (formato.js)
       pegar: () => this.pegar(),
       pegarTexto: () => this.pegar({ soloTexto: true }),
