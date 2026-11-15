@@ -38,10 +38,7 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: 22
-      - name: Versión de siempre (rama estable)
-        working-directory: estable
-        run: npm ci && npm run build
-      # «Seguir mi voz» (prototipo, solo en pruebas): el modelo en español no está en git
+      # «Seguir mi voz» (experimental, en las dos versiones): el modelo en español no está en git
       - name: Modelo de voz (caché)
         uses: actions/cache@v4
         with:
@@ -56,6 +53,11 @@ jobs:
               || { rm -f "$f"; echo "::warning::No se pudo bajar el modelo de voz: «Seguir mi voz» no estará disponible"; }
           fi
           ls -la pruebas/voz
+          mkdir -p estable/voz
+          if [ -s pruebas/voz/vosk-model-small-es-0.3.tar.gz ]; then cp pruebas/voz/vosk-model-small-es-0.3.tar.gz estable/voz/; fi
+      - name: Versión de siempre (rama estable)
+        working-directory: estable
+        run: npm ci && VOZ=1 npm run build
       - name: Versión de pruebas (rama main)
         working-directory: pruebas
         run: npm ci && CANAL=pruebas npm run build

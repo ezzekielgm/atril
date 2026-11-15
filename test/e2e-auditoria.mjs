@@ -42,7 +42,7 @@ const DISCURSO = `<h1>Prueba</h1><h2>Introducción (2 min)</h2>${parrafos(3)}<h2
   const doc = await crear(page, "docs", { title: "Prueba", html: DISCURSO, target: 8 });
   await ir(page, `#/leer/docs/${doc.id}`, "reader");
   const nombres = await page.$$eval(".reader-tools .tool .lbl", (xs) => xs.filter((x) => x.offsetParent).map((x) => x.textContent));
-  ok("La cinta del lector: Presentar · Practicar · Leer · Documento (a petición de Ezequiel, como Word)", nombres.join(",") === "Presentar,Desplazar,Ensayos,Tarjetas,Esquema,Letra,Buscar,Voy por aquí,Pantalla completa,Editar,Nuevo,Compartir,Dónde lo he dado,Word,PDF,Guía,Más", nombres.join(","));
+  ok("La cinta del lector: Presentar · Practicar · Leer · Documento (a petición de Ezequiel, como Word)", nombres.join(",") === "Presentar,Desplazar,Ensayos,Tarjetas,Seguir mi voz experimental,Esquema,Letra,Buscar,Voy por aquí,Pantalla completa,Editar,Nuevo,Compartir,Dónde lo he dado,Word,PDF,Guía,Más", nombres.join(","));
   await page.evaluate(() => { const s = document.querySelector("#reader-scroll"); s.scrollTop = (s.scrollHeight - s.clientHeight) * 0.5; });
   await page.waitForTimeout(200);
   await page.click("#reader-presentar");
@@ -50,7 +50,7 @@ const DISCURSO = `<h1>Prueba</h1><h2>Introducción (2 min)</h2>${parrafos(3)}<h2
   const hoja = await page.textContent(".sheet");
   ok("«Presentar» abre antes la comprobación", hoja.includes("Antes de presentar") && hoja.includes("Tiempo") && hoja.includes("Letra") && hoja.includes("Empezar") && hoja.includes("Que no se apague"));
   ok("…con el tiempo del discurso", (await page.inputValue(".sheet .num-input")) === "8");
-  ok("…con el desplazamiento automático (encendido) y sin «Seguir mi voz» en la versión de todos", (await page.isChecked("#pc-auto")) && !hoja.includes("Seguir mi voz"));
+  ok("…con el desplazamiento automático (encendido) y «Seguir mi voz (experimental)» apagado", (await page.isChecked("#pc-auto")) && hoja.includes("Seguir mi voz (experimental)") && !(await page.isChecked("#pc-voz")));
   ok("…y «Desde donde estoy» elegido si ya estabas leyendo", (await page.getAttribute(".pc-desde [data-desde='aqui']", "aria-pressed")) === "true");
   ok("«Presentar ahora» es el botón principal y tiene foco", await page.evaluate(() => document.activeElement && document.activeElement.id === "pc-ya"));
   await page.waitForTimeout(450);
@@ -69,7 +69,7 @@ const DISCURSO = `<h1>Prueba</h1><h2>Introducción (2 min)</h2>${parrafos(3)}<h2
   await page.evaluate(() => { window.__atril.settings().labVoz = true; });
   await page.click("#reader-presentar");
   await page.waitForSelector("#pc-ya");
-  ok("Con la voz disponible, «Antes de presentar» ofrece «Seguir mi voz» (apagado de serie)", (await page.isVisible(".sheet >> text=Seguir mi voz (prueba)")) && !(await page.isChecked("#pc-voz")));
+  ok("Con la voz disponible, «Antes de presentar» ofrece «Seguir mi voz» (apagado de serie)", (await page.isVisible(".sheet >> text=Seguir mi voz (experimental)")) && !(await page.isChecked("#pc-voz")));
   await page.click("#pc-ya");
   await page.waitForSelector("#pres-bar:not([hidden])");
   ok("…y en la barra de Presentar, el botón «Mi voz»", await page.isVisible("#pres-voz"));
@@ -146,7 +146,7 @@ const DISCURSO = `<h1>Prueba</h1><h2>Introducción (2 min)</h2>${parrafos(3)}<h2
   const cinta = await page.$$eval(".reader-tools .rg-nombre", (xs) => xs.map((x) => x.textContent));
   ok("La cinta del iPad tiene Practicar, Leer, Documento, Guardar y Ayuda", cinta.join(",") === "Practicar,Leer,Documento,Guardar,Ayuda y más", cinta.join(","));
   const practicar = await page.$$eval(".rg-practicar button", (xs) => xs.filter((b) => b.offsetParent).map((b) => b.textContent.trim()));
-  ok("Practicar: desplazar, ensayos y tarjetas, a la vista", practicar.length === 3 && practicar.includes("Desplazar") && practicar.includes("Tarjetas"), practicar.join(" | "));
+  ok("Practicar: desplazar, ensayos, tarjetas y seguir mi voz, a la vista", practicar.length === 4 && practicar.some((t) => t.includes("Seguir mi voz")) && practicar.includes("Desplazar") && practicar.includes("Tarjetas"), practicar.join(" | "));
   await page.waitForTimeout(400);
   await page.screenshot({ path: `${OUTDIR}/132-mas-agrupado.png` });
   await page.click(".sheet .action.plain");

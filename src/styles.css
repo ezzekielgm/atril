@@ -1956,3 +1956,7 @@ html:not(.ancho) .reader-tools .rg-ayuda .tool-mas { grid-row: 1 / -1; }
 @media (min-width: 701px) and (max-width: 1000px) {
   .ribbon-tabs button[role="tab"] { padding: 0 10px; font-size: 15px; }
 }
+
+/* «Seguir mi voz» es experimental: lo dice en pequeño en su botón de la cinta del lector */
+.reader-tools #reader-voz .exp { display: block; font-size: 10px; font-weight: 600; color: var(--muted); line-height: 1; }
+#view-reader.cinta-plegada #reader-voz .exp { display: none; }

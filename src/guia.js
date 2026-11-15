@@ -86,6 +86,7 @@ const SECCIONES = (p) => [
     items: [
       ["pluma", "Escribir con el lápiz y que pase a letra", "En «Nota a mano», con «A texto» (de serie), escribe con el Apple Pencil y el iPad lo convierte en letra; cada línea queda como un párrafo de la nota. Para borrar, un garabato encima. También funciona en el editor. Tiene que estar activado en Ajustes del iPad → Apple Pencil → Escribir a mano.", "Notas → Nota a mano → A texto"],
       ["rotulador", "Nota a mano, tal como la escribes", "En «Nota a mano», toca «A mano»: se guarda tu letra, como un dibujo (el bolígrafo es fino de serie; hay tres grosores). Si luego quieres el texto, Compartir → Para Claude → «Con lo escrito a mano (PDF)».", "Notas → Nota a mano → A mano"],
+      ["mic", "Seguir mi voz (experimental)", "Mientras ensayas o presentas, Atril te escucha, resalta la frase por la que vas y mueve el texto para que no la pierdas, aunque te saltes un trozo. La primera vez descarga un reconocedor de voz (unos 40 MB, mejor con wifi); después funciona sin internet y tu voz no sale del iPad. Es experimental: puede perderse si improvisas mucho o hay eco.", "Lector → Practicar → Seguir mi voz, o «Antes de presentar»"],
       ["mic", "Dictar", "Se abre el teclado: toca su micrófono y habla. Di «coma», «punto» o «nuevo párrafo».", "Notas → Dictar, o Editor → Inicio → Dictar"],
     ],
   },

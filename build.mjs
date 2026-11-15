@@ -44,10 +44,10 @@ if (CANAL === "pruebas") {
     .replace('<meta name="twitter:card" content="summary_large_image">\n', "");
   fs.writeFileSync(path.join(OUT, "index.html"), html);
 }
-// «Seguir mi voz» (prototipo): el reconocedor (vosk-browser) y el modelo en español, solo en la versión de
-// pruebas (o con VOZ=1). No van en la descarga para usar sin conexión: se bajan al usarlo por primera vez.
+// «Seguir mi voz» (experimental): el reconocedor (vosk-browser) y el modelo en español, en la web (las dos
+// versiones: pruebas, y la estable con VOZ=1); no en Atril para el ordenador. No van en la descarga para usar sin conexión: se bajan al usarlo por primera vez.
 // El modelo no está en git (34 MB): en local, en voz/; en la nube lo baja publicar.yml.
-const CON_VOZ = CANAL === "pruebas" || process.env.VOZ === "1";
+const CON_VOZ = CANAL === "pruebas" || process.env.VOZ === "1"; // la web estable: VOZ=1 en publicar.yml (el ordenador no lo lleva)
 if (CON_VOZ) {
   fs.mkdirSync(path.join(OUT, "voz"), { recursive: true });
   fs.copyFileSync("node_modules/vosk-browser/dist/vosk.js", path.join(OUT, "voz", "vosk.js"));

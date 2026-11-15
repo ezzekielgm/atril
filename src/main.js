@@ -1767,7 +1767,7 @@ function nuevoDiscurso() {
 const voz = { activo: false, motor: null, mod: null };
 /** ¿Se ve la cinta grande del lector? (iPad y pantallas medianas; no en el móvil ni con el diseño de ordenador) */
 const cintaLector = () => matchMedia("(min-width: 701px)").matches && !document.documentElement.classList.contains("ancho");
-const vozDisponible = () => !escritorio.activo && (enPruebas() || !!settings.labVoz) && !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia) && "caches" in window;
+const vozDisponible = () => !escritorio.activo && !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia) && "caches" in window;
 
 function pintarVozChip(texto) {
   $("#reader-voz").setAttribute("aria-pressed", String(voz.activo));
@@ -1800,8 +1800,8 @@ async function alternarVoz() {
   voz.mod = voz.mod || (await import("./voz.js"));
   if (!(await voz.mod.descargada())) {
     const si = await confirmDialog({
-      title: "Seguir tu voz (prueba)",
-      message: `Atril escucha mientras ensayas, resalta la frase por la que vas y mueve el texto para que no la pierdas. Para eso descarga una vez un reconocedor de voz en español (unos ${voz.mod.TAMANO_MB} MB; mejor con wifi). Funciona sin internet y tu voz no sale del iPad.`,
+      title: "Seguir tu voz (experimental)",
+      message: `Atril escucha mientras ensayas, resalta la frase por la que vas y mueve el texto para que no la pierdas. Para eso descarga una vez un reconocedor de voz en español (unos ${voz.mod.TAMANO_MB} MB; mejor con wifi). Funciona sin internet y tu voz no sale del iPad. Es experimental: puede perderse si improvisas o hay mucho eco.`,
       ok: "Descargar", cancel: "Ahora no",
     });
     if (!si) return;
@@ -2279,9 +2279,9 @@ function openSettings() {
         el("button", { class: "action", html: icon("upload") + "<span>Restaurar una copia</span>", onclick: () => { closeSheet(); $("#backup-input").click(); } })
       )
     ),
-    enPruebas() ? el("div", { class: "group", id: "ajustes-lab" },
-      el("span", { class: "label", text: "Laboratorio (solo en la versión de pruebas)" }),
-      el("p", { class: "small-print", text: "«Seguir mi voz» (Lector → Practicar; en el móvil, en «Más»): mientras ensayas, resalta la frase por la que vas y mueve el texto. Reconoce la voz en el propio iPad (Vosk, de Alpha Cephei, licencia Apache 2.0); la descarga ocupa unos 40 MB." }),
+    vozDisponible() ? el("div", { class: "group", id: "ajustes-lab" },
+      el("span", { class: "label", text: "Experimental" }),
+      el("p", { class: "small-print", text: "«Seguir mi voz» (experimental; Lector → Practicar; en el móvil, en «Más»): mientras ensayas, resalta la frase por la que vas y mueve el texto. Reconoce la voz en el propio iPad (Vosk, de Alpha Cephei, licencia Apache 2.0); la descarga ocupa unos 40 MB." }),
       el("div", { class: "actions" }, el("button", { class: "action", id: "voz-borrar", html: icon("trash") + "<span>Borrar el reconocedor descargado</span>", onclick: async () => {
         pararVoz();
         voz.mod = voz.mod || (await import("./voz.js"));
@@ -3254,7 +3254,7 @@ const reader = {
       conCinta ? null : { label: n ? `Ensayos (${n})` : "Ensayos", icon: "history", run: () => this.openEnsayos() },
       conCinta ? null : { label: "Tarjetas: una parte por pantalla", icon: "cards", run: () => tarjetas.abrir() },
       conCinta ? null : { label: "Desplazamiento automático", icon: "scroll", run: () => prompter.abrir() },
-      vozDisponible() && !conCinta ? { label: voz.activo ? "Dejar de seguir mi voz" : "Seguir mi voz (prueba)", icon: "mic", run: () => alternarVoz() } : null,
+      vozDisponible() && !conCinta ? { label: voz.activo ? "Dejar de seguir mi voz" : "Seguir mi voz (experimental)", icon: "mic", run: () => alternarVoz() } : null,
       { grupo: "Documento" },
       { label: "Buscar en el texto", icon: "search", run: () => buscador.abrir() },
       this.aqui != null ? { label: "Ir a «voy por aquí»", icon: "bookmark", run: () => this.irAqui() } : null,
@@ -3632,7 +3632,7 @@ const presentar = {
           el("button", { class: "chip", text: "Cambiar", onclick: () => { close(); openAaSheet(); } }))),
         fila("play", "Empezar", botonesDesde),
         fila("scroll", "Desplazamiento", el("label", { class: "switch-row pc-switch" }, el("span", { text: "El texto sube solo con el cronómetro" }), auto)),
-        conVoz ? fila("mic", "Seguir mi voz (prueba)",
+        conVoz ? fila("mic", "Seguir mi voz (experimental)",
           el("label", { class: "switch-row pc-switch" }, el("span", { text: "Resalta por dónde vas y mueve el texto mientras hablas" }), vozSw),
           el("p", { class: "pc-txt", text: "Mientras te sigue, el desplazamiento automático espera. La primera vez descarga el reconocedor (unos 40 MB)." })) : null,
         fila("book", "Pantalla", el("label", { class: "switch-row pc-switch" }, el("span", { text: "Que no se apague" }), wake)),

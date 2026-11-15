@@ -4,6 +4,13 @@
 // Cada línea: [icono, texto]. Iconos: los de ICONOS en main.js.
 export const NOVEDADES = [
   {
+    id: "2026-11-15-2",
+    fecha: "15 de noviembre de 2026",
+    lineas: [
+      ["mic", "Nuevo y experimental: «Seguir mi voz». Mientras ensayas o presentas, Atril te escucha, resalta la frase por la que vas y mueve el texto, aunque te saltes un trozo. Está en Lector → Practicar y en «Antes de presentar». La primera vez descarga unos 40 MB (mejor con wifi); luego funciona sin internet y tu voz no sale del iPad."],
+    ],
+  },
+  {
     id: "2026-11-15",
     fecha: "15 de noviembre de 2026",
     lineas: [
