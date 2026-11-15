@@ -92,7 +92,8 @@ function wordCount(html) {
 }
 
 function safeFileName(name) {
-  return (name || "Documento").replace(/[\\/:*?"<>|]+/g, "-").replace(/\s+/g, " ").trim().slice(0, 120) || "Documento";
+  // «Asamblea: notas» -> «Asamblea - notas» (los dos puntos y las barras no valen en un nombre de archivo)
+  return (name || "Documento").replace(/\s*[\\/:*?"<>|]+\s*/g, " - ").replace(/\s+/g, " ").replace(/^[\s-]+|[\s-]+$/g, "").slice(0, 120) || "Documento";
 }
 
 /* ============================================================
@@ -586,15 +587,22 @@ function offerFile(file, { title, onDone, nota, boton } = {}) {
         html: icon(canShare ? "share" : "download") + `<span>${canShare ? boton || "Guardar en Archivos o compartir" : "Descargar"}</span>`,
         onclick: async () => {
           if (canShare) {
-            try { await navigator.share({ files: [file], title: file.name }); close(); hecho(); }
-            catch (e) { if (e && e.name !== "AbortError") { downloadFile(file); close(); hecho(); } }
+            // Solo el archivo (sin título): con título, algunas apps del menú reciben dos cosas y guardan mal el archivo
+            try { await navigator.share({ files: [file] }); close(); hecho(); }
+            catch (e) {
+              if (e && e.name === "AbortError") return;
+              // En la app del iPad no hay descargas: un enlace abre un visor sin poder guardar (y con otro nombre)
+              if (esIOS()) { toast("No se abrió el menú. Vuelve a tocar el botón.", { ms: 5000 }); return; }
+              downloadFile(file); close(); hecho();
+            }
           } else { downloadFile(file); close(); hecho(); }
         },
       }),
       el("button", { class: "action plain", text: "Cerrar", onclick: () => close() })
     ),
     nota ? el("p", { class: "small-print nota-pc", text: nota })
-      : canShare ? el("p", { class: "small-print", text: "En el menú, elige «Guardar en Archivos» para guardarlo en el iPad o en iCloud." }) : null,
+      : canShare ? el("p", { class: "small-print", text: "En el menú, elige «Guardar en Archivos» y la carpeta (en el iPad, iCloud u OneDrive)." }) : null,
+    canShare && /\.docx$/i.test(file.name) && boton !== "Compartir" ? el("p", { class: "small-print", id: "nota-docx", text: "Mejor «Guardar en Archivos» (ahí puedes escoger la carpeta de OneDrive) que el icono de otra app del menú: así queda como Word (.docx)." }) : null,
   ].filter(Boolean));
 }
 function downloadFile(file) {
@@ -1255,10 +1263,12 @@ async function htmlParaExportar(html) {
     if (!d) { f.remove(); continue; }
     try {
       const img = new Image();
-      img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svgDibujo(d, { colores: true }));
+      // La imagen se hace al tamaño final (2000 px de ancho): si el SVG se dibujara a 1000 y se agrandara, saldría borrosa
+      const escala = 2;
+      // Con fondo blanco: un PNG transparente se vería negro sobre negro en un visor con el modo oscuro
+      img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svgDibujo(d, { colores: true, escala, fondo: "#ffffff" }));
       await img.decode();
       const c = document.createElement("canvas");
-      const escala = 1.6;
       c.width = Math.round(d.w * escala); c.height = Math.round(d.h * escala);
       c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
       const p = document.createElement("p");
@@ -1655,6 +1665,20 @@ async function notaAMano() {
     });
   } catch (e) { console.error(e); toast("No se pudo abrir el dibujo. Inténtalo de nuevo."); }
 }
+/**
+ * «Lápiz → texto» (a petición de Ezequiel: escribir con el lápiz y que quede en letra). Es una nota de texto
+ * normal: lo que convierte la letra es «Escribir a mano» del iPad, que funciona en el editor (no en el lienzo,
+ * donde el lápiz dibuja). Se abre con una ayuda arriba que lo explica.
+ */
+let lapizAlAbrir = null;
+async function notaLapiz() {
+  const now = Date.now();
+  const fecha = new Date(now).toLocaleDateString("es-ES", { day: "numeric", month: "short" });
+  const item = { id: uid(), title: `Notas · ${fecha}`, html: "<p><br></p>", created: now, updated: now };
+  await store.put("notes", item);
+  lapizAlAbrir = "notes/" + item.id;
+  go(`#/editar/notes/${item.id}`);
+}
 /** Nota dictada: nota nueva con el teclado abierto (para tocar su micrófono). */
 let dictarAlAbrir = null;
 async function notaDictada() {
@@ -1847,7 +1871,8 @@ async function renderHome() {
   } else {
     actions.append(
       el("button", { class: "btn primary", html: icon("plus") + "<span>Nueva nota</span>", onclick: () => newItem("notes") }),
-      el("button", { class: "btn", id: "nota-mano", html: icon("pluma") + "<span>Nota a mano</span>", onclick: notaAMano }),
+      el("button", { class: "btn", id: "nota-lapiz", title: "El iPad pasa a letra lo que escribes con el Apple Pencil", html: icon("pluma") + "<span>Lápiz → texto</span>", onclick: notaLapiz }),
+      el("button", { class: "btn", id: "nota-mano", title: "Se queda escrito a mano, como un dibujo", html: icon("rotulador") + "<span>A mano (dibujo)</span>", onclick: notaAMano }),
       el("button", { class: "btn", id: "nota-dictar", html: icon("mic") + "<span>Dictar</span>", onclick: notaDictada }));
   }
 
@@ -3999,6 +4024,7 @@ const editor = {
     this.togglePalette(false);
     this.togglePaletteLetra(false);
     $("#dictado-ayuda").hidden = true;
+    $("#lapiz-ayuda").hidden = true;
     reemplazo.cerrar();
     this.cinta("inicio");
     this.pintarTiempo();
@@ -4009,6 +4035,7 @@ const editor = {
     this.paintToolbar();
     // Nota dictada: el cursor en el texto y la ayuda del micrófono; documento nuevo: el cursor en el título
     if (dictarAlAbrir === kind + "/" + id) { dictarAlAbrir = null; this.dictar(); }
+    else if (lapizAlAbrir === kind + "/" + id) { lapizAlAbrir = null; $("#lapiz-ayuda").hidden = false; }
     else if (!item.title && (!item.html || item.html === "<p><br></p>")) this.titleInput.focus();
   },
 
@@ -4732,6 +4759,7 @@ const editor = {
     // Tocar un dibujo lo abre para cambiarlo
     this.area.addEventListener("click", (e) => { const f = e.target.closest && e.target.closest("figure.dibujo"); if (f && this.area.contains(f)) { e.preventDefault(); this.editarDibujo(f); } });
     $("#dictado-ok").addEventListener("click", () => { $("#dictado-ayuda").hidden = true; this.area.focus(); });
+    $("#lapiz-ok").addEventListener("click", () => { $("#lapiz-ayuda").hidden = true; });
     $("#editor-time").addEventListener("click", () => this.abrirTiempo());
     $$(".ribbon-tabs [data-rtab]").forEach((t) => t.addEventListener("click", () => this.cinta(t.dataset.rtab)));
     $("#ed-menos").addEventListener("click", () => this.zoom(-2));
@@ -5697,5 +5725,5 @@ init();
 window.__atril = {
   sanitize, htmlToText, textToHtml, store, settings: () => settings, setFontSize, importFiles, exportWord, crearPdf,
   timer, reader, editor, ensayo, buscador, tarjetas, prompter, crearPlantilla, abrirDado, pintarAvisoCopia, reemplazo, presentar, sesion, textoParaCompartir, abrirCompartir, abrirGuia,
-  novedadesAlAbrir, contarProblema, textoParaClaude, APP_CANAL, voz, alternarVoz, pararVoz,
+  novedadesAlAbrir, contarProblema, textoParaClaude, APP_CANAL, voz, alternarVoz, pararVoz, htmlParaExportar, notaLapiz,
 };

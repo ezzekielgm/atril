@@ -926,16 +926,18 @@ html.canal-pruebas .marca-pruebas { display: inline-block; margin-left: 10px; ve
 /* ---------- Dibujos y escritura a mano dentro del texto ---------- */
 .doc-content figure.dibujo { margin: .5em 0 .8em; }
 .doc-content figure.dibujo svg { display: block; width: 100%; height: auto; overflow: visible; }
-.k-negro { fill: var(--text); }
-.k-azul { fill: var(--t-azul); }
-.k-rojo { fill: var(--t-rojo); }
-.k-verde { fill: var(--t-verde); }
-.rotu { opacity: .45; }
-.rotu.k-amarillo { fill: #ffd400; }
-.rotu.k-verde { fill: #2fd36a; }
-.rotu.k-azul { fill: #34b4f5; }
-.rotu.k-rosa { fill: #ff6fae; }
-[data-theme="oscuro"] .rotu { opacity: .5; }
+/* Cada trazo es una línea de bolígrafo (redonda, de grosor fijo); el rotulador, semitransparente y debajo */
+path.tz { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+path.tz.k-negro { stroke: var(--text); }
+path.tz.k-azul { stroke: var(--t-azul); }
+path.tz.k-rojo { stroke: var(--t-rojo); }
+path.tz.k-verde { stroke: var(--t-verde); }
+path.tz.rotu { opacity: .45; }
+path.tz.rotu.k-amarillo { stroke: #ffd400; }
+path.tz.rotu.k-verde { stroke: #2fd36a; }
+path.tz.rotu.k-azul { stroke: #34b4f5; }
+path.tz.rotu.k-rosa { stroke: #ff6fae; }
+[data-theme="oscuro"] path.tz.rotu { opacity: .5; }
 /* En el editor: se ve que es un bloque y se toca para cambiarlo */
 .editor figure.dibujo { border-radius: 6px; outline: 1px dashed var(--border); outline-offset: 4px; cursor: pointer; -webkit-user-select: none; user-select: none; }
 .editor figure.dibujo:active { outline-color: var(--accent); }

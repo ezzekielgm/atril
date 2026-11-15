@@ -64,9 +64,9 @@ await trazo("touch", linea(0.2, 0.6, 0.8, 0.6));
 ok("Con el lápiz usado, el dedo no pinta (se puede apoyar la mano)", (await nTrazos()) === 2);
 const anchos = await page.evaluate(() => {
   const ps = [...document.querySelectorAll(".lienzo .lz-svg g:not(.lz-pauta) path")];
-  return ps.map((p) => p.getBBox().height);
+  return ps.map((p) => Number(p.getAttribute("stroke-width")));
 });
-ok("El trazo con presión del lápiz es más grueso", anchos[1] > anchos[0], anchos.map((x) => x.toFixed(1)).join(" vs "));
+ok("El trazo apretando más con el lápiz es más grueso", anchos[1] > anchos[0], anchos.join(" vs "));
 // Rotulador rojo… no: rotulador amarillo, y color azul con el bolígrafo
 await page.click(".lienzo [data-h=r]");
 await trazo("pen", linea(0.1, 0.22, 0.6, 0.22), 0.5);
@@ -75,7 +75,7 @@ await page.click(".lienzo .lz-color.k-azul");
 await trazo("pen", linea(0.3, 0.5, 0.5, 0.55), 0.5);
 ok("Rotulador debajo de la tinta y colores", await page.evaluate(() => {
   const ps = [...document.querySelectorAll(".lienzo .lz-svg g:not(.lz-pauta) path")];
-  return ps[0].getAttribute("class") === "k-amarillo rotu" && ps.some((p) => p.getAttribute("class") === "k-azul");
+  return ps[0].getAttribute("class") === "tz k-amarillo rotu" && ps.some((p) => p.getAttribute("class") === "tz k-azul");
 }));
 await page.click(".lienzo [aria-label=Deshacer]");
 ok("Deshacer quita el último trazo", (await nTrazos()) === 3);
@@ -130,8 +130,8 @@ await page.waitForSelector("#view-reader:not([hidden])");
 ok("En el lector el dibujo se ve, a lo ancho del texto", await page.evaluate(() => { const s = document.querySelector("#reader-content figure.dibujo svg"); return s && s.getBoundingClientRect().width > 300 && s.querySelectorAll("path").length === 4; }));
 ok("En el tema oscuro la tinta negra se vuelve clara", await page.evaluate(() => {
   document.documentElement.dataset.theme = "oscuro";
-  const p = document.querySelector("#reader-content figure.dibujo path.k-negro");
-  const c = p ? getComputedStyle(p).fill : "";
+  const p = document.querySelector("#reader-content figure.dibujo path.tz.k-negro");
+  const c = p ? getComputedStyle(p).stroke : "";
   document.documentElement.dataset.theme = "claro";
   return c === "rgb(236, 235, 232)";
 }));
@@ -139,7 +139,7 @@ await page.screenshot({ path: `${OUTDIR}/92-lector-dibujo.png` });
 
 // ============ Seguridad: del SVG que llega no se guarda nada ============
 const limpio = await page.evaluate(() => window.__atril.sanitize('<figure class="dibujo" data-dibujo=\'{"h":300,"t":[{"c":"negro","h":"b","s":4,"p":[10,10,50,100,100,50,200,50,50]}]}\'><svg onload="alert(1)"><script>alert(2)</script><foreignObject><img src=x onerror=alert(3)></foreignObject><path d="M0 0"/></svg></figure><figure><img src="x"></figure><p>fin</p>'));
-ok("El dibujo se rehace solo a partir de sus datos", /^<figure class="dibujo" data-dibujo="[^"]+"><svg viewBox="0 0 1000 300" role="img" aria-label="Dibujo"><path class="k-negro" d="M[\d.,\sQTZ-]+"><\/path><\/svg><\/figure><p>fin<\/p>$/.test(limpio), limpio.slice(0, 160));
+ok("El dibujo se rehace solo a partir de sus datos", /^<figure class="dibujo" data-dibujo="[^"]+"><svg viewBox="0 0 1000 300" role="img" aria-label="Dibujo"><path class="tz k-negro" stroke-width="2.8" d="M[\d.,\sQLl-]+"><\/path><\/svg><\/figure><p>fin<\/p>$/.test(limpio), limpio.slice(0, 160));
 ok("Sin scripts ni atributos peligrosos, y fuera los <figure> que no son dibujos", !/onload|script|onerror|foreignObject|alert/.test(limpio));
 ok("Datos con valores raros se corrigen", await page.evaluate(() => {
   const h = window.__atril.sanitize('<figure class="dibujo" data-dibujo=\'{"h":99999,"t":[{"c":"<b>","h":"x","s":999,"p":[-5,99999,500,"a",2,3,10,20,30]}]}\'></figure>');

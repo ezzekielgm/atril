@@ -54,7 +54,11 @@ await page.evaluate(async () => { await window.__atril.store.put("docs", { id: "
 // 2. La de pruebas, con el service worker de la de siempre ya instalado
 await page.goto(BASE + "pruebas/");
 await listo();
+// Hasta que su propio service worker esté activo (la primera vez puede mandar aún el de la versión de siempre)
+await page.waitForFunction(async () => { const r = await navigator.serviceWorker.getRegistration(location.href); return !!(r && r.active && r.active.state === "activated" && r.scope.endsWith("/pruebas/")); }, null, { timeout: 15000 });
 await page.reload(); await listo();
+// (Chromium a veces aún carga esa vez con el de antes; a la siguiente ya manda el suyo)
+if (!(await page.evaluate(() => navigator.serviceWorker.controller && navigator.serviceWorker.controller.scriptURL.endsWith("/pruebas/sw.js")))) { await page.reload(); await listo(); }
 const pru = await page.evaluate(() => ({ marca: getComputedStyle(document.querySelector(".marca-pruebas")).display, ctrl: navigator.serviceWorker.controller && navigator.serviceWorker.controller.scriptURL, html: document.documentElement.dataset.version }));
 ok("Pruebas: con su etiqueta y su propio service worker (la de siempre no se la come)", pru.marca !== "none" && pru.ctrl === BASE + "pruebas/sw.js", JSON.stringify(pru));
 ok("Pruebas ve los mismos discursos (mismo sitio, mismos datos)", await page.evaluate(async () => !!(await window.__atril.store.get("docs", "comun"))));

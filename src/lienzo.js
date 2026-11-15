@@ -1,7 +1,7 @@
 // Lienzo para dibujar o escribir a mano con el Apple Pencil (o con el dedo). Se carga solo al abrirlo.
 // Con el lápiz: el bolígrafo engorda al apretar y el dedo sirve para mover la hoja (la mano puede apoyarse).
 // Sin lápiz: se dibuja con el dedo.
-import { ANCHO, TINTAS, limpiarDibujo, pathDe, claseDe } from "./dibujo-svg.js";
+import { ANCHO, TINTAS, limpiarDibujo, pathDe, claseDe, anchoDe } from "./dibujo-svg.js";
 
 const NOMBRES = { negro: "Negro", azul: "Azul", rojo: "Rojo", verde: "Verde", amarillo: "Amarillo", rosa: "Rosa" };
 const GROSORES = { b: [2.5, 4, 7], r: [16, 24, 36] };
@@ -75,13 +75,13 @@ export function abrirLienzo({ datos = null, alGuardar, alQuitar = null, confirma
   const vivo = document.createElementNS(NS, "path");
   svg.append(gPauta, gTrazos, vivo);
   const hoja = h("div", { class: "lz-hoja" }, h("div", { class: "lz-papel" }, svg));
-  const ayuda = h("p", { class: "lz-ayuda", text: "Escribe o dibuja con el Apple Pencil o con el dedo. Con el lápiz, el dedo mueve la hoja y puedes apoyar la mano." });
+  const ayuda = h("p", { class: "lz-ayuda", text: "Aquí lo que escribes se queda a mano, como un dibujo. Para que pase a letra, usa «Lápiz → texto» en Notas. Con el lápiz, el dedo mueve la hoja y puedes apoyar la mano." });
   raiz.append(barra, caja, hoja, ayuda);
 
   // ---------- Pintar ----------
   const orden = (lista) => [...lista.filter((t) => t.h === "r"), ...lista.filter((t) => t.h !== "r")];
   function pintarTrazos() {
-    gTrazos.innerHTML = orden(trazos).map((t) => `<path class="${claseDe(t)}" d="${pathDe(t)}"/>`).join("");
+    gTrazos.innerHTML = orden(trazos).map((t) => `<path class="${claseDe(t)}" stroke-width="${anchoDe(t)}" d="${pathDe(t)}"/>`).join("");
     bDeshacer.disabled = !hechos.length;
     bRehacer.disabled = !deshechos.length;
   }
@@ -128,7 +128,8 @@ export function abrirLienzo({ datos = null, alGuardar, alQuitar = null, confirma
     raf = 0;
     if (!actual) { vivo.setAttribute("d", ""); return; }
     vivo.setAttribute("class", claseDe(actual));
-    vivo.setAttribute("d", pathDe(actual, { ultimo: false }));
+    vivo.setAttribute("stroke-width", anchoDe(actual));
+    vivo.setAttribute("d", pathDe(actual));
   }
   function borrarEn(e) {
     const [x, y] = punto(e);

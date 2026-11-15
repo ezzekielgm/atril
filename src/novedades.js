@@ -4,6 +4,15 @@
 // Cada línea: [icono, texto]. Iconos: los de ICONOS en main.js.
 export const NOVEDADES = [
   {
+    id: "2026-11-15",
+    fecha: "15 de noviembre de 2026",
+    lineas: [
+      ["pluma", "Notas → «Lápiz → texto»: escribe con el Apple Pencil encima de la hoja y el iPad lo pasa a letra. «A mano (dibujo)» se queda tal como lo escribes."],
+      ["rotulador", "La escritura a mano se ve nítida y más fina (si escribes suave, más fina todavía), y también sale nítida en el Word y el PDF."],
+      ["word", "Guardar como Word: elige «Guardar en Archivos» (ahí puedes escoger OneDrive) y queda como .docx."],
+    ],
+  },
+  {
     id: "2026-11-13",
     fecha: "13 de noviembre de 2026",
     lineas: [
