@@ -33,8 +33,6 @@ self.addEventListener("fetch", (event) => {
   if (CANAL === "estable" && url.pathname.startsWith(BASE + "pruebas/")) return;
   // «Buscar actualizaciones» pregunta a internet por sw.js: nunca desde la caché
   if (url.pathname.endsWith("/sw.js")) return;
-  // La muestra del diseño nuevo va por internet, tal cual (no es la app)
-  if (url.pathname.includes("/muestra/")) return;
 
   // La app es una sola página: cualquier navegación sirve index.html desde la caché
   if (req.mode === "navigate") {

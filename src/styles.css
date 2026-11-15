@@ -34,31 +34,32 @@
 
 /* Temas. --bg = hoja; --desk = fondo gris; --bar = barra azul */
 [data-theme="claro"] {
-  /* Rediseño de noviembre de 2026: fondo cálido, azul marino de marca y tarjetas blancas */
-  --bg: #fffdfa; --desk: #f8f4ee; --canvas: #f1ebe2; --surface: #f3eee6; --surface-2: #e8e0d3; --text: #1b2033; --muted: #5b6474;
-  --border: #e4dbcd; --accent: #1e3a8a; --accent-soft: #e3ebfb; --accent-text: #ffffff; --heading: #1e40af;
-  --accent-vivo: #1d4ed8; --on-vivo: #ffffff; --acento-calido: #f2c194;
-  --bar: #1e2a5e; --bar-text: #ffffff; --bar-soft: rgba(255,255,255,.16);
+  /* Diseño de noviembre de 2026 (bocetos de Ezequiel, segunda ronda): fondo frío y claro, tarjetas blancas,
+     azul marino de marca y barras claras */
+  --bg: #ffffff; --desk: #eef1f7; --canvas: #e6eaf2; --surface: #f2f4f9; --surface-2: #e3e8f1; --text: #1f2534; --muted: #545e72;
+  --border: #dde3ee; --accent: #12307f; --accent-soft: #e1e8f7; --accent-text: #ffffff; --heading: #17358f;
+  --accent-vivo: #0f3a8f; --on-vivo: #ffffff; --acento-calido: #f2c194;
+  --bar: #f6f8fc; --bar-text: #1f2534; --bar-soft: #e1e8f7;
   --danger: #b42318; --ok: #1f7a4d; --warn: #8a5300; --warn-bg: #fef3c7;
-  --mark: #fde68a; --mark-text: inherit; --shadow: 0 14px 40px rgba(27,32,51,.20);
+  --mark: #fde68a; --mark-text: inherit; --shadow: 0 14px 40px rgba(20,35,80,.18);
   --mark-verde: #bbf7d0; --mark-azul: #bfdbfe; --mark-rosa: #fbcfe8;
   --t-rojo: #c00000; --t-azul: #0062b0; --t-verde: #00803a; --t-naranja: #b25000;
 }
 [data-theme="sepia"] {
-  --bg: #f7efdd; --desk: #ece2c9; --canvas: #ddd0b1; --surface: #efe4ca; --surface-2: #e2d4b4; --text: #33271a; --muted: #6f604a;
-  --border: #d4c4a0; --accent: #6b4520; --accent-soft: #eadbbd; --accent-text: #fffaf0; --heading: #6b4520;
-  --accent-vivo: #7a4f22; --on-vivo: #fffaf0; --acento-calido: #c98f4e;
-  --bar: #6b4520; --bar-text: #fffaf0; --bar-soft: rgba(255,255,255,.16);
+  --bg: #fbf6ea; --desk: #efe6d2; --canvas: #e2d6bb; --surface: #f3ead6; --surface-2: #e6dcc4; --text: #33271a; --muted: #6a5b45;
+  --border: #ddcfb0; --accent: #2b3f78; --accent-soft: #e6dcc4; --accent-text: #fffaf0; --heading: #2b3f78;
+  --accent-vivo: #2b3f78; --on-vivo: #fffaf0; --acento-calido: #c98f4e;
+  --bar: #f5eedd; --bar-text: #33271a; --bar-soft: #e6dcc4;
   --danger: #b3261e; --ok: #3f6b2a; --warn: #8a5200; --warn-bg: #f3dfb0;
-  --mark: #f3d36b; --mark-text: inherit; --shadow: 0 10px 30px rgba(60,40,10,.25);
+  --mark: #f3d36b; --mark-text: inherit; --shadow: 0 10px 30px rgba(60,40,10,.22);
   --mark-verde: #c8e6a8; --mark-azul: #b5d9ea; --mark-rosa: #f0bcc8;
   --t-rojo: #b0141a; --t-azul: #1b5a96; --t-verde: #2e6b2a; --t-naranja: #a14a00;
 }
 [data-theme="oscuro"] {
-  --bg: #1b1b1d; --desk: #252528; --canvas: #111113; --surface: #2b2b2e; --surface-2: #38383c; --text: #ecebe8; --muted: #a8a6a2;
-  --border: #3b3b3f; --accent: #6ea4f4; --accent-soft: #1f2d45; --accent-text: #0b1830; --heading: #8ab4f8;
-  --accent-vivo: #82b4ff; --on-vivo: #0b1830; --acento-calido: #e0a56f;
-  --bar: #1f2a3d; --bar-text: #ffffff; --bar-soft: rgba(255,255,255,.12);
+  --bg: #1a202c; --desk: #10141d; --canvas: #0c1017; --surface: #222a38; --surface-2: #2b3446; --text: #e7eaf1; --muted: #a3abbb;
+  --border: #2b3446; --accent: #9db8ff; --accent-soft: #22304d; --accent-text: #0b1630; --heading: #a8c0ff;
+  --accent-vivo: #3566de; --on-vivo: #ffffff; --acento-calido: #e0a56f;
+  --bar: #151a24; --bar-text: #e7eaf1; --bar-soft: #22304d;
   --danger: #f1707b; --ok: #6ccb5f; --warn: #f2b84b; --warn-bg: #3a2c10;
   --mark: #6b5d12; --mark-text: #fff7c2; --shadow: 0 10px 30px rgba(0,0,0,.6);
   --mark-verde: #1e5a35; --mark-azul: #174a66; --mark-rosa: #6b2445;
@@ -1682,4 +1683,131 @@ html.ancho .toolbar.ribbon { flex-wrap: nowrap; }
 @media (max-width: 480px) {
   .ribbon-tabs button[role="tab"] { padding: 0 9px; font-size: 15px; }
   .ribbon-tabs .rt-acciones button { min-width: 38px; }
+}
+
+/* =====================================================================
+   DISEÑO DE NOVIEMBRE DE 2026, SEGUNDA RONDA (bocetos de Ezequiel con ChatGPT: scripts/arte/nuevo/).
+   Fondo frío y claro, tarjetas blancas, azul marino; inicio con el banner, buscador arriba, pestañas
+   Recientes/Discursos/Notas con «+ Nuevo» y la lista en una tarjeta; barras claras en el editor y el lector.
+   Solo aspecto. Va al final para mandar sobre lo anterior. (No cambia el diseño de ordenador, html.ancho.)
+   ===================================================================== */
+/* ---- Inicio ---- */
+.home-hero {
+  margin: max(12px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) 0 max(16px, env(safe-area-inset-left));
+  height: 150px; border-radius: 18px; overflow: hidden; background: #012e6c url("icons/banner.jpg") right center / auto 100% no-repeat;
+  box-shadow: 0 2px 10px rgba(1, 30, 80, .18);
+}
+.hero-txt { padding-left: 8px; }
+.hero-txt::before { display: none; }
+.brand { font-size: 46px; font-weight: 800; }
+.brand-sub { font-size: 18px; }
+[data-theme="oscuro"] .home-hero { background-image: linear-gradient(rgba(0,0,0,.3), rgba(0,0,0,.3)), url("icons/banner.jpg"); background-size: auto 100%; background-position: right center; background-color: #011f4a; }
+.home-tools { gap: 0; padding: 14px 16px 0; }
+.cabecera-inicio { display: flex; align-items: center; gap: 8px; }
+.cabecera-inicio .search { height: 54px; border-radius: 14px; border: 1.5px solid var(--border); font-size: 18px; padding: 0 16px; gap: 12px; }
+.cabecera-inicio .search svg { color: var(--accent); width: 22px; height: 22px; }
+.cabecera-inicio .search input { font-size: 18px; }
+.cabecera-inicio .tool { width: 52px; height: 52px; padding: 0; justify-content: center; border-radius: 14px; color: var(--accent); flex: none; }
+.cabecera-inicio .tool .lbl { display: none; }
+.cabecera-inicio .tool svg { width: 25px; height: 25px; color: var(--accent); }
+.cabecera-inicio .tool:active { background: var(--accent-soft); }
+.tabs-row { margin: 18px 0 0; padding: 0; align-items: flex-end; gap: 10px; }
+.segmented { gap: 6px; }
+.segmented button { display: inline-flex; align-items: center; gap: 10px; min-height: 54px; padding: 0 20px; border-radius: 12px 12px 0 0; font-size: 18px; font-weight: 500; color: var(--text); }
+.segmented button svg { width: 24px; height: 24px; color: var(--accent); flex: none; }
+.segmented button[aria-selected="true"] { background: var(--accent-soft); color: var(--accent); font-weight: 700; }
+.segmented button[aria-selected="true"]::after { left: 10px; right: 10px; height: 4px; border-radius: 3px 3px 0 0; }
+.btn-nuevo { margin: 0 0 8px auto; min-height: 50px; padding: 0 22px; border-radius: 12px; font-size: 18px; font-weight: 700; background: var(--accent-vivo); border-color: var(--accent-vivo); color: var(--on-vivo); }
+.btn-nuevo svg { width: 22px; height: 22px; color: var(--on-vivo); }
+.home-actions { padding: 14px 16px 2px; }
+.home-actions .btn { background: var(--bg); color: var(--accent); border: 1.5px solid var(--border); }
+.home-actions .btn svg { color: var(--accent); }
+/* «Seguir donde lo dejaste» y la lista: tarjetas blancas con sombra suave */
+.seguir { margin: 14px 16px 0; border: 0; border-left: 0; border-radius: 18px; background: var(--bg); box-shadow: 0 1px 2px rgba(20,35,80,.05), 0 6px 20px rgba(20,35,80,.06); }
+.seg-label { color: var(--accent); }
+.list {
+  margin: 16px 16px 8px; padding: 4px 22px; display: block; background: var(--bg); border-radius: 18px;
+  box-shadow: 0 1px 2px rgba(20,35,80,.05), 0 6px 20px rgba(20,35,80,.06);
+}
+.list:empty { display: none; }
+.card { border: 0; border-radius: 0; background: transparent; box-shadow: none; border-bottom: 1px solid var(--surface-2); }
+.card:last-child { border-bottom: 0; }
+.card.fijado { border-color: var(--surface-2); box-shadow: none; }
+.card-main { padding: 18px 120px 18px 0; grid-template-columns: 50px minmax(0, 1fr); border-radius: 10px; }
+.card-icon { width: 44px; height: 46px; }
+.card-icon svg { width: 44px; height: 46px; }
+.card-icon.es-doc { color: var(--accent); }
+.card-title { font-size: 20px; font-weight: 750; color: var(--accent); }
+.card-dur { position: absolute; right: 60px; top: 50%; transform: translateY(-50%); flex-direction: row; align-items: baseline; gap: 5px; padding: 0; }
+.card-dur b { font-size: 21px; font-weight: 500; color: var(--text); }
+.card-dur small { font-size: 18px; color: var(--text); margin: 0; }
+.card-meta { padding-right: 0; font-size: 14px; }
+.card-dado { font-size: 16px; color: var(--muted); }
+.card-more { top: 50%; bottom: auto; right: 0; transform: translateY(-50%); color: var(--accent); }
+.card-prog { left: 50px; right: 120px; bottom: 6px; }
+#proteccion { margin: 6px 16px 28px; }
+@media (max-width: 700px) {
+  .home-hero { height: 110px; margin: max(10px, env(safe-area-inset-top)) 10px 0; border-radius: 14px; background-image: url("icons/banner-movil.jpg"); }
+  .brand { font-size: 34px; }
+  .brand-sub { font-size: 15px; }
+  .home-tools { padding: 10px 10px 0; }
+  .cabecera-inicio .search { height: 48px; font-size: 16px; }
+  .cabecera-inicio .search input { font-size: 16px; }
+  .cabecera-inicio .tool { width: 44px; height: 44px; }
+  .tabs-row { margin-top: 12px; gap: 6px; }
+  .segmented { gap: 0; }
+  .segmented button { padding: 0 10px; gap: 6px; font-size: 15px; min-height: 48px; }
+  .segmented button svg { width: 20px; height: 20px; }
+  .btn-nuevo { padding: 0 12px; min-height: 44px; font-size: 15px; }
+  .btn-nuevo #home-nuevo-txt { display: none; }
+  .home-actions { padding: 10px 10px 2px; }
+  .seguir, .list { margin-left: 10px; margin-right: 10px; }
+  .list { padding: 2px 12px; }
+  .card-main { padding: 14px 92px 14px 0; grid-template-columns: 40px minmax(0, 1fr); column-gap: 10px; }
+  .card-icon, .card-icon svg { width: 34px; height: 38px; }
+  .card-title { font-size: 17px; }
+  .card-dur { right: 46px; }
+  .card-dur b { font-size: 17px; }
+  .card-dur small { font-size: 14px; }
+  .card-prog { left: 40px; right: 92px; }
+}
+@media (max-width: 380px) { .segmented button svg { display: none; } }
+
+/* ---- Editor: barra clara, pestaña elegida en azul, cinta sobre el mismo fondo ---- */
+.word-bar { background: var(--bar); color: var(--bar-text); border-bottom: 1px solid var(--border); }
+.word-bar .icon-btn { color: var(--accent); }
+.word-bar .icon-btn:active { background: var(--bar-soft); }
+.word-bar .title-input { color: var(--text); font-weight: 700; }
+.word-bar .save-state { color: var(--muted); opacity: 1; }
+.word-bar .timer-btn { background: var(--bg); border-color: var(--border); color: var(--text); }
+.word-bar .timer-btn svg { color: var(--accent); opacity: 1; }
+.ribbon-tabs, .toolbar.ribbon, .palette { background: var(--bar); }
+.ribbon-tabs { padding-top: 6px; padding-bottom: 4px; gap: 4px; }
+.ribbon-tabs button[role="tab"] { min-height: 42px; padding: 0 18px; border-radius: 10px; font-size: 17px; font-weight: 500; color: var(--text); }
+.ribbon-tabs button[role="tab"][aria-selected="true"] { background: var(--accent-vivo); color: var(--on-vivo); font-weight: 650; }
+.ribbon-tabs button[role="tab"][aria-selected="true"]::after { display: none; }
+.ribbon-tabs .rt-acciones button { color: var(--accent); }
+.toolbar.ribbon { border-bottom: 1px solid var(--border); }
+.toolbar button { color: var(--text); }
+.toolbar button svg { color: var(--text); }
+.toolbar button.con-nombre svg, .toolbar button.grande svg { color: var(--accent); }
+@media (max-width: 480px) { .ribbon-tabs button[role="tab"] { padding: 0 9px; font-size: 15px; } }
+/* El lienzo (dibujar o escribir a mano) con la misma barra clara */
+.lz-barra { background: var(--bar); color: var(--bar-text); border-bottom: 1px solid var(--border); }
+.lz-hecho { background: var(--accent-vivo); color: var(--on-vivo); }
+
+/* ---- Lector: barra y cinta sobre el mismo fondo claro ---- */
+.reader-bar { background: var(--bar); }
+html:not(.ancho) .reader-tools { background: var(--bar); }
+/* Móvil: la duración bajo el título (no al lado, que pisa el texto) y las pestañas más justas */
+@media (max-width: 700px) {
+  .card-main { padding-right: 48px; }
+  .card-dur { position: static; transform: none; grid-column: 2; grid-row: auto; justify-self: start; }
+  .card-dur b, .card-dur small { font-size: 15px; color: var(--muted); }
+  .card-prog { right: 48px; }
+}
+@media (max-width: 440px) {
+  .segmented button svg { display: none; }
+  .segmented button { padding: 0 9px; font-size: 15px; }
+  .btn-nuevo { margin-bottom: 4px; }
 }

@@ -108,7 +108,7 @@ await page.tap("#editor-timer-toggle");
 await page.waitForTimeout(200);
 await page.evaluate(() => { location.hash = "#/"; });
 await page.waitForSelector("#view-home:not([hidden])");
-await page.click("#home-actions >> text=Nuevo discurso");
+await page.click("#home-nuevo");
 await page.click(".sheet >> text=En blanco");
 await page.waitForSelector("#view-editor:not([hidden])");
 ok("Al abrir otro documento, el cronómetro empieza de cero", (await texto()) === "00:00" && !(await t()).running, await texto());

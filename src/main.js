@@ -165,6 +165,9 @@ const P = {
   globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c2.6 2.6 3.8 5.6 3.8 9s-1.2 6.4-3.8 9c-2.6-2.6-3.8-5.6-3.8-9S9.4 5.6 12 3z"/>',
   paste: '<path d="M9 4H7.5A1.5 1.5 0 0 0 6 5.5v14A1.5 1.5 0 0 0 7.5 21h9a1.5 1.5 0 0 0 1.5-1.5v-14A1.5 1.5 0 0 0 16.5 4H15"/><rect x="9" y="2.5" width="6" height="3" rx="1"/><path d="M9.5 11h5M9.5 15h5"/>',
   pasteTexto: '<path d="M9 4H7.5A1.5 1.5 0 0 0 6 5.5v14A1.5 1.5 0 0 0 7.5 21h9a1.5 1.5 0 0 0 1.5-1.5v-14A1.5 1.5 0 0 0 16.5 4H15"/><rect x="9" y="2.5" width="6" height="3" rx="1"/><path d="M9 10h6M12 10v7"/>',
+  docLineas: '<path d="M14 2.5H6.5a2 2 0 0 0-2 2v15a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V8z" stroke-width="1.6"/><path d="M14 2.5V8h5.5" stroke-width="1.6"/><path d="M8 12h8M8 15.5h8M8 19h5" stroke-width="1.6"/>',
+  capas: '<path d="M12 3l9 4.5-9 4.5-9-4.5z"/><path d="M3 12l9 4.5 9-4.5"/><path d="M3 16.5L12 21l9-4.5"/>',
+  notaLapiz: '<path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h5"/><path d="M14 3l5 5v3"/><path d="M8 9h6M8 13h5M8 17h2"/><path d="M19.5 13.5l1.5 1.5-5.5 5.5H14v-1.5z"/>',
   tijeras: '<circle cx="6" cy="18" r="3"/><circle cx="18" cy="18" r="3"/><path d="M8 16L18 3M16 16L6 3"/>',
   brocha: '<rect x="4" y="3" width="14" height="6" rx="1.5"/><path d="M18 6h2v5h-8v3"/><rect x="10.5" y="14" width="3" height="7" rx="1"/>',
   sangriaMas: '<path d="M10 6h11M10 12h11M10 18h11"/><path d="M3 9l3 3-3 3"/>',
@@ -500,12 +503,12 @@ function lsGet(k, def = null) { try { const v = localStorage.getItem(k); return 
 function lsSet(k, v) { try { localStorage.setItem(k, v); } catch {} }
 
 // Color de la barra del sistema: [papel, barra azul] de cada tema
-const THEME_COLORS = { claro: ["#ffffff", "#185abd"], sepia: ["#f7efdd", "#6b4520"], oscuro: ["#1b1b1d", "#1f2a3d"] };
+const THEME_COLORS = { claro: ["#f6f8fc", "#f6f8fc"], sepia: ["#f5eedd", "#f5eedd"], oscuro: ["#151a24", "#151a24"] };
 function pintarColorBarra() {
   const c = THEME_COLORS[settings.theme] || THEME_COLORS.claro;
   const meta = $('meta[name="theme-color"]');
   // Inicio: el azul del banner; editor: la barra azul; lector: el papel
-  const color = currentView === "home" ? (settings.theme === "oscuro" ? "#081f47" : "#0c306d") : currentView === "reader" ? c[0] : c[1];
+  const color = currentView === "home" ? (settings.theme === "oscuro" ? "#011f4a" : "#012e6c") : currentView === "reader" ? c[0] : c[1];
   if (meta) meta.setAttribute("content", color);
 }
 function applySettings() {
@@ -1905,26 +1908,30 @@ function primeraLinea(title, text) {
 async function renderHome() {
   showView("home");
   document.title = "Atril";
-  const tab = settings.tab === "notes" ? "notes" : "docs";
+  // Pestañas: Recientes (discursos y notas juntos, lo último primero), Discursos y Notas (diseño de los bocetos)
+  const tab = ["recientes", "notes"].includes(settings.tab) ? settings.tab : "docs";
   $$(".segmented button").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.tab === tab)));
+  $("#home-nuevo-txt").textContent = tab === "docs" ? "Nuevo discurso" : tab === "notes" ? "Nueva nota" : "Nuevo";
+  $("#home-nuevo").onclick = tab === "docs" ? nuevoDiscurso : tab === "notes" ? () => newItem("notes") : nuevoDocumento;
 
   const actions = $("#home-actions");
   actions.replaceChildren();
-  if (tab === "docs") {
+  if (tab !== "notes") {
     actions.append(
-      el("button", { class: "btn primary", html: icon("open") + "<span>Abrir Word</span>", onclick: () => abrirWord() }),
-      el("button", { class: "btn", html: icon("plus") + "<span>Nuevo discurso</span>", onclick: nuevoDiscurso }),
+      el("button", { class: "btn", html: icon("open") + "<span>Abrir Word</span>", onclick: () => abrirWord() }),
       el("button", { class: "text-btn ayuda-word", text: "¿Cómo paso el Word del PC?", onclick: ayudaWord })
     );
   } else {
     actions.append(
-      el("button", { class: "btn primary", html: icon("plus") + "<span>Nueva nota</span>", onclick: () => newItem("notes") }),
       el("button", { class: "btn", id: "nota-mano", title: "Con el lápiz: a texto (el iPad lo pasa a letra) o a mano", html: icon("pluma") + "<span>Nota a mano</span>", onclick: notaAMano }),
       el("button", { class: "btn", id: "nota-dictar", html: icon("mic") + "<span>Dictar</span>", onclick: notaDictada }));
   }
 
   let items = [];
-  try { items = await store.all(tab); } catch (e) { console.error(e); toast("No se pudo leer el almacenamiento del dispositivo."); }
+  const tipo = new Map(); // de cada documento: "docs" o "notes"
+  try {
+    for (const k of tab === "recientes" ? ["docs", "notes"] : [tab]) for (const it of await store.all(k)) { tipo.set(it, k); items.push(it); }
+  } catch (e) { console.error(e); toast("No se pudo leer el almacenamiento del dispositivo."); }
   // «¿Cómo paso el Word del PC?» solo hasta que se abre el primer Word
   const ayudaPC = $(".ayuda-word", actions);
   if (ayudaPC) ayudaPC.hidden = items.some((i) => i.source);
@@ -1944,7 +1951,8 @@ async function renderHome() {
       const text = textOf(it);
       const title = it.title || text.split("\n")[0].slice(0, 60) || "Sin título";
       const words = text ? text.split(/\s+/).filter(Boolean).length : 0;
-      const esDoc = tab === "docs";
+      const kind = tipo.get(it);
+      const esDoc = kind === "docs";
       const est = words ? minutosEstimados(words, ppm()) : 0;
       const editado = fmtDate(it.updated || it.created);
       // La duración, en grande: el objetivo si lo hay; si no, lo que se tarda en leer
@@ -1954,7 +1962,7 @@ async function renderHome() {
         : null;
       const prog = esDoc ? progresoDe("docs", it.id) : null;
       const main = el("button", { class: "card-main", onclick: () => go(esDoc ? `#/leer/docs/${it.id}` : `#/editar/notes/${it.id}`) },
-        el("span", { class: "card-icon " + (esDoc ? "es-doc" : "es-nota"), html: icon(esDoc ? "doc" : "nota") }),
+        el("span", { class: "card-icon " + (esDoc ? "es-doc" : "es-nota"), html: icon(esDoc ? "docLineas" : "nota") }),
         el("span", { class: "card-title", text: title }),
         dur,
         resumenDado(it),
@@ -1965,7 +1973,7 @@ async function renderHome() {
           el("span", { text: `Editado ${editado.charAt(0).toLowerCase() + editado.slice(1)}` })),
         esDoc ? primeraLinea(title, text) : el("span", { class: "card-snippet", text: text.replace(/\s+/g, " ").slice(title === text.split("\n")[0] ? title.length : 0, 220).trim() })
       );
-      const more = el("button", { class: "card-more", "aria-label": "Opciones", html: icon("more"), onclick: () => actionSheet(title, itemActions(tab, it)) });
+      const more = el("button", { class: "card-more", "aria-label": "Opciones", html: icon("more"), onclick: () => actionSheet(title, itemActions(kind, it)) });
       // Lo leído, como en la biblioteca de Kindle
       const barra = prog ? el("span", { class: "card-prog", title: `Leído el ${prog} %`, "aria-label": `Leído el ${prog} %` }, el("i", { style: `width:${prog}%` })) : null;
       return el("li", { class: "card" + (it.fijado ? " fijado" : "") + (barra ? " con-prog" : "") }, main, more, barra);
@@ -1976,7 +1984,7 @@ async function renderHome() {
 
   // «Seguir donde lo dejaste»: el último discurso abierto, con un toque para seguir o presentar
   const seguir = $("#seguir");
-  const u = tab === "docs" && !q && total >= 2 ? ultimoAbierto() : null;
+  const u = tab !== "notes" && !q && total >= 2 ? ultimoAbierto() : null;
   const ult = u && u.kind === "docs" ? items.find((x) => x.id === u.id) : null;
   seguir.hidden = !ult;
   if (ult) {
@@ -1996,14 +2004,14 @@ async function renderHome() {
   } else seguir.replaceChildren();
 
   const empty = $("#empty");
-  const bienvenida = !items.length && !q && tab === "docs";
+  const bienvenida = !items.length && !q && tab !== "notes";
   actions.hidden = bienvenida;
   empty.classList.toggle("bienvenida", bienvenida);
   if (items.length) empty.hidden = true;
   else {
     empty.hidden = false;
     if (q) empty.replaceChildren(el("h2", { text: "Sin resultados" }), el("p", { text: `Nada coincide con «${home.query}».` }));
-    else if (tab === "docs") empty.replaceChildren(
+    else if (tab !== "notes") empty.replaceChildren(
       el("img", { class: "bv-icono", src: "icons/icon-192.png", alt: "" }),
       el("h2", { text: "Atril, tu lector de discursos" }),
       el("p", { class: "bv-lema", text: "Prepara el discurso en Word, ábrelo aquí y léelo en el iPad con letra grande y cronómetro. Gratis, sin cuentas, y todo se queda en tu dispositivo." }),

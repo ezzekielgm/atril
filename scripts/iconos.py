@@ -1,98 +1,80 @@
-"""Genera los iconos, el banner y la imagen de vista previa a partir de las imágenes de scripts/arte/.
-Uso (desde la carpeta del proyecto): python3 scripts/iconos.py   — necesita Pillow y numpy.
+"""Genera los iconos, el banner y la imagen de vista previa a partir de las imágenes de scripts/arte/nuevo/
+(bocetos de Ezequiel hechos con ChatGPT, noviembre de 2026).
+Uso (desde la carpeta del proyecto): python3 scripts/iconos.py   — necesita Pillow, numpy y fontTools.
+Después, para Atril del ordenador: npx tauri icon src-tauri/icons/fuente.png -o src-tauri/icons
 
-- Icono: se quita el marco blanco del original, se recorta el atril y se coloca centrado sobre
-  el mismo degradado azul (recalculado), con más margen en la versión «maskable» de Android.
-- Banner: cabecera del inicio (se guarda en JPEG ligero) y versión estrecha para el móvil.
-- og.jpg: imagen que sale al mandar el enlace (banner + nombre y lema).
+- Icono: el atril blanco del boceto, recortado y centrado sobre azul liso a sangre (el iPad redondea las
+  esquinas él solo; el boceto traía el cuadrado ya redondeado con blanco alrededor). Más margen en la versión
+  «maskable» de Android, que se recorta en círculo.
+- Banner: cabecera del inicio (JPEG ligero) y versión estrecha para el móvil. A la izquierda es azul liso
+  (AZUL_BANNER), que la cabecera alarga hasta el borde.
+- og.jpg: imagen que sale al mandar el enlace (la foto del banner fundida con el azul, el icono y el nombre).
 """
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parent.parent
-ARTE = RAIZ / "scripts" / "arte"
+ARTE = RAIZ / "scripts" / "arte" / "nuevo"
 ICONOS = RAIZ / "src" / "icons"
+FUENTES = Path("/tmp/fuentes")
+AZUL = (9, 41, 125)         # el azul del icono del boceto
+AZUL_BANNER = (1, 46, 108)  # el azul liso de la izquierda del banner (también en styles.css: .home-hero)
 
 
-def degradado_de_fondo(a, mascara_fondo):
-    """Ajusta color = c0 + c1·x + c2·y + c3·x·y por canal sobre los píxeles de fondo."""
-    ys, xs = np.where(mascara_fondo)
-    sel = np.random.default_rng(0).choice(len(xs), size=min(40000, len(xs)), replace=False)
-    xs, ys = xs[sel] / 1024, ys[sel] / 1024
-    A = np.stack([np.ones_like(xs), xs, ys, xs * ys], axis=1)
-    return [np.linalg.lstsq(A, a[(ys * 1024).astype(int), (xs * 1024).astype(int), c], rcond=None)[0] for c in range(3)]
+def atril():
+    """El atril blanco con su transparencia (alfa según lo claro que es cada píxel sobre el azul)."""
+    im = Image.open(ARTE / "icono.webp").convert("RGB")
+    a = np.asarray(im).astype(float)
+    x0, y0, x1, y1 = 240, 210, 1012, 1075  # zona del dibujo, dentro del cuadrado azul
+    zona = a[y0:y1, x0:x1]
+    t = ((zona - np.array(AZUL, float)) / (255 - np.array(AZUL, float))).mean(axis=2)
+    alfa = np.clip((t - 0.08) / 0.84, 0, 1)
+    ys, xs = np.where(alfa > 0.5)
+    caja = (xs.min() - 4, ys.min() - 4, xs.max() + 5, ys.max() + 5)
+    rgba = np.zeros(zona.shape[:2] + (4,), np.uint8)
+    rgba[..., :3] = 255
+    rgba[..., 3] = (alfa * 255).astype(np.uint8)
+    return Image.fromarray(rgba, "RGBA").crop(caja)
 
 
-def pinta_degradado(coefs, n):
-    y, x = np.mgrid[0:n, 0:n] / n
-    canales = [c[0] + c[1] * x + c[2] * y + c[3] * x * y for c in coefs]
-    return Image.fromarray(np.clip(np.stack(canales, axis=2), 0, 255).astype(np.uint8))
+def icono(fig, alto_rel, n=1024):
+    base = Image.new("RGBA", (n, n), AZUL + (255,))
+    esc = alto_rel * n / fig.size[1]
+    f = fig.resize((round(fig.size[0] * esc), round(fig.size[1] * esc)), Image.LANCZOS)
+    base.alpha_composite(f, ((n - f.size[0]) // 2, (n - f.size[1]) // 2))
+    return base.convert("RGB")
 
 
 def iconos():
-    im = Image.open(ARTE / "icono-original.jpg").convert("RGB")
-    a = np.asarray(im).astype(float)
-    n = im.size[0]
-    blanco = a.min(axis=2) > 200
-    # Fondo = dentro del marco y lejos del atril
-    dentro = np.zeros(a.shape[:2], bool)
-    dentro[95:925, 95:925] = True
-    es_azul = a[:, :, 2] > a[:, :, 0] + 45
-    fondo = dentro & es_azul & ~blanco
-    fondo[170:910, 245:780] = False
-    coefs = degradado_de_fondo(a, fondo)
-    pred = np.stack([coefs[c][0] + coefs[c][1] * np.mgrid[0:n, 0:n][1] / n + coefs[c][2] * np.mgrid[0:n, 0:n][0] / n
-                     + coefs[c][3] * (np.mgrid[0:n, 0:n][1] / n) * (np.mgrid[0:n, 0:n][0] / n) for c in range(3)], axis=2)
-    dist = np.sqrt(((a - pred) ** 2).sum(axis=2))
-    # Máscara del atril (y su sombra suave): distancia al fondo, dentro de la zona del dibujo
-    zona = np.zeros_like(dentro)
-    zona[175:915, 240:785] = True
-    alfa = np.clip((dist - 10) / 30, 0, 1) * zona
-    mask = Image.fromarray((alfa * 255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(1.2))
-    caja = (240, 175, 785, 915)
-    figura = im.crop(caja)
-    mfig = mask.crop(caja)
-    fw, fh = figura.size
-
-    def compone(tam, alto_rel, nombre):
-        fondo_img = pinta_degradado(coefs, 1024)
-        esc = alto_rel * 1024 / fh
-        w, h = round(fw * esc), round(fh * esc)
-        f = figura.resize((w, h), Image.LANCZOS)
-        m = mfig.resize((w, h), Image.LANCZOS)
-        x, y = (1024 - w) // 2, (1024 - h) // 2 + round(0.01 * 1024)
-        fondo_img.paste(f, (x, y), m)
-        fondo_img.resize((tam, tam), Image.LANCZOS).save(ICONOS / nombre, optimize=True)
-        return fondo_img
-
-    grande = compone(1024, 0.78, "icon-1024.png")
+    fig = atril()
+    grande = icono(fig, 0.66)
     for tam, nombre in [(512, "icon-512.png"), (192, "icon-192.png"), (180, "apple-touch-icon.png")]:
         grande.resize((tam, tam), Image.LANCZOS).save(ICONOS / nombre, optimize=True)
-    compone(512, 0.58, "icon-maskable-512.png")  # Android recorta en círculo: más margen
-    (ICONOS / "icon-1024.png").unlink()
+    icono(fig, 0.5).resize((512, 512), Image.LANCZOS).save(ICONOS / "icon-maskable-512.png", optimize=True)
     return grande
 
 
-def banner_y_vista_previa(icono):
-    b = Image.open(ARTE / "banner-original.jpg").convert("RGB")
-    # Cabecera del inicio: ancho completo y una versión más ligera para el móvil
+def banner_y_vista_previa(grande):
+    b = Image.open(ARTE / "banner.webp").convert("RGB")
     b.save(ICONOS / "banner.jpg", quality=82, optimize=True, progressive=True)
     b.resize((1080, round(b.size[1] * 1080 / b.size[0])), Image.LANCZOS).save(ICONOS / "banner-movil.jpg", quality=80, optimize=True, progressive=True)
 
-    # Vista previa del enlace (1200 × 630): el banner a la derecha y el texto en la parte azul
+    # Vista previa del enlace (1200 × 630): la foto a la derecha, fundida con el azul; el icono y el nombre a la izquierda
     W, H = 1200, 630
-    esc = H / b.size[1]
-    bb = b.resize((round(b.size[0] * esc), H), Image.LANCZOS)
-    og = bb.crop((bb.size[0] - W, 0, bb.size[0], H))
+    bb = b.resize((round(b.size[0] * H / b.size[1]), H), Image.LANCZOS)
+    og = Image.new("RGB", (W, H), AZUL_BANNER)
+    foto = bb.crop((bb.size[0] - 760, 0, bb.size[0], H))
+    rampa = np.clip(np.arange(760) / 260, 0, 1)
+    og.paste(foto, (W - 760, 0), Image.fromarray((np.tile(rampa, (H, 1)) * 255).astype(np.uint8)))
     d = ImageDraw.Draw(og)
     negrita = ImageFont.truetype(str(FUENTES / "carlito-700-normal.ttf"), 132)
     normal = ImageFont.truetype(str(FUENTES / "carlito-400-normal.ttf"), 40)
     peq = ImageFont.truetype(str(FUENTES / "carlito-400-normal.ttf"), 31)
-    ic = icono.resize((150, 150), Image.LANCZOS)
+    ic = grande.resize((140, 140), Image.LANCZOS)
     m = Image.new("L", ic.size, 0)
-    ImageDraw.Draw(m).rounded_rectangle((0, 0, 149, 149), radius=34, fill=255)
-    og.paste(ic, (60, 70), m)
+    ImageDraw.Draw(m).rounded_rectangle((0, 0, 139, 139), radius=32, fill=255)
+    og.paste(ic, (62, 70), m)
     d.text((60, 235), "Atril", font=negrita, fill="white")
     y = 392
     for linea in ["Tus discursos de Word en el iPad,", "con letra grande y cronómetro."]:
@@ -121,7 +103,6 @@ def escritorio(grande):
     lienzo.save(destino / "fuente.png", optimize=True)
 
 
-FUENTES = Path("/tmp/fuentes")
 if __name__ == "__main__":
     from fontTools.ttLib import TTFont
     FUENTES.mkdir(exist_ok=True)

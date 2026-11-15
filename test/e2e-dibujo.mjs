@@ -133,7 +133,7 @@ ok("En el tema oscuro la tinta negra se vuelve clara", await page.evaluate(() =>
   const p = document.querySelector("#reader-content figure.dibujo path.tz.k-negro");
   const c = p ? getComputedStyle(p).stroke : "";
   document.documentElement.dataset.theme = "claro";
-  return c === "rgb(236, 235, 232)";
+  return c === "rgb(231, 234, 241)"; // --text del tema oscuro
 }));
 await page.screenshot({ path: `${OUTDIR}/92-lector-dibujo.png` });
 

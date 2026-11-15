@@ -37,18 +37,22 @@
     </div>
   </header>
   <div class="home-tools home-wrap">
+    <div class="cabecera-inicio">
+      <label class="search">
+        <span data-icon="search"></span>
+        <input id="search" type="search" placeholder="Buscar discursos, notas o lugares" autocomplete="off">
+      </label>
+      <button class="tool tool-guia" id="btn-guia" aria-label="Guía"><span data-icon="guia"></span><span class="lbl">Guía</span></button>
+      <button class="tool tool-ajustes" id="btn-settings" aria-label="Ajustes"><span data-icon="settings"></span><span class="lbl">Ajustes</span></button>
+    </div>
     <div class="tabs-row">
       <div class="segmented" role="tablist">
-        <button role="tab" data-tab="docs">Discursos</button>
-        <button role="tab" data-tab="notes">Notas</button>
+        <button role="tab" data-tab="recientes"><span data-icon="clock"></span><span>Recientes</span></button>
+        <button role="tab" data-tab="docs"><span data-icon="capas"></span><span>Discursos</span></button>
+        <button role="tab" data-tab="notes"><span data-icon="notaLapiz"></span><span>Notas</span></button>
       </div>
-      <button class="tool tool-guia" id="btn-guia"><span data-icon="guia"></span><span class="lbl">Guía</span></button>
-      <button class="tool tool-ajustes" id="btn-settings"><span data-icon="settings"></span><span class="lbl">Ajustes</span></button>
+      <button class="btn primary btn-nuevo" id="home-nuevo"><span data-icon="plus"></span><span id="home-nuevo-txt">Nuevo</span></button>
     </div>
-    <label class="search">
-      <span data-icon="search"></span>
-      <input id="search" type="search" placeholder="Buscar por título, texto o lugar" autocomplete="off">
-    </label>
   </div>
   <div class="scroll" id="home-scroll"><div class="home-wrap">
     <div class="install-hint" id="install-hint" hidden>
