@@ -118,7 +118,7 @@ await page.click("#editor figure.dibujo");
 await page.waitForSelector(".lienzo .lz-svg");
 await trazo("pen", linea(0.5, 0.1, 0.6, 0.2));
 await page.click(".lienzo >> text=Cancelar");
-ok("Cancelar con cambios pregunta antes", await page.isVisible(".sheet >> text=¿Salir sin guardar el dibujo?"));
+ok("Cancelar con cambios pregunta antes", await page.isVisible(".sheet >> text=¿Salir sin guardar?"));
 await page.click(".sheet .action.danger");
 await page.waitForSelector(".lienzo", { state: "detached" });
 ok("…y no guarda el trazo nuevo", await page.evaluate(() => JSON.parse(document.querySelector("#editor figure.dibujo").getAttribute("data-dibujo")).t.length === 4));
@@ -175,6 +175,7 @@ ok("En Notas hay «Nota a mano» y «Dictar»", (await page.isVisible("#nota-man
 await page.click("#nota-mano");
 await page.waitForSelector(".lienzo .lz-svg");
 ok("«Nota a mano» abre el lienzo", (await page.textContent(".lz-titulo")) === "Nota a mano");
+await page.click(".lienzo [data-m=tinta]"); // de serie empieza «A texto»: aquí se prueba «A mano»
 await trazo("pen", linea(0.1, 0.1, 0.5, 0.15), 0.7);
 await trazo("pen", linea(0.1, 0.2, 0.4, 0.25), 0.7);
 await page.click(".lienzo .lz-hecho");

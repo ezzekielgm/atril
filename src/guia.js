@@ -77,9 +77,8 @@ const SECCIONES = (p) => [
   {
     id: "lapiz", icon: "pluma", titulo: "Lápiz y voz",
     items: [
-      ["pluma", "Escribir con el lápiz y que pase a letra", "En una nota de texto (o en el editor), escribe con el Apple Pencil encima de la hoja y el iPad lo convierte en letra. Para borrar, un garabato encima. Tiene que estar activado en Ajustes del iPad → Apple Pencil → Escribir a mano. Ojo: en «A mano (dibujo)» no se convierte, se queda como lo escribes.", "Notas → Lápiz → texto"],
-      ["rotulador", "Dibujar o dejarlo a mano", "Bolígrafo (más fino si escribes suave), rotulador, goma, 4 colores y 3 grosores. Con el lápiz puedes apoyar la mano. Se ve al leer y sale en Word y PDF.", "Editor → Insertar → Dibujo o a mano"],
-      ["rotulador", "Nota a mano (dibujo)", "Abre directamente una hoja para escribir o dibujar; se guarda tal cual, a mano. Si luego quieres el texto, Compartir → Para Claude → «Con lo escrito a mano (PDF)».", "Notas → A mano (dibujo)"],
+      ["pluma", "Escribir con el lápiz y que pase a letra", "En «Nota a mano», con «A texto» (de serie), escribe con el Apple Pencil y el iPad lo convierte en letra; cada línea queda como un párrafo de la nota. Para borrar, un garabato encima. También funciona en el editor. Tiene que estar activado en Ajustes del iPad → Apple Pencil → Escribir a mano.", "Notas → Nota a mano → A texto"],
+      ["rotulador", "Nota a mano, tal como la escribes", "En «Nota a mano», toca «A mano»: se guarda tu letra, como un dibujo (el bolígrafo es fino de serie; hay tres grosores). Si luego quieres el texto, Compartir → Para Claude → «Con lo escrito a mano (PDF)».", "Notas → Nota a mano → A mano"],
       ["mic", "Dictar", "Se abre el teclado: toca su micrófono y habla. Di «coma», «punto» o «nuevo párrafo».", "Notas → Dictar, o Editor → Insertar → Dictar"],
     ],
   },

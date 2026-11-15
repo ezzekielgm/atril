@@ -1,6 +1,7 @@
 // Lo que encontró Ezequiel usando Atril con el lápiz (15-11-2026):
-// 1) «Escribir a mano» no pasaba a letra: era la nota a mano (lienzo), que dibuja. Ahora hay «Lápiz → texto».
-// 2) La escritura a mano se veía borrosa: bordes «peludos» por el temblor del lápiz y la imagen del Word/PDF agrandada.
+// 1) «Escribir a mano» no pasaba a letra: era la nota a mano (lienzo), que dibuja. Ahora «Nota a mano» tiene «A texto»
+//    (un <textarea> donde el iPad convierte la letra) y «A mano» (dibujo).
+// 2) La escritura a mano se veía borrosa y gruesa: bordes «peludos» por el temblor del lápiz y la imagen del Word/PDF agrandada.
 // 3) El Word se guardaba con otra terminación: se comparte solo el archivo y en el iPad no se usa el enlace de descarga.
 // Uso: igual que e2e.mjs (con dist/ servido en el puerto 8080).
 import fs from "node:fs";
@@ -25,25 +26,38 @@ page.on("console", (m) => { if (m.type() === "error") errors.push(m.text()); });
 await page.goto(URL);
 await page.waitForSelector("#view-home:not([hidden])");
 
-// ============ 1. Lápiz → texto ============
+// ============ 1. «Nota a mano» → «A texto» (lo que pidió: «estoy escribiendo en nota a mano y no lo pasa a texto») ============
 await page.click('[data-tab="notes"]');
-await page.waitForSelector("#nota-lapiz");
-ok("En Notas: «Lápiz → texto» y «A mano (dibujo)», distintos", (await page.textContent("#nota-lapiz")).includes("Lápiz → texto") && (await page.textContent("#nota-mano")).includes("A mano (dibujo)"));
-await page.click("#nota-lapiz");
-await page.waitForSelector("#view-editor:not([hidden])");
-ok("Abre una nota de texto con la ayuda de escribir con el lápiz", await page.isVisible("#lapiz-ayuda") && (await page.textContent("#lapiz-ayuda")).includes("Escribir a mano"));
-ok("…en una hoja de texto donde el iPad puede escribir (editable, grande)", await page.evaluate(() => { const e = document.querySelector("#editor"); return e.isContentEditable && e.getBoundingClientRect().height > 400; }));
-ok("…y no pone el cursor en el título (para escribir directamente en la hoja)", await page.evaluate(() => document.activeElement !== document.querySelector("#editor-title")));
-await page.click("#lapiz-ok");
-ok("«Entendido» quita la ayuda", await page.isHidden("#lapiz-ayuda"));
-const notaId = await page.evaluate(() => location.hash.split("/").pop());
-ok("La nota se llama «Notas · fecha»", (await page.inputValue("#editor-title")).startsWith("Notas · "));
-
-// ============ 2. El trazo del lápiz: nítido ============
-await page.click('[data-rtab="insertar"]');
-await page.click('[data-cmd="dibujo"]');
+await page.waitForSelector("#nota-mano");
+ok("En Notas hay un solo botón para el lápiz: «Nota a mano»", (await page.textContent("#nota-mano")).includes("Nota a mano") && !(await page.$("#nota-lapiz")));
+await page.click("#nota-mano");
 await page.waitForSelector(".lienzo .lz-svg");
-ok("El lienzo avisa de que ahí se queda a mano (y dónde pasa a letra)", (await page.textContent(".lz-ayuda")).includes("Lápiz → texto"));
+ok("Empieza en «A texto»", (await page.getAttribute(".lienzo [data-m=texto]", "aria-pressed")) === "true" && (await page.getAttribute(".lienzo [data-m=tinta]", "aria-pressed")) === "false");
+const hojaTexto = await page.evaluate(() => {
+  const t = document.querySelector(".lienzo .lz-texto"), r = t.getBoundingClientRect();
+  const svg = document.querySelector(".lienzo .lz-svg");
+  return { tag: t.tagName, visible: getComputedStyle(t).display !== "none", alto: r.height, ancho: r.width, svgToques: getComputedStyle(svg).pointerEvents };
+});
+ok("…con una hoja de texto de verdad (<textarea>, donde el iPad pasa a letra) que ocupa la hoja", hojaTexto.tag === "TEXTAREA" && hojaTexto.visible && hojaTexto.alto > 400 && hojaTexto.ancho > 800 && hojaTexto.svgToques === "none", JSON.stringify(hojaTexto));
+ok("…y la ayuda explica «Escribir a mano» del iPad", (await page.textContent(".lz-ayuda")).includes("Escribir a mano"));
+ok("…sin las herramientas de dibujar (no hacen falta)", await page.isHidden(".lienzo [data-h=b]"));
+const lapizEn = (sel, puntos) => page.evaluate(({ sel, puntos }) => {
+  const el = document.querySelector(sel);
+  const ev = (tipo, [x, y]) => el.dispatchEvent(new PointerEvent(tipo, { pointerId: 9, pointerType: "pen", clientX: x, clientY: y, pressure: 0.4, bubbles: true, cancelable: true, isPrimary: true, button: 0 }));
+  ev("pointerdown", puntos[0]); for (const q of puntos.slice(1)) ev("pointermove", q); ev("pointerup", puntos[puntos.length - 1]);
+}, { sel, puntos });
+await lapizEn(".lienzo .lz-svg", [[200, 300], [260, 310], [320, 305]]);
+ok("En «A texto» el lápiz no dibuja", (await page.$$(".lienzo .lz-svg g:not(.lz-pauta) path")).length === 0);
+// Lo que escribe «Escribir a mano» llega al <textarea> como texto
+await page.fill(".lienzo .lz-texto", "Primera idea del discurso\nSegunda idea: Juan 3:16\n\n");
+await page.screenshot({ path: `${OUTDIR}/lapiz-a-texto.png` });
+
+// «A mano»: se dibuja, fino de serie
+await page.click(".lienzo [data-m=tinta]");
+ok("«A mano» quita la hoja de texto y enseña las herramientas", await page.isHidden(".lienzo .lz-texto") && await page.isVisible(".lienzo [data-h=b]") && (await page.textContent(".lz-ayuda")).includes("como un dibujo"));
+ok("Atril recuerda el modo para la próxima nota", (await page.evaluate(() => localStorage.getItem("atril.lienzoModo"))) === "tinta");
+
+// ============ 2. El trazo del lápiz: nítido y fino ============
 // Escritura de prueba con el lápiz: bucles («lelele») con muchos puntos y un pequeño temblor, presión suave
 const caja = await page.$eval(".lienzo .lz-svg", (s) => { const r = s.getBoundingClientRect(); return { x: r.left, y: r.top, w: r.width }; });
 const puntos = [];
@@ -64,13 +78,55 @@ const tr = await page.evaluate(() => {
   return p ? { clase: p.getAttribute("class"), ancho: Number(p.getAttribute("stroke-width")), d: p.getAttribute("d"), cs: getComputedStyle(p) && { fill: getComputedStyle(p).fill, cap: getComputedStyle(p).strokeLinecap } } : null;
 });
 ok("El trazo es una línea de bolígrafo (redonda, sin relleno)", tr && tr.clase === "tz k-negro" && tr.cs.fill === "none" && tr.cs.cap === "round", JSON.stringify(tr && { c: tr.clase, f: tr.cs.fill }));
-ok("Escribiendo suave sale fino (2–3 de grosor)", tr && tr.ancho >= 2 && tr.ancho <= 3, String(tr && tr.ancho));
+ok("Escribiendo suave sale fino (1,2–2 de grosor; antes 2–3,5)", tr && tr.ancho >= 1.2 && tr.ancho <= 2, String(tr && tr.ancho));
+ok("El grosor de serie es el fino-medio (2,5), con «Fino» todavía más fino", await page.evaluate(() => {
+  const g = [...document.querySelectorAll(".lienzo .lz-grosor")];
+  return g.length === 3 && g[1].getAttribute("aria-pressed") === "true";
+}));
 const segmentos = tr ? (tr.d.match(/Q/g) || []).length : 0;
 ok("El temblor del lápiz se filtra (muchos menos tramos que puntos)", segmentos > 20 && segmentos < puntos.length / 2, `${segmentos} tramos de ${puntos.length} puntos`);
 await page.screenshot({ path: `${OUTDIR}/lapiz-trazo.png`, clip: { x: caja.x + 30, y: caja.y + 100, width: 220, height: 90 } });
 await page.click(".lienzo .lz-hecho");
 await page.waitForSelector(".lienzo", { state: "detached" });
-await page.waitForSelector("#editor figure.dibujo");
+await page.waitForSelector("#view-editor:not([hidden]) #editor figure.dibujo");
+const notaId = await page.evaluate(() => location.hash.split("/").pop());
+const nota1 = await page.evaluate(async (id) => (await window.__atril.store.get("notes", id)), notaId);
+ok("Se guarda la nota con lo dibujado y, debajo, lo escrito «A texto» (una línea = un párrafo)", nota1 && nota1.title.startsWith("Nota a mano · ") && /^<figure class="dibujo"[^]*<\/figure><p>Primera idea del discurso<\/p><p>Segunda idea: Juan 3:16<\/p>/.test(nota1.html), nota1 && nota1.html.replace(/data-dibujo="[^"]*"|<svg[^]*<\/svg>/g, "…").slice(0, 200));
+
+// Solo texto (sin dibujar nada): la nota es solo texto
+await page.goto(URL + "#/");
+await page.waitForSelector("#view-home:not([hidden])");
+await page.click('[data-tab="notes"]');
+await page.click("#nota-mano");
+await page.waitForSelector(".lienzo .lz-svg");
+ok("La siguiente nota empieza como la dejaste («A mano»)", (await page.getAttribute(".lienzo [data-m=tinta]", "aria-pressed")) === "true");
+await page.click(".lienzo [data-m=texto]");
+await page.fill(".lienzo .lz-texto", "Asamblea de circuito\nTema: la paciencia");
+await page.click(".lienzo .lz-hecho");
+await page.waitForSelector("#view-editor:not([hidden])");
+const nota2 = await page.evaluate(async () => (await window.__atril.store.all("notes")).find((n) => n.html.includes("Asamblea de circuito")));
+ok("Solo con «A texto», la nota es texto normal (se puede editar, copiar y pasar a Claude)", nota2 && !nota2.html.includes("<figure") && nota2.html.startsWith("<p>Asamblea de circuito</p><p>Tema: la paciencia</p>"), nota2 && nota2.html);
+
+// En el editor, Insertar → «Dibujo o a mano» también tiene «A texto»; empieza en «A mano»
+await page.evaluate(() => {
+  const p = document.querySelector("#editor p");
+  const r = document.createRange(); r.selectNodeContents(p); r.collapse(false);
+  const s = getSelection(); s.removeAllRanges(); s.addRange(r); document.querySelector("#editor").focus();
+});
+await page.click('[data-rtab="insertar"]');
+await page.click('[data-cmd="dibujo"]');
+await page.waitForSelector(".lienzo .lz-svg");
+ok("En el editor el lienzo empieza en «A mano» y tiene «A texto»", (await page.getAttribute(".lienzo [data-m=tinta]", "aria-pressed")) === "true" && await page.isVisible(".lienzo [data-m=texto]"));
+await page.click(".lienzo [data-m=texto]");
+await page.fill(".lienzo .lz-texto", "Añadido con el lápiz");
+await page.click(".lienzo .lz-hecho");
+await page.waitForSelector(".lienzo", { state: "detached" });
+ok("…y lo escrito entra como párrafo después del cursor", await page.evaluate(() => {
+  const ps = [...document.querySelectorAll("#editor p")].map((p) => p.textContent);
+  return ps[0] === "Asamblea de circuito" && ps[1] === "Añadido con el lápiz" && ps[2] === "Tema: la paciencia";
+}), await page.evaluate(() => [...document.querySelectorAll("#editor p")].map((p) => p.textContent).join(" | ")));
+await page.goto(URL + `#/editar/notes/${notaId}`);
+await page.waitForSelector("#view-editor:not([hidden]) #editor figure.dibujo");
 const guardado = await page.evaluate(() => JSON.parse(document.querySelector("#editor figure.dibujo").getAttribute("data-dibujo")).t[0].p.slice(0, 6));
 ok("Se guarda con un decimal (sin escalones de medio punto)", guardado.some((v, i) => i % 3 !== 2 && !Number.isInteger(v)), guardado.join(","));
 

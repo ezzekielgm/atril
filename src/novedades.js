@@ -7,8 +7,8 @@ export const NOVEDADES = [
     id: "2026-11-15",
     fecha: "15 de noviembre de 2026",
     lineas: [
-      ["pluma", "Notas → «Lápiz → texto»: escribe con el Apple Pencil encima de la hoja y el iPad lo pasa a letra. «A mano (dibujo)» se queda tal como lo escribes."],
-      ["rotulador", "La escritura a mano se ve nítida y más fina (si escribes suave, más fina todavía), y también sale nítida en el Word y el PDF."],
+      ["pluma", "«Nota a mano» → «A texto»: escribe con el Apple Pencil y el iPad lo pasa a letra (cada línea, un párrafo). «A mano» se queda tal como lo escribes. Atril recuerda cuál usaste."],
+      ["rotulador", "La escritura a mano se ve nítida y fina (si escribes suave, más fina todavía), y también sale nítida en el Word y el PDF."],
       ["word", "Guardar como Word: elige «Guardar en Archivos» (ahí puedes escoger OneDrive) y queda como .docx."],
     ],
   },

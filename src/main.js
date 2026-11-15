@@ -86,6 +86,12 @@ function textToHtml(text) {
     .join("") || "<p><br></p>";
 }
 
+/** Lo escrito «A texto» en la nota a mano: cada línea, un párrafo (así se toman las notas en una asamblea). */
+function lineasAHtml(text) {
+  return String(text).replace(/\r\n?/g, "\n").split("\n").map((l) => l.trim()).filter(Boolean)
+    .map((l) => `<p>${escapeHtml(l)}</p>`).join("");
+}
+
 function wordCount(html) {
   const t = htmlToText(html);
   return t ? t.split(/\s+/).filter(Boolean).length : 0;
@@ -1655,29 +1661,18 @@ async function notaAMano() {
     const { abrirLienzo } = await import("./lienzo.js");
     abrirLienzo({
       confirmar: confirmDialog, icono: icon, titulo: "Nota a mano",
-      alGuardar: async (d) => {
+      // «A texto» de serie: el iPad pasa a letra lo escrito con el lápiz; «A mano», se queda como dibujo
+      conTexto: true, modo: lsGet("atril.lienzoModo", "texto"), alCambiarModo: (m) => lsSet("atril.lienzoModo", m),
+      alGuardar: async (d, { texto = "" } = {}) => {
         const now = Date.now();
         const fecha = new Date(now).toLocaleDateString("es-ES", { day: "numeric", month: "short" });
-        const item = { id: uid(), title: `Nota a mano · ${fecha}`, html: sanitize(figuraDibujo(d).outerHTML + "<p><br></p>"), created: now, updated: now };
+        const html = (d ? figuraDibujo(d).outerHTML : "") + lineasAHtml(texto) + "<p><br></p>";
+        const item = { id: uid(), title: `Nota a mano · ${fecha}`, html: sanitize(html), created: now, updated: now };
         await store.put("notes", item);
         go(`#/editar/notes/${item.id}`);
       },
     });
   } catch (e) { console.error(e); toast("No se pudo abrir el dibujo. Inténtalo de nuevo."); }
-}
-/**
- * «Lápiz → texto» (a petición de Ezequiel: escribir con el lápiz y que quede en letra). Es una nota de texto
- * normal: lo que convierte la letra es «Escribir a mano» del iPad, que funciona en el editor (no en el lienzo,
- * donde el lápiz dibuja). Se abre con una ayuda arriba que lo explica.
- */
-let lapizAlAbrir = null;
-async function notaLapiz() {
-  const now = Date.now();
-  const fecha = new Date(now).toLocaleDateString("es-ES", { day: "numeric", month: "short" });
-  const item = { id: uid(), title: `Notas · ${fecha}`, html: "<p><br></p>", created: now, updated: now };
-  await store.put("notes", item);
-  lapizAlAbrir = "notes/" + item.id;
-  go(`#/editar/notes/${item.id}`);
 }
 /** Nota dictada: nota nueva con el teclado abierto (para tocar su micrófono). */
 let dictarAlAbrir = null;
@@ -1871,8 +1866,7 @@ async function renderHome() {
   } else {
     actions.append(
       el("button", { class: "btn primary", html: icon("plus") + "<span>Nueva nota</span>", onclick: () => newItem("notes") }),
-      el("button", { class: "btn", id: "nota-lapiz", title: "El iPad pasa a letra lo que escribes con el Apple Pencil", html: icon("pluma") + "<span>Lápiz → texto</span>", onclick: notaLapiz }),
-      el("button", { class: "btn", id: "nota-mano", title: "Se queda escrito a mano, como un dibujo", html: icon("rotulador") + "<span>A mano (dibujo)</span>", onclick: notaAMano }),
+      el("button", { class: "btn", id: "nota-mano", title: "Con el lápiz: a texto (el iPad lo pasa a letra) o a mano", html: icon("pluma") + "<span>Nota a mano</span>", onclick: notaAMano }),
       el("button", { class: "btn", id: "nota-dictar", html: icon("mic") + "<span>Dictar</span>", onclick: notaDictada }));
   }
 
@@ -4024,7 +4018,6 @@ const editor = {
     this.togglePalette(false);
     this.togglePaletteLetra(false);
     $("#dictado-ayuda").hidden = true;
-    $("#lapiz-ayuda").hidden = true;
     reemplazo.cerrar();
     this.cinta("inicio");
     this.pintarTiempo();
@@ -4035,7 +4028,6 @@ const editor = {
     this.paintToolbar();
     // Nota dictada: el cursor en el texto y la ayuda del micrófono; documento nuevo: el cursor en el título
     if (dictarAlAbrir === kind + "/" + id) { dictarAlAbrir = null; this.dictar(); }
-    else if (lapizAlAbrir === kind + "/" + id) { lapizAlAbrir = null; $("#lapiz-ayuda").hidden = false; }
     else if (!item.title && (!item.html || item.html === "<p><br></p>")) this.titleInput.focus();
   },
 
@@ -4576,14 +4568,20 @@ const editor = {
     const ref = this.bloqueDelCursor();
     this.lienzo({
       titulo: "Dibujo o escritura a mano",
-      alGuardar: (d) => {
-        const f = figuraDibujo(d);
-        f.setAttribute("contenteditable", "false");
-        if (ref && ref.parentNode === this.area) ref.after(f); else this.area.append(f);
-        if (!f.nextElementSibling) { const p = document.createElement("p"); p.innerHTML = "<br>"; f.after(p); }
-        // Si el párrafo donde estaba el cursor estaba vacío, el dibujo ocupa su sitio
+      conTexto: true, modo: "tinta",
+      alGuardar: (d, { texto = "" } = {}) => {
+        // Lo que va: el dibujo (si hay) y después los párrafos escritos «A texto» (si hay)
+        const tmp = document.createElement("div");
+        tmp.innerHTML = sanitize((d ? figuraDibujo(d).outerHTML : "") + lineasAHtml(texto));
+        const nuevos = [...tmp.children];
+        if (!nuevos.length) return;
+        nuevos.forEach((n) => { if (n.matches("figure.dibujo")) n.setAttribute("contenteditable", "false"); });
+        let ultimo = ref && ref.parentNode === this.area ? ref : null;
+        for (const n of nuevos) { if (ultimo) ultimo.after(n); else this.area.append(n); ultimo = n; }
+        if (!ultimo.nextElementSibling) { const p = document.createElement("p"); p.innerHTML = "<br>"; ultimo.after(p); }
+        // Si el párrafo donde estaba el cursor estaba vacío, lo nuevo ocupa su sitio
         if (ref && ref.tagName === "P" && !ref.textContent.trim() && !ref.querySelector("img")) ref.remove();
-        f.scrollIntoView({ block: "nearest" });
+        nuevos[0].scrollIntoView({ block: "nearest" });
         this.markDirty();
       },
     });
@@ -4759,7 +4757,6 @@ const editor = {
     // Tocar un dibujo lo abre para cambiarlo
     this.area.addEventListener("click", (e) => { const f = e.target.closest && e.target.closest("figure.dibujo"); if (f && this.area.contains(f)) { e.preventDefault(); this.editarDibujo(f); } });
     $("#dictado-ok").addEventListener("click", () => { $("#dictado-ayuda").hidden = true; this.area.focus(); });
-    $("#lapiz-ok").addEventListener("click", () => { $("#lapiz-ayuda").hidden = true; });
     $("#editor-time").addEventListener("click", () => this.abrirTiempo());
     $$(".ribbon-tabs [data-rtab]").forEach((t) => t.addEventListener("click", () => this.cinta(t.dataset.rtab)));
     $("#ed-menos").addEventListener("click", () => this.zoom(-2));
@@ -5725,5 +5722,5 @@ init();
 window.__atril = {
   sanitize, htmlToText, textToHtml, store, settings: () => settings, setFontSize, importFiles, exportWord, crearPdf,
   timer, reader, editor, ensayo, buscador, tarjetas, prompter, crearPlantilla, abrirDado, pintarAvisoCopia, reemplazo, presentar, sesion, textoParaCompartir, abrirCompartir, abrirGuia,
-  novedadesAlAbrir, contarProblema, textoParaClaude, APP_CANAL, voz, alternarVoz, pararVoz, htmlParaExportar, notaLapiz,
+  novedadesAlAbrir, contarProblema, textoParaClaude, APP_CANAL, voz, alternarVoz, pararVoz, htmlParaExportar, notaAMano,
 };
