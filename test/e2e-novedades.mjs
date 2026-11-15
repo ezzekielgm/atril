@@ -85,6 +85,14 @@ const portapapeles = (page) => page.evaluate(() => navigator.clipboard.readText(
   await page.waitForTimeout(300);
   t = await portapapeles(page);
   ok("…con su duración en la petición", t.startsWith("Es mi discurso «La paciencia» y debe durar 10 minutos") && t.includes("Texto del discurso"), t.slice(0, 90));
+  // Para JW Library: texto limpio con el título arriba, para pegarlo en una nota
+  await page.evaluate(() => window.__atril.abrirCompartir("notes", { id: "nota3", title: "Asamblea regional", html: "<h2>Mañana</h2><p>Discurso de <strong>apertura</strong> (Salmo 23:1).</p><blockquote class=\"versiculo\"><p>Jehová es mi pastor (Salmo 23:1)</p></blockquote><ul><li>Idea uno</li></ul>" }));
+  ok("Compartir tiene «Para JW Library»", await page.isVisible(".sheet >> text=Para JW Library") && await page.isVisible(".co-jw"));
+  await page.click(".co-jw");
+  await page.waitForTimeout(300);
+  t = await portapapeles(page);
+  ok("Copia el título arriba y el texto limpio (sin *negritas* ni «> »)", t.startsWith("Asamblea regional\n\nMañana\n\nDiscurso de apertura (Salmo 23:1).") && t.includes("\nJehová es mi pastor (Salmo 23:1)") && t.includes("• Idea uno") && !/[*>]/.test(t), t.replace(/\n/g, " ⏎ "));
+  ok("…y avisa de cómo pegarlo en JW Library", (await page.textContent("#toast")).includes("JW Library"));
   // Nota escrita a mano: también en PDF
   const conDibujo = await page.evaluate(() => window.__atril.sanitize('<figure class="dibujo" data-dibujo=\'{"w":1000,"h":300,"t":[{"c":"k-negro","h":"b","s":3,"p":[10,10,0.5,200,100,0.5]}]}\'></figure>'));
   await page.evaluate((html) => window.__atril.abrirCompartir("notes", { id: "nota2", title: "A mano", html }), conDibujo);

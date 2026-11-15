@@ -678,10 +678,10 @@ function downloadFile(file) {
   setTimeout(() => URL.revokeObjectURL(url), 30000);
 }
 
-async function copyText(text, { aviso = "Texto copiado. Ya puedes pegarlo donde quieras." } = {}) {
+async function copyText(text, { aviso = "Texto copiado. Ya puedes pegarlo donde quieras.", toastOpc = {} } = {}) {
   try {
     await navigator.clipboard.writeText(text);
-    toast(aviso, { ms: 6000 });
+    toast(aviso, { ms: 6000, ...toastOpc });
   } catch {
     // Alternativa para navegadores sin permiso de portapapeles
     const ta = el("textarea", { style: "position:fixed;top:-1000px;opacity:0" });
@@ -691,7 +691,7 @@ async function copyText(text, { aviso = "Texto copiado. Ya puedes pegarlo donde 
     let ok = false;
     try { ok = document.execCommand("copy"); } catch {}
     ta.remove();
-    toast(ok ? aviso : "No se pudo copiar. Usa «Compartir».", { ms: 6000 });
+    toast(ok ? aviso : "No se pudo copiar. Usa «Compartir».", ok ? { ms: 6000, ...toastOpc } : { ms: 6000 });
   }
 }
 
@@ -776,6 +776,29 @@ function textoParaCompartir(kind, item, { formato = true } = {}) {
   return t;
 }
 
+/**
+ * «Para JW Library» (a petición de Ezequiel: pasar sus notas de las asambleas a JW Library). JW Library no abre
+ * archivos que no estén firmados por la organización, así que se copia el texto para pegarlo en una nota suya:
+ * texto plano (sin las marcas de WhatsApp ni los «> » de las citas), con el título en la primera línea.
+ */
+function textoParaJW(kind, item) {
+  let t = textoParaCompartir(kind, item, { formato: false }).replace(/^> ?/gm, "");
+  const titulo = (item.title || "").trim();
+  if (titulo && (t.split("\n")[0] || "").trim() !== titulo) t = titulo + (t ? "\n\n" + t : "");
+  return t;
+}
+function abrirJWLibrary() {
+  const url = "jwlibrary:///";
+  if (escritorio.activo) escritorio.abrirEnlace(url); else location.href = url;
+}
+function copiarParaJW(kind, item) {
+  const abrir = esIOS() || esAndroid() || escritorio.activo;
+  return copyText(textoParaJW(kind, item), {
+    aviso: "Copiado. En JW Library, crea una nota y pega: la primera línea es el título.",
+    toastOpc: abrir ? { action: "Abrir JW Library", onAction: abrirJWLibrary, ms: 9000 } : {},
+  });
+}
+
 /** Abre WhatsApp con el texto escrito, para elegir el chat. Si no se abre (no está instalado), ofrece otra app. */
 function enviarWhatsApp(titulo, texto) {
   const t = encodeURIComponent(texto);
@@ -851,6 +874,9 @@ function abrirCompartir(kind, item) {
       op("share", "Otra app", "Correo, Mensajes, Telegram, Notas, Claude…", () => { const t = texto(); close(); shareText(item.title, t); }, " co-otra"),
       op("copy", "Copiar el texto", "Y lo pegas donde quieras", () => { const t = texto(); close(); copyText(t); }, " co-copiar")),
     el("label", { class: "switch-row" }, el("span", { html: "Con negritas y cursivas de WhatsApp <small class=\"co-ej\">*así* y _así_</small>" }), formato),
+    el("h3", { class: "co-sec", text: "Para JW Library (en una nota)" }),
+    el("div", { class: "actions menu" },
+      op("book", "Copiar para una nota de JW Library", "Texto limpio con el título arriba; luego lo pegas en una nota", () => { close(); copiarParaJW(kind, item); }, " co-jw")),
     el("h3", { class: "co-sec", text: "Para Claude (que te lo ordene o te ayude)" }),
     el("div", { class: "actions menu" }, ...opcionesClaude(kind, item, () => close())),
     el("h3", { class: "co-sec", text: "Como archivo (igual que se ve aquí)" }),

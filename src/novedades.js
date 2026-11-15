@@ -4,6 +4,13 @@
 // Cada línea: [icono, texto]. Iconos: los de ICONOS en main.js.
 export const NOVEDADES = [
   {
+    id: "2026-11-15-3",
+    fecha: "15 de noviembre de 2026",
+    lineas: [
+      ["book", "Compartir → «Para JW Library»: copia tus notas (las de una asamblea, por ejemplo) o tu discurso como texto limpio, con el título arriba, para pegarlo en una nota de JW Library."],
+    ],
+  },
+  {
     id: "2026-11-15-2",
     fecha: "15 de noviembre de 2026",
     lineas: [

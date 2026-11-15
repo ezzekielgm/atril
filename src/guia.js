@@ -103,6 +103,7 @@ const SECCIONES = (p) => [
     items: [
       ["chat", "Mandar por WhatsApp", "Se abre WhatsApp con el texto escrito y eliges el chat. Sale con negritas y cursivas (*así*); si lo prefieres, quítalas con el interruptor.", "⋯ → Compartir, Lector → Más → Compartir, o el botón de compartir del editor"],
       ["share", "A otra app o copiado", "«Otra app» abre la lista del sistema: correo, Mensajes, Telegram, Notas, Claude… «Copiar el texto» lo deja listo para pegar donde quieras.", "⋯ → Compartir"],
+      ["book", "Para JW Library", "Copia tus notas (por ejemplo, las de una asamblea) o tu discurso como texto limpio, con el título en la primera línea, para pegarlo en una nota de JW Library. En el iPad, el aviso tiene «Abrir JW Library». JW Library no abre archivos hechos por otras apps, por eso se pega.", "⋯ → Compartir → Para JW Library"],
       ["chispa", "Para Claude", "Copia tus notas o tu discurso con la petición ya escrita (ordenar las notas, mejorar el discurso o resumir); abres Claude y lo pegas. Si escribiste a mano, prepara el PDF y copia la petición para pegarla al mandárselo.", "⋯ → Compartir → Para Claude"],
       ["word", "Como archivo", "Word (se abre en Word, Pages o Google Docs) o PDF (para leerlo o imprimirlo tal cual, con letra normal, grande o muy grande y las mismas letras de Atril, con todas las tildes y comillas).", "⋯ → Compartir → Como archivo"],
       ["word", "El Word del PC, al día", p.escritorio
