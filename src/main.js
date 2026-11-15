@@ -3242,6 +3242,7 @@ const reader = {
     const n = (this.item.ensayos || []).length;
     $("#reader-ensayos .lbl").textContent = n ? `Ensayos (${n})` : "Ensayos";
     $("#reader-voz").hidden = !vozDisponible();
+    $("#reader-dado").hidden = this.kind !== "docs";
   },
   openMenu() {
     const n = (this.item.ensayos || []).length;
@@ -3488,8 +3489,19 @@ const reader = {
     $("#reader-voz").addEventListener("click", () => alternarVoz());
     $("#reader-buscar").addEventListener("click", () => buscador.abrir());
     $("#reader-compartir").addEventListener("click", () => abrirCompartir(this.kind, this.item));
+    $("#reader-aqui").addEventListener("click", () => { if (this.aqui != null) this.irAqui(); else toast("Toca dos veces un párrafo para marcar «voy por aquí»."); });
+    $("#reader-completa").addEventListener("click", () => { views.reader.classList.add("immersive"); this.paintPace(); toast("Toca el texto para volver a ver la barra.", { ms: 2500 }); });
+    $("#reader-dado").addEventListener("click", () => abrirDado(this.kind, this.id));
+    $("#reader-word").addEventListener("click", () => exportWord(this.kind, this.item));
+    $("#reader-pdf").addEventListener("click", () => exportPdf(this.kind, this.item));
+    $("#reader-guia").addEventListener("click", () => abrirGuia("leer"));
     // Minimizar la cinta (a petición de Ezequiel): una sola fila con los botones solo con icono; se recuerda
     $("#reader-plegar").addEventListener("click", () => { settings.cintaLectorPlegada = !settings.cintaLectorPlegada; saveSettings(); this.pintarPlegado(); });
+    // La cinta se desliza de lado: una sombra en el borde dice que hay más botones
+    const cintaL = $(".reader-tools");
+    const bordesL = () => { cintaL.classList.toggle("mas-derecha", cintaL.scrollLeft + cintaL.clientWidth < cintaL.scrollWidth - 4); cintaL.classList.toggle("mas-izquierda", cintaL.scrollLeft > 4); };
+    cintaL.addEventListener("scroll", bordesL, { passive: true });
+    new ResizeObserver(bordesL).observe(cintaL);
     this.pintarPlegado();
     $("#reader-objetivo").addEventListener("click", () => openSheet([
       el("h2", { text: "Tiempo" }), this.timeGroup(),

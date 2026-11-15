@@ -43,7 +43,7 @@ ok("«Probar con un ejemplo» abre un discurso de muestra", ej.title === "Ejempl
 
 // ============ Botones con nombre ============
 const nombres = await page.$$eval(".reader-tools .tool .lbl", (xs) => xs.filter((x) => x.offsetParent).map((x) => x.textContent));
-ok("Los botones del lector llevan su nombre (cinta por grupos)", nombres.join(",") === "Presentar,Desplazar,Ensayos,Tarjetas,Esquema,Letra,Buscar,Editar,Nuevo,Compartir,Más", nombres.join(","));
+ok("Los botones del lector llevan su nombre (cinta por grupos)", nombres.join(",") === "Presentar,Desplazar,Ensayos,Tarjetas,Esquema,Letra,Buscar,Voy por aquí,Pantalla completa,Editar,Nuevo,Compartir,Dónde lo he dado,Word,PDF,Guía,Más", nombres.join(","));
 ok("Junto al cronómetro, la duración objetivo", (await page.textContent("#reader-objetivo")).includes("Objetivo 5 min"));
 ok("«Volver» dice a dónde", (await page.textContent("#reader-back")).includes("Discursos"));
 await page.screenshot({ path: `${OUTDIR}/51-lector-botones.png` });

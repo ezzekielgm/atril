@@ -42,7 +42,7 @@ const DISCURSO = `<h1>Prueba</h1><h2>Introducción (2 min)</h2>${parrafos(3)}<h2
   const doc = await crear(page, "docs", { title: "Prueba", html: DISCURSO, target: 8 });
   await ir(page, `#/leer/docs/${doc.id}`, "reader");
   const nombres = await page.$$eval(".reader-tools .tool .lbl", (xs) => xs.filter((x) => x.offsetParent).map((x) => x.textContent));
-  ok("La cinta del lector: Presentar · Practicar · Leer · Documento (a petición de Ezequiel, como Word)", nombres.join(",") === "Presentar,Desplazar,Ensayos,Tarjetas,Esquema,Letra,Buscar,Editar,Nuevo,Compartir,Más", nombres.join(","));
+  ok("La cinta del lector: Presentar · Practicar · Leer · Documento (a petición de Ezequiel, como Word)", nombres.join(",") === "Presentar,Desplazar,Ensayos,Tarjetas,Esquema,Letra,Buscar,Voy por aquí,Pantalla completa,Editar,Nuevo,Compartir,Dónde lo he dado,Word,PDF,Guía,Más", nombres.join(","));
   await page.evaluate(() => { const s = document.querySelector("#reader-scroll"); s.scrollTop = (s.scrollHeight - s.clientHeight) * 0.5; });
   await page.waitForTimeout(200);
   await page.click("#reader-presentar");
@@ -144,7 +144,7 @@ const DISCURSO = `<h1>Prueba</h1><h2>Introducción (2 min)</h2>${parrafos(3)}<h2
   const grupos = await page.$$eval(".sheet .menu-grupo", (xs) => xs.map((x) => x.textContent));
   ok("«Más» va por grupos: Documento, Compartir y guardar, Ayuda (Practicar está fuera, en la cinta)", grupos.join(",") === "Documento,Compartir y guardar,Ayuda", grupos.join(","));
   const cinta = await page.$$eval(".reader-tools .rg-nombre", (xs) => xs.map((x) => x.textContent));
-  ok("La cinta del iPad tiene Practicar, Leer y Documento", cinta.join(",") === "Practicar,Leer,Documento", cinta.join(","));
+  ok("La cinta del iPad tiene Practicar, Leer, Documento, Guardar y Ayuda", cinta.join(",") === "Practicar,Leer,Documento,Guardar,Ayuda y más", cinta.join(","));
   const practicar = await page.$$eval(".rg-practicar button", (xs) => xs.filter((b) => b.offsetParent).map((b) => b.textContent.trim()));
   ok("Practicar: desplazar, ensayos y tarjetas, a la vista", practicar.length === 3 && practicar.includes("Desplazar") && practicar.includes("Tarjetas"), practicar.join(" | "));
   await page.waitForTimeout(400);

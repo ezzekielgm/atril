@@ -159,7 +159,7 @@ const HTML = `<h2>Introducción (2 min)</h2><p>Hola <strong>a todos </strong>y <
   const { ctx, page } = await nuevo({ width: 810, height: 1080 });
   const doc = await crear(page, "docs", { title: "Vertical", html: "<h2>Uno</h2><p>Texto.</p>" });
   await ir(page, `#/leer/docs/${doc.id}`, "reader");
-  ok("iPad en vertical: la barra cabe, con nombre en Desplazar, Presentar, Editar y Más", await page.evaluate(() => { const b = document.querySelector(".reader-bar"); const vis = (id) => document.querySelector(`#${id} .lbl`).offsetWidth > 0; return b.scrollWidth <= b.clientWidth + 1 && ["reader-desplazar", "reader-presentar", "reader-edit", "reader-more"].every(vis) && [...document.querySelectorAll(".reader-tools .tool")].every((t) => t.getBoundingClientRect().right <= innerWidth + 0.5 && t.getAttribute("aria-label") !== "" ); }));
+  ok("iPad en vertical: la barra cabe (la cinta se desliza hasta «Más»), con nombre en Desplazar, Presentar, Editar y Más", await page.evaluate(() => { const b = document.querySelector(".reader-bar"); const vis = (id) => document.querySelector(`#${id} .lbl`).offsetWidth > 0; const cinta = document.querySelector(".reader-tools"); cinta.scrollLeft = cinta.scrollWidth; const mas = document.querySelector("#reader-more").getBoundingClientRect(); return b.scrollWidth <= b.clientWidth + 1 && ["reader-desplazar", "reader-presentar", "reader-edit", "reader-more"].every(vis) && mas.right <= innerWidth + 0.5 && mas.left >= 0; }));
   await page.screenshot({ path: `${OUTDIR}/122-lector-vertical.png` });
   await ctx.close();
 }

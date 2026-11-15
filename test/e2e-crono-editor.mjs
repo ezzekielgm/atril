@@ -154,7 +154,13 @@ for (const w of [1080, 1024]) {
   await page.evaluate((id) => { location.hash = `#/leer/docs/${id}`; }, nuevoId);
   await page.waitForSelector("#view-reader:not([hidden])");
   await page.waitForTimeout(200);
-  ok(`iPad en horizontal (${w}): caben todos los botones del lector`, await page.evaluate(() => [...document.querySelectorAll(".reader-bar button")].every((b) => !b.offsetParent || b.getBoundingClientRect().right <= innerWidth + 0.5)));
+  // La fila de arriba cabe entera; la cinta se desliza de lado (a petición de Ezequiel) y al final está «Más»
+  ok(`iPad en horizontal (${w}): cabe la barra y la cinta se desliza hasta el último botón`, await page.evaluate(() => {
+    const fuera = [...document.querySelectorAll(".reader-bar > button, .reader-bar > .timer button")].some((b) => b.offsetParent && b.getBoundingClientRect().right > innerWidth + 0.5);
+    const cinta = document.querySelector(".reader-tools"); cinta.scrollLeft = cinta.scrollWidth;
+    const mas = document.querySelector("#reader-more").getBoundingClientRect();
+    return !fuera && mas.right <= innerWidth + 0.5;
+  }));
 }
 await page.setViewportSize({ width: 810, height: 1080 });
 await page.evaluate((id) => { location.hash = `#/editar/docs/${id}`; }, nuevoId);
