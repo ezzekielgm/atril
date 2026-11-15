@@ -52,18 +52,21 @@ const ATRAS = 25;      // y por detrás (si vuelve a leer algo)
  * la última del texto (w[fin]) case con una de las 3 últimas oídas (para que el final sea lo que se dice ahora).
  * Cada palabra oída que quede después de esa (sin explicar) resta: así gana el sitio que explica lo último dicho.
  */
-function coincidencias(h, w, ini, fin) {
+function coincidencias(h, w, ini, fin, { pesar = false } = {}) {
   const n = h.length, m = fin - ini + 1;
+  // Con `pesar`, las palabras cortas («la», «que», «de»…) cuentan la mitad: están en todas partes
+  const peso = (x) => (!pesar || x.length >= 4 ? 1 : 0.5);
   // dp[i][j] = mayor nº de coincidencias en orden entre h[0..i) y w[ini..ini+j)
-  const dp = Array.from({ length: n + 1 }, () => new Int16Array(m + 1));
+  const dp = Array.from({ length: n + 1 }, () => new Float32Array(m + 1));
   for (let i = 1; i <= n; i++) {
     for (let j = 1; j <= m; j++) {
-      dp[i][j] = parecidas(h[i - 1], w[ini + j - 1]) ? dp[i - 1][j - 1] + 1 : Math.max(dp[i - 1][j], dp[i][j - 1]);
+      const x = w[ini + j - 1];
+      dp[i][j] = parecidas(h[i - 1], x) ? dp[i - 1][j - 1] + peso(x) : Math.max(dp[i - 1][j], dp[i][j - 1]);
     }
   }
   let mejor = 0;
   for (let i = Math.max(1, n - 2); i <= n; i++) {
-    if (parecidas(h[i - 1], w[fin])) mejor = Math.max(mejor, dp[i - 1][m - 1] + 1 - 1.2 * (n - i));
+    if (parecidas(h[i - 1], w[fin])) mejor = Math.max(mejor, dp[i - 1][m - 1] + peso(w[fin]) - 1.2 * (n - i));
   }
   return mejor;
 }
@@ -77,6 +80,7 @@ export function crearSeguidor(palabrasTexto, { desde = -1 } = {}) {
   const w = palabrasTexto;
   let pos = desde;
   let previas = []; // palabras de las frases ya cerradas (las últimas)
+  let lejano = null; // un sitio lejano con pocas pruebas, a la espera de confirmarse
 
   function alinear(h) {
     if (!h.length || !w.length) return null;
@@ -91,16 +95,44 @@ export function crearSeguidor(palabrasTexto, { desde = -1 } = {}) {
       const necesita = d >= 1 && d <= 3 && w[j].length >= 5 ? 1 : d < -1 || d > 15 ? 3 : 2;
       if (c < necesita) continue;
       const nota = c - 0.03 * Math.abs(d - 1) - (d < 0 ? 0.6 : 0);
-      if (!mejor || nota > mejor.nota) mejor = { j, nota };
+      if (!mejor || nota > mejor.nota) mejor = { j, nota, c };
     }
-    if (!mejor || mejor.j === pos) return null;
+    // Con pocas pruebas cerca, se mira si en otro sitio del texto encaja claramente mejor (se ha saltado un trozo)
+    if (!mejor || mejor.c < 4) {
+      const r = buscarLejos(h, ini, fin, mejor ? mejor.c + 1.5 : 3);
+      if (r !== undefined) return r;
+    }
+    if (!mejor) return null;
+    lejano = null;
+    if (mejor.j === pos) return null;
     pos = mejor.j;
     return pos;
   }
 
+  /**
+   * Si se ha saltado un trozo grande (o ha vuelto muy atrás), no está cerca: se busca en todo el texto.
+   * Hacen falta más pruebas (las palabras cortas cuentan la mitad): con 4 se salta enseguida; con 3, solo
+   * si lo siguiente que se oye confirma el mismo sitio (o un poco más adelante).
+   */
+  // Devuelve la nueva posición, null (esperando confirmación) o undefined (no hay nada mejor lejos)
+  function buscarLejos(h, ini, fin, minimo) {
+    let mejor = null;
+    for (let j = 0; j < w.length; j++) {
+      if (j >= ini && j <= fin) continue;
+      if (!h.slice(-3).some((x) => parecidas(x, w[j]))) continue;
+      const c = coincidencias(h, w, Math.max(0, j - VENTANA + 1), j, { pesar: true });
+      if (c >= Math.max(3, minimo) && (!mejor || c > mejor.c)) mejor = { j, c };
+    }
+    if (!mejor) return undefined;
+    const confirma = lejano && mejor.j >= lejano.j && mejor.j - lejano.j <= 10 && h.join(" ") !== lejano.oido;
+    if (mejor.c >= 4 || confirma) { lejano = null; pos = mejor.j; return pos; }
+    lejano = { j: mejor.j, oido: h.join(" ") };
+    return null;
+  }
+
   return {
     get pos() { return pos; },
-    set pos(p) { pos = p; previas = []; },
+    set pos(p) { pos = p; previas = []; lejano = null; },
     oir(texto, { final = false } = {}) {
       const nuevas = palabrasDe(texto);
       const h = previas.concat(nuevas).slice(-OIDAS);

@@ -130,7 +130,7 @@ const tema = (page, t) => page.evaluate((t) => { const s = JSON.parse(localStora
   await captura(page, "lector-letra", "Lector → Letra: tamaño, tema, tipo de letra, interlineado y duración");
   await cerrarHoja(page);
   await page.click("#reader-more");
-  await captura(page, "lector-mas", "Lector → Más, por grupos: Practicar, Documento, Compartir y guardar, Ayuda");
+  await captura(page, "lector-mas", "Lector → Más, por grupos: Documento, Compartir y guardar, Ayuda (Practicar está en la cinta)");
   await cerrarHoja(page);
 
   // Presentar: primero la comprobación
@@ -150,8 +150,7 @@ const tema = (page, t) => page.evaluate((t) => { const s = JSON.parse(localStora
   await page.evaluate(() => { window.__atril.presentar.salir({ quitarPaso: true }); window.__atril.ensayo.activo = false; window.__atril.timer.reset(); });
   await espera(400);
 
-  await page.click("#reader-more");
-  await page.click(".sheet >> text=Ensayos (3)");
+  await page.click("#reader-ensayos");
   await page.waitForSelector(".ens-analisis");
   await captura(page, "ensayos", "Ensayos → Cómo vas: mediana, qué parte se pasa y practicar una parte");
   await cerrarHoja(page);

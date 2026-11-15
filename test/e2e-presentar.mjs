@@ -42,8 +42,9 @@ const ej = await page.evaluate(() => window.__atril.reader.item);
 ok("«Probar con un ejemplo» abre un discurso de muestra", ej.title === "Ejemplo: la paciencia" && ej.target === 5);
 
 // ============ Botones con nombre ============
-const nombres = await page.$$eval(".reader-tools .tool .lbl", (xs) => xs.map((x) => x.textContent));
-ok("Los botones del lector llevan su nombre", nombres.join(",") === "Nuevo,Esquema,Letra,Desplazar,Presentar,Editar,Más", nombres.join(","));
+const nombres = await page.$$eval(".reader-tools .tool .lbl", (xs) => xs.filter((x) => x.offsetParent).map((x) => x.textContent));
+ok("Los botones del lector llevan su nombre (cinta por grupos)", nombres.join(",") === "Presentar,Desplazar,Ensayos,Tarjetas,Esquema,Letra,Buscar,Editar,Nuevo,Compartir,Más", nombres.join(","));
+ok("Junto al cronómetro, la duración objetivo", (await page.textContent("#reader-objetivo")).includes("Objetivo 5 min"));
 ok("«Volver» dice a dónde", (await page.textContent("#reader-back")).includes("Discursos"));
 await page.screenshot({ path: `${OUTDIR}/51-lector-botones.png` });
 
@@ -71,9 +72,25 @@ await page.evaluate(() => {
 });
 await page.waitForTimeout(300);
 ok("La parte se actualiza al avanzar", (await page.textContent("#pres-parte")).startsWith("Parte 3 de 4"), await page.textContent("#pres-parte"));
+// Desplazamiento automático: con el cronómetro en marcha el texto sube solo; se apaga y enciende arriba
+const top = () => page.evaluate(() => document.querySelector("#reader-scroll").scrollTop);
+let t0 = await top(); await page.waitForTimeout(1500);
+const subio = (await top()) - t0;
+ok("Con el cronómetro en marcha, el texto sube solo", subio > 3 && (await page.getAttribute("#pres-auto", "aria-pressed")) === "true", `${Math.round(subio)} px`);
+await page.click("#pres-auto");
+await page.waitForTimeout(200);
+t0 = await top(); await page.waitForTimeout(1000);
+ok("Con el botón apagado, se queda quieto", Math.abs((await top()) - t0) < 1 && (await page.getAttribute("#pres-auto", "aria-pressed")) === "false" && (await page.isHidden("#pres-vel")));
+await page.click("#pres-auto");
+const v0 = Number((await page.textContent("#pres-vel-txt")).match(/\d+/)[0]);
+await page.click("#pres-rapido");
+ok("«+» lo acelera", Number((await page.textContent("#pres-vel-txt")).match(/\d+/)[0]) === v0 + 10);
+await page.evaluate(() => document.querySelector(".toast") && (document.querySelector(".toast").hidden = true));
 await page.screenshot({ path: `${OUTDIR}/52-presentar.png` });
 await pulsar(page, "#pres-timer", 900);
 ok("Mantener pulsado pausa el cronómetro", !(await page.evaluate(() => window.__atril.timer.running)));
+t0 = await top(); await page.waitForTimeout(800);
+ok("En pausa, el texto no se mueve", Math.abs((await top()) - t0) < 1);
 await page.click("#pres-timer");
 ok("Un toque lo reanuda", await page.evaluate(() => window.__atril.timer.running));
 const centro = async () => { const r = await page.$eval("#reader-scroll", (s) => { const b = s.getBoundingClientRect(); return { x: b.left + b.width / 2, y: b.top + b.height * 0.42 }; }); await page.touchscreen.tap(r.x, r.y); await page.waitForTimeout(150); };

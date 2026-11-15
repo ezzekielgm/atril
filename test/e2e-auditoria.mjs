@@ -41,8 +41,8 @@ const DISCURSO = `<h1>Prueba</h1><h2>Introducción (2 min)</h2>${parrafos(3)}<h2
   const { ctx, page } = await nuevo();
   const doc = await crear(page, "docs", { title: "Prueba", html: DISCURSO, target: 8 });
   await ir(page, `#/leer/docs/${doc.id}`, "reader");
-  const nombres = await page.$$eval(".reader-tools .tool .lbl", (xs) => xs.map((x) => x.textContent));
-  ok("El lector tiene 7 botones: Nuevo, Esquema, Letra, Desplazar, Presentar, Editar y Más (Nuevo y Desplazar los pidió Ezequiel)", nombres.join(",") === "Nuevo,Esquema,Letra,Desplazar,Presentar,Editar,Más", nombres.join(","));
+  const nombres = await page.$$eval(".reader-tools .tool .lbl", (xs) => xs.filter((x) => x.offsetParent).map((x) => x.textContent));
+  ok("La cinta del lector: Presentar · Practicar · Leer · Documento (a petición de Ezequiel, como Word)", nombres.join(",") === "Presentar,Desplazar,Ensayos,Tarjetas,Esquema,Letra,Buscar,Editar,Nuevo,Compartir,Más", nombres.join(","));
   await page.evaluate(() => { const s = document.querySelector("#reader-scroll"); s.scrollTop = (s.scrollHeight - s.clientHeight) * 0.5; });
   await page.waitForTimeout(200);
   await page.click("#reader-presentar");
@@ -96,8 +96,8 @@ const DISCURSO = `<h1>Prueba</h1><h2>Introducción (2 min)</h2>${parrafos(3)}<h2
     partes: [{ t: "Introducción", s: intro, o: 120 }, { t: "Punto uno", s: punto, o: 240 }, { t: "Conclusión", s: concl, o: 120 }] });
   const doc = await crear(page, "docs", { title: "Ensayado", html: DISCURSO, target: 8, ensayos: [ens(520, 165, 240, 115), ens(530, 170, 245, 115), ens(510, 160, 235, 115)] });
   await ir(page, `#/leer/docs/${doc.id}`, "reader");
-  await page.click("#reader-more");
-  await page.click(".sheet >> text=Ensayos (3)");
+  ok("La cinta dice cuántos ensayos hay", (await page.textContent("#reader-ensayos")).includes("Ensayos (3)"));
+  await page.click("#reader-ensayos");
   await page.waitForSelector(".ens-analisis");
   const txt = await page.textContent(".ens-analisis");
   ok("Ensayos enseña «Cómo vas» con la mediana", txt.includes("Mediana de los 3 últimos") && txt.includes("8:40") && txt.includes("+0:40 del objetivo"), txt.slice(0, 120));
@@ -131,9 +131,11 @@ const DISCURSO = `<h1>Prueba</h1><h2>Introducción (2 min)</h2>${parrafos(3)}<h2
   await ir(page, `#/leer/docs/${doc.id}`, "reader");
   await page.click("#reader-more");
   const grupos = await page.$$eval(".sheet .menu-grupo", (xs) => xs.map((x) => x.textContent));
-  ok("«Más» va por grupos: Practicar, Documento, Compartir y guardar, Ayuda", grupos.join(",") === "Practicar,Documento,Compartir y guardar,Ayuda", grupos.join(","));
-  const practicar = await page.evaluate(() => [...document.querySelector(".sheet .menu-grupo").nextElementSibling.querySelectorAll(".action")].map((b) => b.textContent));
-  ok("Practicar: ensayos, tarjetas y desplazamiento", practicar.length === 3 && practicar[0].startsWith("Ensayos") && practicar[1].startsWith("Tarjetas"), practicar.join(" | "));
+  ok("«Más» va por grupos: Documento, Compartir y guardar, Ayuda (Practicar está fuera, en la cinta)", grupos.join(",") === "Documento,Compartir y guardar,Ayuda", grupos.join(","));
+  const cinta = await page.$$eval(".reader-tools .rg-nombre", (xs) => xs.map((x) => x.textContent));
+  ok("La cinta del iPad tiene Practicar, Leer y Documento", cinta.join(",") === "Practicar,Leer,Documento", cinta.join(","));
+  const practicar = await page.$$eval(".rg-practicar button", (xs) => xs.filter((b) => b.offsetParent).map((b) => b.textContent.trim()));
+  ok("Practicar: desplazar, ensayos y tarjetas, a la vista", practicar.length === 3 && practicar.includes("Desplazar") && practicar.includes("Tarjetas"), practicar.join(" | "));
   await page.waitForTimeout(400);
   await page.screenshot({ path: `${OUTDIR}/132-mas-agrupado.png` });
   await page.click(".sheet .action.plain");

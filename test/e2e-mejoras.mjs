@@ -162,8 +162,7 @@ ok("Otro doble toque quita la marca", (await page.$$("#reader-content .aqui")).l
 
 // ============ 4. Tarjetas ============
 await page.evaluate(() => { document.querySelector("#reader-scroll").scrollTop = 0; });
-await page.click("#reader-more");
-await page.click(".sheet >> text=Tarjetas");
+await page.click("#reader-tarjetas");
 await page.waitForSelector("#cards:not([hidden])");
 ok("Modo tarjetas: 3 tarjetas, empieza por la primera", (await page.textContent("#cards-count")) === "1 / 3", await page.textContent("#cards-count"));
 ok("La tarjeta lleva el título de la parte (sin los minutos)", (await page.textContent("#cards-title")) === "Introducción");
@@ -192,8 +191,7 @@ ok("Al salir, el texto queda en la parte de la última tarjeta", vuelta >= 0 && 
 
 // ============ 5. Desplazamiento automático ============
 await page.evaluate(() => { document.querySelector("#reader-scroll").scrollTop = 0; });
-await page.click("#reader-more");
-await page.click(".sheet >> text=Desplazamiento automático");
+await page.click("#reader-desplazar");
 await page.waitForSelector("#tp-bar:not([hidden])");
 const velocidad = await page.textContent("#tp-speed");
 await page.waitForTimeout(1500);
@@ -238,8 +236,7 @@ await page.click("#timer-toggle");
 await page.click("#timer-reset");
 await page.waitForTimeout(300);
 ok("Los intentos de menos de 30 s no se guardan", (await page.evaluate(async (id) => (await window.__atril.store.get("docs", id)).ensayos.length, ID)) === 1);
-await page.click("#reader-more");
-await page.click(".sheet >> text=Ensayos (1)");
+await page.click("#reader-ensayos");
 await page.waitForSelector(".sheet .ens-fila");
 await page.click(".sheet .ens-fila");
 const detalle = await page.textContent(".sheet .ens-detalle");
@@ -277,8 +274,7 @@ const grab = await page.evaluate(async (id) => {
 }, ID);
 ok("La grabación se guarda en el dispositivo", grab.audio && grab.size > 1000, `${grab.size} bytes, ${grab.tipo}`);
 ok("Marca dónde empieza cada parte", grab.marcas && grab.marcas.length >= 2 && grab.marcas[0].i === 0 && grab.marcas[1].i === 1, JSON.stringify(grab.marcas));
-await page.click("#reader-more");
-await page.click(".sheet >> text=Ensayos (2)");
+await page.click("#reader-ensayos");
 await page.click(".sheet .ens-item >> nth=0 >> .ens-fila");
 await page.click(".sheet >> text=Escuchar");
 await page.waitForSelector(".sheet audio");

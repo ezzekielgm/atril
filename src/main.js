@@ -434,6 +434,7 @@ const DEFAULTS = {
   fontSize: 26, theme: "claro", font: "sans", lineHeight: 1.6, wakeLock: true, tab: "docs", refLinks: "app",
   grabar: false, tpWpm: 130, pdfSize: 16, pdfMarks: true, markColor: "amarillo", ppm: PALABRAS_POR_MINUTO,
   panel: true, panelEditor: true, presToque: true, presComprobar: true, // panel lateral (lector / editor) y pasar página tocando al presentar
+  presDesplazar: true, // al presentar, el texto sube solo mientras corre el cronómetro
 };
 const FS_MIN = 14, FS_MAX = 80;
 let settings = { ...DEFAULTS };
@@ -1706,9 +1707,12 @@ function nuevoDiscurso() {
    La parte pesada (voz.js, el reconocedor y el modelo) se carga solo al usarla.
    ============================================================ */
 const voz = { activo: false, motor: null, mod: null };
+/** ¿Se ve la cinta grande del lector? (iPad y pantallas medianas; no en el móvil ni con el diseño de ordenador) */
+const cintaLector = () => matchMedia("(min-width: 701px)").matches && !document.documentElement.classList.contains("ancho");
 const vozDisponible = () => !escritorio.activo && (enPruebas() || !!settings.labVoz) && !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia) && "caches" in window;
 
 function pintarVozChip(texto) {
+  $("#reader-voz").setAttribute("aria-pressed", String(voz.activo));
   let c = $("#voz-chip");
   if (!texto && !voz.activo) { if (c) c.hidden = true; return; }
   if (!c) {
@@ -2212,7 +2216,7 @@ function openSettings() {
     ),
     enPruebas() ? el("div", { class: "group", id: "ajustes-lab" },
       el("span", { class: "label", text: "Laboratorio (solo en la versión de pruebas)" }),
-      el("p", { class: "small-print", text: "«Seguir mi voz» (Lector → Más → Practicar): mientras ensayas, resalta la frase por la que vas y mueve el texto. Reconoce la voz en el propio iPad (Vosk, de Alpha Cephei, licencia Apache 2.0); la descarga ocupa unos 40 MB." }),
+      el("p", { class: "small-print", text: "«Seguir mi voz» (Lector → Practicar; en el móvil, en «Más»): mientras ensayas, resalta la frase por la que vas y mueve el texto. Reconoce la voz en el propio iPad (Vosk, de Alpha Cephei, licencia Apache 2.0); la descarga ocupa unos 40 MB." }),
       el("div", { class: "actions" }, el("button", { class: "action", id: "voz-borrar", html: icon("trash") + "<span>Borrar el reconocedor descargado</span>", onclick: async () => {
         pararVoz();
         voz.mod = voz.mod || (await import("./voz.js"));
@@ -2886,6 +2890,7 @@ const reader = {
     this.partesCache = null;
     this.paintPace();
     this.paintEstado();
+    this.pintarObjetivo();
   },
 
   /** Barra de estado de abajo (como el pie de Kindle): parte, lo leído y lo que queda. */
@@ -3153,15 +3158,28 @@ const reader = {
 
   /* ---- Menú ⋯ ---- */
   /** «Más»: agrupado en Practicar, Documento, Compartir y guardar, y Ayuda (no una caja de restos). */
+  /** El chip junto al cronómetro: la duración objetivo (o la estimada) y los ensayos en la cinta. */
+  pintarObjetivo() {
+    if (!this.item) return;
+    const obj = Number(this.item.target) || 0;
+    const est = this.conteo ? minutosEstimados(this.conteo.total, ppm()) : 0;
+    $("#reader-objetivo-txt").textContent = obj ? `Objetivo ${obj} min` : `≈ ${est} min`;
+    $("#reader-objetivo").title = obj ? "Duración que quieres que dure" : "Lectura estimada: toca para poner la duración";
+    const n = (this.item.ensayos || []).length;
+    $("#reader-ensayos .lbl").textContent = n ? `Ensayos (${n})` : "Ensayos";
+    $("#reader-voz").hidden = !vozDisponible();
+  },
   openMenu() {
     const n = (this.item.ensayos || []).length;
     const d = (this.item.dado || []).length;
+    // En el iPad, «Practicar» está fuera, en la cinta (a petición de Ezequiel); en el móvil y el ordenador, aquí
+    const conCinta = cintaLector();
     actionSheet(null, [
-      { grupo: "Practicar" },
-      { label: n ? `Ensayos (${n})` : "Ensayos", icon: "history", run: () => this.openEnsayos() },
-      { label: "Tarjetas: una parte por pantalla", icon: "cards", run: () => tarjetas.abrir() },
-      { label: "Desplazamiento automático", icon: "scroll", run: () => prompter.abrir() },
-      vozDisponible() ? { label: voz.activo ? "Dejar de seguir mi voz" : "Seguir mi voz (prueba)", icon: "mic", run: () => alternarVoz() } : null,
+      conCinta ? null : { grupo: "Practicar" },
+      conCinta ? null : { label: n ? `Ensayos (${n})` : "Ensayos", icon: "history", run: () => this.openEnsayos() },
+      conCinta ? null : { label: "Tarjetas: una parte por pantalla", icon: "cards", run: () => tarjetas.abrir() },
+      conCinta ? null : { label: "Desplazamiento automático", icon: "scroll", run: () => prompter.abrir() },
+      vozDisponible() && !conCinta ? { label: voz.activo ? "Dejar de seguir mi voz" : "Seguir mi voz (prueba)", icon: "mic", run: () => alternarVoz() } : null,
       { grupo: "Documento" },
       { label: "Buscar en el texto", icon: "search", run: () => buscador.abrir() },
       this.aqui != null ? { label: "Ir a «voy por aquí»", icon: "bookmark", run: () => this.irAqui() } : null,
@@ -3391,6 +3409,15 @@ const reader = {
     $("#reader-desplazar").addEventListener("click", () => prompter.abrir());
     $("#reader-nuevo").addEventListener("click", nuevoDocumento);
     $("#reader-more").addEventListener("click", () => this.openMenu());
+    $("#reader-ensayos").addEventListener("click", () => this.openEnsayos());
+    $("#reader-tarjetas").addEventListener("click", () => tarjetas.abrir());
+    $("#reader-voz").addEventListener("click", () => alternarVoz());
+    $("#reader-buscar").addEventListener("click", () => buscador.abrir());
+    $("#reader-compartir").addEventListener("click", () => abrirCompartir(this.kind, this.item));
+    $("#reader-objetivo").addEventListener("click", () => openSheet([
+      el("h2", { text: "Tiempo" }), this.timeGroup(),
+      el("div", { class: "actions" }, el("button", { class: "action plain", text: "Cerrar", onclick: () => closeSheet() })),
+    ], { onClose: () => this.pintarObjetivo() }));
     $("#float-timer").addEventListener("click", () => timer.toggle());
     $("#reader-back").addEventListener("click", () => volverAtras("#/"));
     $("#reader-edit").addEventListener("click", () => go(`#/editar/${this.kind}/${this.id}`));
@@ -3454,6 +3481,7 @@ const presentar = {
     this.hash = location.hash;
     if (!(history.state && history.state.atril === "presentar")) history.pushState({ atril: "presentar" }, "");
     keepAwake(true);
+    this.autoEmpezar();
     reader.paintPace();
     this.pintarReloj();
     clearInterval(this.reloj);
@@ -3491,6 +3519,9 @@ const presentar = {
     const wake = el("input", { type: "checkbox", role: "switch", id: "pc-wake" });
     wake.checked = !!settings.wakeLock;
     wake.addEventListener("change", () => { settings.wakeLock = wake.checked; saveSettings(); });
+    const auto = el("input", { type: "checkbox", role: "switch", id: "pc-auto" });
+    auto.checked = settings.presDesplazar !== false;
+    auto.addEventListener("change", () => { settings.presDesplazar = auto.checked; saveSettings(); });
     const siempre = el("input", { type: "checkbox", role: "switch", id: "pc-siempre" });
     siempre.checked = true;
     siempre.addEventListener("change", () => { settings.presComprobar = siempre.checked; saveSettings(); });
@@ -3505,6 +3536,7 @@ const presentar = {
         fila("aa", "Letra", el("div", { class: "pc-linea" }, el("p", { class: "pc-txt", text: `Tamaño ${settings.fontSize} · tema ${tema}` }),
           el("button", { class: "chip", text: "Cambiar", onclick: () => { close(); openAaSheet(); } }))),
         fila("play", "Empezar", botonesDesde),
+        fila("scroll", "Desplazamiento", el("label", { class: "switch-row pc-switch" }, el("span", { text: "El texto sube solo con el cronómetro" }), auto)),
         fila("book", "Pantalla", el("label", { class: "switch-row pc-switch" }, el("span", { text: "Que no se apague" }), wake)),
         fila("lock", "Que no te saque de aquí",
           el("p", { class: "pc-txt", text: "Para pasar página, toca abajo; para salir, toca «Salir» arriba (o el centro de la pantalla) y mantén pulsado." }),
@@ -3527,6 +3559,7 @@ const presentar = {
     this.activo = false;
     clearInterval(this.reloj);
     clearTimeout(this.ocultarSalir);
+    cancelAnimationFrame(this.auto.raf);
     // Se quita el paso que se puso al entrar (solo si se sale a mano; si se va a otra pantalla, ya no está)
     if (quitarPaso && history.state && history.state.atril === "presentar") history.back();
     mantenerSitio(reader.scrollEl, reader.contentEl, () => {
@@ -3580,6 +3613,7 @@ const presentar = {
     if (settings.presToque === false || (y >= 0.3 && y <= 0.55)) { this.mostrarSalir(); return; } // el centro enseña cómo salir
     const linea = settings.fontSize * settings.lineHeight;
     const salto = Math.max(linea * 2, s.clientHeight - linea * 2); // deja a la vista las dos últimas líneas
+    this.auto.esperaHasta = performance.now() + 900; // que el desplazamiento automático no corte el salto
     if (y > 0.55) this.pasarPagina(salto, linea);
     else s.scrollBy({ top: -salto, behavior: "smooth" });
   },
@@ -3609,6 +3643,66 @@ const presentar = {
       m.classList.remove("ve"); void m.offsetWidth; m.classList.add("ve");
       this.marcaFin = setTimeout(() => { m.hidden = true; }, 1800);
     }, 480);
+  },
+  /*
+   * Desplazamiento automático al presentar (a petición de Ezequiel): mientras corre el cronómetro el texto
+   * sube solo, al ritmo del discurso (palabras ÷ minutos de objetivo, o el ritmo de Ajustes). Al pausar el
+   * cronómetro se para; al tocar o arrastrar el texto espera un momento. Se apaga y enciende arriba.
+   */
+  auto: { raf: 0, pos: 0, ultimo: 0, pxPorPalabra: 1, medido: 0, tocando: false, soltar: 0, esperaHasta: 0, wpm: 130 },
+  autoEmpezar() {
+    const a = this.auto;
+    const palabras = contarPalabras(reader.contentEl.textContent || "");
+    const objetivo = (reader.plan && reader.plan.objetivoSeg) || (Number(reader.item && reader.item.target) || 0) * 60;
+    a.wpm = clamp(Math.round(objetivo && palabras ? palabras / (objetivo / 60) : ppm()), 40, 300);
+    a.medido = 0;
+    a.pos = reader.scrollEl.scrollTop;
+    a.ultimo = performance.now();
+    this.pintarAuto();
+    cancelAnimationFrame(a.raf);
+    a.raf = requestAnimationFrame((t) => this.autoPaso(t));
+  },
+  autoMedir() {
+    const c = reader.contentEl, cs = getComputedStyle(c);
+    const alto = c.offsetHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+    this.auto.pxPorPalabra = Math.max(0.1, alto / Math.max(1, contarPalabras(c.textContent || "")));
+    this.auto.medido = performance.now();
+  },
+  autoPaso(t) {
+    if (!this.activo) return;
+    const a = this.auto, sc = reader.scrollEl;
+    const dt = Math.min(100, t - a.ultimo) / 1000;
+    a.ultimo = t;
+    const mover = timer.running && settings.presDesplazar !== false && !a.tocando && t > a.esperaHasta && $("#overlay").hidden;
+    if (mover) {
+      if (t - a.medido > 1000) this.autoMedir();
+      if (Math.abs(sc.scrollTop - a.pos) > 3) a.pos = sc.scrollTop; // lo ha movido la persona o el tamaño de letra
+      a.pos += (a.pxPorPalabra * a.wpm / 60) * dt;
+      sc.scrollTop = a.pos;
+    } else a.pos = sc.scrollTop;
+    a.raf = requestAnimationFrame((x) => this.autoPaso(x));
+  },
+  pintarAuto() {
+    const on = settings.presDesplazar !== false;
+    const b = $("#pres-auto");
+    b.setAttribute("aria-pressed", String(on));
+    b.title = on ? "Desplazamiento automático encendido" : "Desplazamiento automático apagado";
+    $("#pres-vel").hidden = !on;
+    $("#pres-vel-txt").innerHTML = `${this.auto.wpm}<span class="pres-par-unit"> pal/min</span>`;
+    $("#pres-vel-txt").title = `${this.auto.wpm} palabras por minuto`;
+  },
+  alternarAuto() {
+    settings.presDesplazar = settings.presDesplazar === false;
+    saveSettings();
+    this.auto.pos = reader.scrollEl.scrollTop;
+    this.pintarAuto();
+    const on = settings.presDesplazar;
+    toast(on ? (timer.running ? "Desplazamiento automático encendido." : "Desplazamiento automático encendido: empezará con el cronómetro.") : "Desplazamiento automático apagado. Pasa página tocando abajo.");
+  },
+  velocidadAuto(d) {
+    this.auto.wpm = clamp(this.auto.wpm + d, 40, 300);
+    this.pintarAuto();
+    toast(`${this.auto.wpm} palabras por minuto`, { ms: 1400 });
   },
   pintar({ estado, corto, largo, aviso, seg, started }) {
     const b = $("#pres-timer");
@@ -3713,6 +3807,22 @@ const presentar = {
       this.confirmarSalir();
     });
     $("#pres-cero").addEventListener("click", () => { if (this.activo) this.ponerACero(); });
+    $("#pres-auto").addEventListener("click", () => this.alternarAuto());
+    $("#pres-lento").addEventListener("click", () => this.velocidadAuto(-10));
+    $("#pres-rapido").addEventListener("click", () => this.velocidadAuto(10));
+    const letra = (d) => { setFontSize(settings.fontSize + d, { scrollEl: reader.scrollEl, contentEl: reader.contentEl }); saveSettings(); this.auto.medido = 0; };
+    $("#pres-letra-menos").addEventListener("click", () => letra(-2));
+    $("#pres-letra-mas").addEventListener("click", () => letra(2));
+    // Al tocar o arrastrar el texto, el desplazamiento automático espera a que se suelte
+    const sc = reader.scrollEl;
+    sc.addEventListener("touchstart", () => { if (this.activo) { this.auto.tocando = true; clearTimeout(this.auto.soltar); } }, { passive: true });
+    const fin = () => {
+      if (!this.activo) return;
+      clearTimeout(this.auto.soltar);
+      this.auto.soltar = setTimeout(() => { this.auto.tocando = false; this.auto.pos = sc.scrollTop; }, 700);
+    };
+    sc.addEventListener("touchend", fin, { passive: true });
+    sc.addEventListener("touchcancel", fin, { passive: true });
     $("#pres-opciones").addEventListener("click", () => this.mostrarSalir());
     // «Atrás» mientras se presenta: se vuelve a poner el paso y se enseña cómo salir
     window.addEventListener("popstate", () => {

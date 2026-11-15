@@ -10,6 +10,9 @@ export const NOVEDADES = [
       ["pluma", "«Nota a mano» → «A texto»: escribe con el Apple Pencil y el iPad lo pasa a letra (cada línea, un párrafo). «A mano» se queda tal como lo escribes. Atril recuerda cuál usaste."],
       ["rotulador", "La escritura a mano se ve nítida y fina (si escribes suave, más fina todavía), y también sale nítida en el Word y el PDF."],
       ["word", "Guardar como Word: elige «Guardar en Archivos» (ahí puedes escoger OneDrive) y queda como .docx."],
+      ["scroll", "Presentar: al poner en marcha el cronómetro, el texto sube solo a tu ritmo. Arriba tienes un interruptor para apagarlo, «−» y «+» para la velocidad y «A−» y «A+» para la letra."],
+      ["outline", "En el iPad, la barra del lector es más grande y va por grupos, como en Word: Presentar, Practicar (Desplazar, Ensayos, Tarjetas), Leer (Esquema, Letra, Buscar) y Documento (Editar, Nuevo, Compartir, Más)."],
+      ["clock", "Junto al cronómetro, la duración del discurso: tócala para cambiarla."],
     ],
   },
   {

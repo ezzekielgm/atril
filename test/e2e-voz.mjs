@@ -63,10 +63,9 @@ await page.evaluate(async ([a, b, c]) => {
 }, [P1, P2, P3]);
 await page.waitForSelector("#view-reader:not([hidden])");
 
-// En «Más» → Practicar
-await page.click("#reader-more");
-ok("«Más» tiene «Seguir mi voz (prueba)»", await page.isVisible(".sheet >> text=Seguir mi voz (prueba)"));
-await page.click(".sheet >> text=Seguir mi voz (prueba)");
+// En la cinta → Practicar
+ok("La cinta tiene «Seguir mi voz»", await page.isVisible("#reader-voz"));
+await page.click("#reader-voz");
 await page.waitForSelector(".sheet >> text=Seguir tu voz (prueba)");
 const aviso = await page.textContent(".sheet");
 ok("Antes de descargar, avisa del tamaño y de que la voz no sale del iPad", /\d+ MB/.test(aviso) && aviso.includes("no sale del iPad"));
@@ -116,9 +115,9 @@ const parado = await page.evaluate(() => ({ activo: window.__atril.voz.activo, h
 ok("«Parar» lo apaga, quita el resaltado y el aviso", !parado.activo && !parado.hl && parado.chip, JSON.stringify(parado));
 
 // Segunda vez: sin preguntar ni descargar
-await page.click("#reader-more");
-await page.click(".sheet >> text=Seguir mi voz (prueba)");
+await page.click("#reader-voz");
 await page.waitForSelector("#voz-chip:not([hidden])", { timeout: 20000 });
+ok("El botón de la cinta queda marcado mientras te sigue", (await page.getAttribute("#reader-voz", "aria-pressed")) === "true");
 ok("La segunda vez no vuelve a descargar ni a preguntar", !(await page.isVisible(".sheet >> text=Seguir tu voz (prueba)")));
 // Presentar lo para (de momento el prototipo es para ensayar)
 await page.evaluate(() => { localStorage.setItem("atril.consejoAcceso", "1"); window.__atril.presentar.entrar({ consejo: false }); });
@@ -127,9 +126,9 @@ ok("Al presentar se para (de momento es para ensayar)", !(await page.evaluate(()
 await page.evaluate(() => window.__atril.presentar.salir({ quitarPaso: true }));
 
 // En la versión de siempre, sin el ajuste, no aparece
-await page.evaluate(() => { const s = window.__atril.settings(); s.labVoz = false; });
+await page.evaluate(() => { const s = window.__atril.settings(); s.labVoz = false; window.__atril.reader.pintarObjetivo(); });
 await page.click("#reader-more");
-ok("Sin el ajuste del laboratorio (y fuera de pruebas) no aparece", !(await page.isVisible(".sheet >> text=Seguir mi voz (prueba)")));
+ok("Sin el ajuste del laboratorio (y fuera de pruebas) no aparece", !(await page.isVisible(".sheet >> text=Seguir mi voz (prueba)")) && !(await page.isVisible("#reader-voz")));
 
 await browser.close();
 srv.close();

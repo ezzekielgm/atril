@@ -769,6 +769,32 @@ html.canal-pruebas .marca-pruebas { display: inline-block; margin-left: 10px; ve
 .pres-info .pace { font-size: 15px; }
 .pres-fila { display: flex; align-items: center; gap: 8px; min-height: 30px; }
 .pres-quedan { font-size: 15px; font-weight: 650; padding: 4px 10px; border-radius: 15px; background: var(--surface); font-variant-numeric: tabular-nums; white-space: nowrap; }
+/* Desplazamiento automático (encender/apagar y velocidad) y tamaño de letra, junto al cronómetro */
+.pres-ctrl { display: flex; align-items: center; gap: 6px; }
+/* A la derecha de «Parte X de N» en horizontal; en vertical, en su propia línea */
+.pres-info { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 14px; }
+.pres-fila { grid-column: 1 / -1; }
+.pres-parte { grid-column: 1; grid-row: 2; }
+.pres-sigue { grid-column: 1; grid-row: 3; }
+.pres-ctrl { grid-column: 2; grid-row: 2 / span 2; align-self: center; }
+@media (max-width: 1000px) {
+  .pres-ctrl { grid-column: 1 / -1; grid-row: 4; }
+  .pres-par-unit { display: none; }
+}
+.pres-par-unit { font-size: 12px; font-weight: 600; }
+.pres-auto { display: inline-flex; align-items: center; gap: 7px; height: 44px; padding: 0 10px 0 12px; border-radius: 22px; border: 1px solid var(--border); background: var(--bg); font-size: 15px; font-weight: 650; color: var(--text); white-space: nowrap; }
+.pres-auto svg { width: 18px; height: 18px; color: var(--accent); }
+.pres-sw { position: relative; width: 38px; height: 22px; border-radius: 11px; background: var(--surface-2); transition: background .15s; }
+.pres-sw i { position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.3); transition: transform .15s; }
+.pres-auto[aria-pressed="true"] .pres-sw { background: #2e7d32; }
+.pres-auto[aria-pressed="true"] .pres-sw i { transform: translateX(16px); }
+.pres-par { display: inline-flex; align-items: center; height: 44px; border-radius: 22px; border: 1px solid var(--border); background: var(--bg); overflow: hidden; }
+.pres-par[hidden] { display: none; }
+.pres-par button { min-width: 44px; height: 44px; font-size: 18px; font-weight: 700; color: var(--accent); }
+.pres-par button:active { background: var(--surface-2); }
+.pres-par-txt { min-width: 34px; text-align: center; font-size: 15px; font-weight: 650; font-variant-numeric: tabular-nums; color: var(--muted); }
+.pres-letra button { font-size: 16px; }
+.pres-letra button + button { border-left: 1px solid var(--border); }
 .pres-reloj { margin-left: auto; display: inline-flex; align-items: center; gap: 5px; font-size: 17px; font-weight: 650; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .pres-reloj svg { width: 17px; height: 17px; }
 .pres-parte { max-width: 100%; font-size: 19px; font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -820,6 +846,10 @@ html.canal-pruebas .marca-pruebas { display: inline-block; margin-left: 10px; ve
   .pres-quedan, .pres-info .pace { font-size: 13px; padding: 3px 8px; }
   .pres-reloj { display: none; }
   .pres-reloj + .pres-opciones { margin-left: auto; }
+  .pres-auto-txt, .pres-letra, .pres-par-unit { display: none; }
+  .pres-par { display: none !important; } /* en el móvil no cabe: solo encender y apagar */
+  .pres-auto, .pres-par, .pres-par button { height: 36px; }
+  .pres-par button { min-width: 38px; }
   .pres-opciones { height: 36px; padding: 0 12px; font-size: 15px; }
   .pres-op { font-size: 16px; padding: 12px 20px; }
 }
@@ -1485,3 +1515,80 @@ html.ancho .home-resumen { display: grid; grid-template-columns: repeat(4, minma
 .paleta-t { display: flex; flex-direction: column; min-width: 0; }
 .paleta-t b { font-size: 15px; font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .paleta-t small { font-size: 13px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ============================================================
+   CINTA DEL LECTOR (a petición de Ezequiel: «la bandeja de herramientas más grande, que quepan más
+   opciones en dos filas o tres, como Word»). En el iPad: arriba, volver, título, cronómetro y objetivo;
+   debajo, la cinta por grupos (Presentar · Practicar · Leer · Documento) con su nombre debajo.
+   Dos filas en horizontal y tres en vertical. En el móvil y en el ordenador los grupos no cuentan.
+   ============================================================ */
+.rg-nombre, .solo-cinta { display: none; }
+.rgrupo, .rg-botones { display: contents; }
+/* Móvil y ordenador: el orden de siempre (Esquema, Letra, Desplazar, Presentar, Editar, Más) */
+@media (max-width: 700px) {
+  #reader-outline-btn { order: 1; } #reader-aa { order: 2; } #reader-desplazar { order: 3; }
+  #reader-presentar { order: 4; } #reader-edit { order: 5; } #reader-nuevo { order: 6; } #reader-more { order: 7; }
+}
+html.ancho #reader-outline-btn { order: 1; } html.ancho #reader-aa { order: 2; } html.ancho #reader-desplazar { order: 3; }
+html.ancho #reader-presentar { order: 4; } html.ancho #reader-edit { order: 5; } html.ancho #reader-nuevo { order: 6; } html.ancho #reader-more { order: 7; }
+.chip-objetivo { flex: none; display: none; align-items: center; gap: 6px; height: 40px; padding: 0 13px; border-radius: 20px; border: 1px solid var(--border); background: var(--bg); font-size: 15px; font-weight: 650; color: var(--text); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.chip-objetivo svg { width: 17px; height: 17px; color: var(--accent); }
+.chip-objetivo:active { background: var(--surface-2); }
+
+@media (min-width: 701px) {
+  html:not(.ancho) .reader-bar { --filas: 2; height: auto; flex-wrap: wrap; row-gap: 0; padding-top: 6px; padding-bottom: 0; align-items: center; }
+  html:not(.ancho) .reader-bar > .back-btn, html:not(.ancho) .reader-bar > .title, html:not(.ancho) .reader-bar > .timer,
+  html:not(.ancho) .reader-bar > .pace, html:not(.ancho) .reader-bar > .chip-objetivo { height: 44px; margin-bottom: 4px; }
+  html:not(.ancho) .reader-bar > .title { display: block; line-height: 44px; }
+  html:not(.ancho) #reader-back .lbl { display: inline; }
+  html:not(.ancho) #reader-back { padding-right: 12px; }
+  html:not(.ancho) .reader-bar .pace .long { display: inline; }
+  html:not(.ancho) .reader-bar .pace .short { display: none; }
+  html:not(.ancho) .chip-objetivo { display: inline-flex; }
+  html:not(.ancho) .reader-bar .pace { order: 3; }
+  html:not(.ancho) .chip-objetivo { order: 2; }
+  html:not(.ancho) .reader-bar > .timer { order: 1; }
+  html:not(.ancho) .reader-bar > .back-btn { order: -2; }
+  html:not(.ancho) .reader-bar > .title { order: -1; }
+
+  /* La cinta: ocupa la segunda línea de la barra */
+  html:not(.ancho) .reader-tools {
+    order: 10; flex: 1 0 calc(100% + 2 * max(8px, env(safe-area-inset-left))); margin: 0 calc(-1 * max(8px, env(safe-area-inset-left))); padding: 6px max(8px, env(safe-area-inset-left)) 2px; gap: 0; align-items: stretch;
+    border-top: 1px solid var(--border); background: var(--bg); overflow-x: auto; scrollbar-width: none;
+  }
+  html:not(.ancho) .reader-tools::-webkit-scrollbar { display: none; }
+  html:not(.ancho) .rgrupo { display: flex; flex-direction: column; align-items: stretch; padding: 0 10px; border-left: 1px solid var(--border); flex: none; }
+  html:not(.ancho) .rgrupo:first-child { border-left: 0; padding-left: 0; }
+  html:not(.ancho) .rg-botones { display: grid; grid-auto-flow: column; grid-template-rows: repeat(var(--filas), 42px); gap: 2px 4px; align-content: start; flex: 1; }
+  html:not(.ancho) .rg-nombre { display: block; text-align: center; font-size: 12px; font-weight: 600; color: var(--muted); padding: 2px 0 4px; letter-spacing: .02em; }
+  html:not(.ancho) .reader-tools .solo-cinta { display: inline-flex; }
+  html:not(.ancho) .reader-tools .solo-cinta[hidden] { display: none; }
+  html:not(.ancho) .reader-tools .lbl { display: inline !important; }
+  /* Botones pequeños, sin borde, como en Word */
+  html:not(.ancho) .reader-tools .tool { order: 0; height: 42px; padding: 0 12px 0 9px; border: 0; border-radius: 9px; background: transparent; box-shadow: none; font-size: 16px; font-weight: 600; justify-content: flex-start; }
+  html:not(.ancho) .reader-tools .tool:active, html:not(.ancho) .reader-tools .tool:hover { background: var(--surface); }
+  html:not(.ancho) .reader-tools .tool[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); }
+  html:not(.ancho) .reader-tools .tool svg { width: 21px; height: 21px; }
+  /* Botones grandes: de arriba abajo, con el icono encima del nombre */
+  html:not(.ancho) .reader-tools .tool-grande { grid-row: 1 / -1; flex-direction: column; justify-content: center; gap: 6px; height: auto; min-width: 84px; padding: 6px 12px; }
+  html:not(.ancho) .reader-tools .tool-grande svg { width: 28px; height: 28px; }
+  html:not(.ancho) .reader-tools .tool-presentar { background: var(--accent-vivo); color: var(--on-vivo); min-width: 112px; border-radius: 14px; font-size: 17px; font-weight: 700; }
+  html:not(.ancho) .reader-tools .tool-presentar:hover, html:not(.ancho) .reader-tools .tool-presentar:active { background: var(--accent-vivo); filter: brightness(.92); }
+  html:not(.ancho) .reader-tools .tool-presentar svg { color: var(--on-vivo); width: 26px; height: 26px; }
+  html:not(.ancho) .rg-presentar { padding-bottom: 6px; }
+  /* «Más» grande al final en horizontal */
+  html:not(.ancho) .reader-tools .tool-mas { grid-row: 1 / -1; flex-direction: column; justify-content: center; gap: 6px; height: auto; min-width: 64px; padding: 6px 10px; }
+  html:not(.ancho) .reader-tools .tool-mas svg { width: 28px; height: 28px; }
+  /* Modo atril (un toque oculta la barra): la barra entera sube */
+  html:not(.ancho) #view-reader.immersive .reader-bar { top: 0; transform: translateY(-105%); }
+}
+/* iPad en vertical: tres filas, para que quepa todo a lo ancho */
+@media (max-width: 1000px) and (min-width: 701px) {
+  html:not(.ancho) .reader-bar { --filas: 3; }
+  html:not(.ancho) .reader-tools .tool-mas { grid-row: auto; flex-direction: row; justify-content: flex-start; gap: 6px; height: 42px; min-width: 0; padding: 0 12px 0 9px; }
+  html:not(.ancho) .reader-tools .tool-mas svg { width: 21px; height: 21px; }
+  html:not(.ancho) .reader-tools .tool { font-size: 15px; padding: 0 10px 0 8px; }
+  html:not(.ancho) .rgrupo { padding: 0 7px; }
+  html:not(.ancho) .reader-tools .tool-grande { min-width: 76px; }
+  html:not(.ancho) .reader-tools .tool-presentar { min-width: 100px; }
+}

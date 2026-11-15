@@ -138,7 +138,7 @@ await page.click("#editor").catch(() => {});
 await page.keyboard.type("Primera frase del discurso nuevo para probar el desplazamiento automático. ".repeat(3));
 await page.click("#editor-read");
 await page.waitForSelector("#view-reader:not([hidden])");
-ok("El lector tiene «Desplazar» junto a «Presentar»", await page.isVisible("#reader-desplazar") && await page.evaluate(() => document.querySelector("#reader-desplazar").nextElementSibling.id === "reader-presentar"));
+ok("El lector tiene «Desplazar» junto a «Presentar» (el primero de Practicar, al lado)", await page.isVisible("#reader-desplazar") && await page.evaluate(() => document.querySelector("#reader-desplazar").closest(".rgrupo").previousElementSibling.contains(document.querySelector("#reader-presentar"))));
 await page.click("#reader-desplazar");
 await page.waitForTimeout(300);
 ok("«Desplazar» pone en marcha el desplazamiento automático", await page.evaluate(() => window.__atril.prompter.activo) && await page.isVisible("#tp-bar"));
