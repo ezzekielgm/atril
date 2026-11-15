@@ -202,6 +202,13 @@ ok("Ortografía se puede apagar", (await page.getAttribute("#editor", "spellchec
 await boton("ortografia");
 ok("…y volver a encender", (await page.getAttribute("#editor", "spellcheck")) === "true");
 
+// Minimizar la cinta del editor: quedan las pestañas; tocar una la abre
+await boton("ortografia"); await boton("ortografia");
+await page.click("#cinta-plegar");
+ok("Minimizar la cinta del editor deja solo las pestañas", await page.evaluate(() => [...document.querySelectorAll("#view-editor .toolbar.ribbon")].every((t) => getComputedStyle(t).display === "none")) && (await page.isVisible('[data-rtab="inicio"]')));
+await page.click('[data-rtab="insertar"]');
+ok("…y tocar una pestaña la vuelve a abrir", await page.isVisible('[data-rpanel="insertar"]') && (await page.evaluate(() => window.__atril.settings().cintaEditorPlegada)) === false);
+
 // Se ve igual en el lector
 await page.evaluate(async () => {
   await window.__atril.store.put("docs", { id: "w2", title: "Lector", html: window.__atril.sanitize('<p class="al-centro sang-1">Centrado <span class="tam-24">grande</span></p>'), created: Date.now(), updated: Date.now() });
@@ -210,6 +217,13 @@ await page.evaluate(async () => {
 await page.waitForSelector("#view-reader:not([hidden])");
 await page.waitForTimeout(300);
 const estilo = await page.evaluate(() => { const p = document.querySelector("#reader-content p"); const g = document.querySelector("#reader-content .tam-24"); return { al: getComputedStyle(p).textAlign, ml: parseFloat(getComputedStyle(p).marginLeft), fs: parseFloat(getComputedStyle(g).fontSize) / parseFloat(getComputedStyle(p).fontSize) }; });
+const altoBarra = () => page.evaluate(() => document.querySelector(".reader-bar").offsetHeight);
+const altoAntes = await altoBarra();
+await page.click("#reader-plegar");
+const altoPlegada = await altoBarra();
+ok("Minimizar la barra del lector: una sola fila, con Presentar a la vista", altoPlegada < 80 && altoAntes > 140 && (await page.isVisible("#reader-presentar")) && (await page.evaluate(() => window.__atril.settings().cintaLectorPlegada)) === true, `${altoAntes} → ${altoPlegada} px`);
+await page.click("#reader-plegar");
+ok("…y se vuelve a abrir", (await altoBarra()) > 140);
 ok("En el lector: centrado, con sangría y el doble de grande", estilo.al === "center" && estilo.ml > 10 && Math.abs(estilo.fs - 2) < 0.05, JSON.stringify(estilo));
 
 // Abrir un Word con alineación y sangría

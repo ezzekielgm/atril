@@ -25,6 +25,7 @@ const SECCIONES = (p) => [
     items: [
       ["aa", "Letra más grande o más pequeña", "Separa dos dedos sobre el texto para agrandar la letra y pellízcalo para achicarla. La página no se amplía: el texto se recoloca solo."],
       ["aa", "Letra, tema y duración", "Cambia el tamaño, el tema (claro, sepia u oscuro), el tipo de letra y el interlineado. Ahí también pones cuántos minutos tienes para el discurso.", "Lector → Letra"],
+      ["up", "Barra de herramientas más pequeña", "La flecha de arriba a la derecha la minimiza: en el lector queda una sola fila con los botones solo con icono; en el editor, solo las pestañas (toca una para volver a verla). Atril recuerda cómo la dejaste.", "Lector y editor → ⌃ arriba a la derecha"],
       ["outline", "Esquema", "Los títulos y lo que has resaltado; toca uno para ir allí. Con el iPad en horizontal se queda al lado del texto y marca por dónde vas.", "Lector → Esquema"],
       ["bookmark", "Voy por aquí", "Dos toques en un párrafo lo marcan con una raya azul y se recuerda al volver. Un toque en el texto oculta las barras para tener toda la pantalla."],
       ["timer", "Cronómetro y ritmo", "Tócalo para empezar o pararlo. A su lado está la duración del discurso (tócala para cambiarla). Con una duración puesta verás si vas adelantado o retrasado. Si un título termina en «(5 min)», el ritmo se calcula por partes. Abajo ves en qué parte vas y cuánto queda.", "Lector o editor → arriba"],

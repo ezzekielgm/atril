@@ -3215,6 +3215,15 @@ const reader = {
 
   /* ---- Menú ⋯ ---- */
   /** «Más»: agrupado en Practicar, Documento, Compartir y guardar, y Ayuda (no una caja de restos). */
+  pintarPlegado() {
+    const p = !!settings.cintaLectorPlegada;
+    views.reader.classList.toggle("cinta-plegada", p);
+    const b = $("#reader-plegar");
+    b.innerHTML = icon(p ? "down" : "up");
+    b.setAttribute("aria-pressed", String(p));
+    b.setAttribute("aria-label", p ? "Ver la barra de herramientas completa" : "Minimizar la barra de herramientas");
+    b.title = b.getAttribute("aria-label");
+  },
   /** El chip junto al cronómetro: la duración objetivo (o la estimada) y los ensayos en la cinta. */
   pintarObjetivo() {
     if (!this.item) return;
@@ -3471,6 +3480,9 @@ const reader = {
     $("#reader-voz").addEventListener("click", () => alternarVoz());
     $("#reader-buscar").addEventListener("click", () => buscador.abrir());
     $("#reader-compartir").addEventListener("click", () => abrirCompartir(this.kind, this.item));
+    // Minimizar la cinta (a petición de Ezequiel): una sola fila con los botones solo con icono; se recuerda
+    $("#reader-plegar").addEventListener("click", () => { settings.cintaLectorPlegada = !settings.cintaLectorPlegada; saveSettings(); this.pintarPlegado(); });
+    this.pintarPlegado();
     $("#reader-objetivo").addEventListener("click", () => openSheet([
       el("h2", { text: "Tiempo" }), this.timeGroup(),
       el("div", { class: "actions" }, el("button", { class: "action plain", text: "Cerrar", onclick: () => closeSheet() })),
@@ -4890,7 +4902,18 @@ const editor = {
     toast(r && !r.collapsed ? "Leyendo lo seleccionado. Vuelve a tocar para parar." : "Leyendo desde el cursor. Vuelve a tocar para parar.", { ms: 3000 });
   },
 
+  plegarCinta(p, { guardar = true } = {}) {
+    if (guardar) { settings.cintaEditorPlegada = p; saveSettings(); }
+    views.editor.classList.toggle("cinta-plegada", p);
+    if (p) { this.togglePalette(false); this.togglePaletteLetra(false); this.cerrarOpciones(); }
+    const b = $("#cinta-plegar");
+    b.innerHTML = icon(p ? "down" : "up");
+    b.setAttribute("aria-pressed", String(p));
+    b.setAttribute("aria-label", p ? "Ver la cinta" : "Minimizar la cinta");
+    b.title = b.getAttribute("aria-label");
+  },
   cinta(nombre) {
+    if (settings.cintaEditorPlegada) this.plegarCinta(false);
     $$(".ribbon-tabs [data-rtab]").forEach((t) => t.setAttribute("aria-selected", String(t.dataset.rtab === nombre)));
     $$("#view-editor [data-rpanel]").forEach((p) => { p.hidden = p.dataset.rpanel !== nombre; });
     if (nombre !== "inicio") { this.togglePalette(false); this.togglePaletteLetra(false); }
@@ -5328,6 +5351,12 @@ const editor = {
       else document.execCommand("insertText", false, text);
     });
     $("#editor-imagen").addEventListener("change", (e) => this.ponerImagen(e.target.files && e.target.files[0]));
+    // Minimizar la cinta (como en Word): quedan las pestañas; tocar una la vuelve a abrir
+    const plegar = $("#cinta-plegar");
+    plegar.addEventListener("pointerdown", (e) => e.preventDefault());
+    plegar.addEventListener("mousedown", (e) => e.preventDefault());
+    plegar.addEventListener("click", () => this.plegarCinta(!settings.cintaEditorPlegada));
+    this.plegarCinta(!!settings.cintaEditorPlegada, { guardar: false });
     // Copiar formato: al soltar una selección, se aplica
     const brochaLuego = debounce(() => { if (this.formatoCopiado && currentView === "editor") this.aplicarFormatoCopiado(); }, 700);
     document.addEventListener("selectionchange", () => { if (this.formatoCopiado) { const r = this.rango(); if (r && !r.collapsed) brochaLuego(); } });

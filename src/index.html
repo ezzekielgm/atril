@@ -93,6 +93,7 @@
     </div>
     <span class="pace" id="pace" role="status" hidden></span>
     <button class="chip-objetivo solo-cinta" id="reader-objetivo" aria-label="Duración del discurso"><span data-icon="clock"></span><span id="reader-objetivo-txt">Objetivo</span></button>
+    <button class="icon-btn plegar solo-cinta" id="reader-plegar" aria-label="Minimizar la barra de herramientas" aria-pressed="false" data-icon="up"></button>
     <!-- Cinta como la de Word en el iPad: grupos con botones grandes y pequeños en dos filas (tres en vertical).
          En el móvil y en el ordenador los grupos no cuentan (display: contents) y solo se ven los de siempre. -->
     <nav class="reader-tools" aria-label="Herramientas del discurso">
@@ -233,6 +234,7 @@
     <span class="rt-acciones">
       <button data-cmd="undo" aria-label="Deshacer" data-icon="undo"></button>
       <button data-cmd="redo" aria-label="Rehacer" data-icon="redo"></button>
+      <button class="plegar" id="cinta-plegar" aria-label="Minimizar la cinta" aria-pressed="false" data-icon="up"></button>
     </span>
   </div>
   <!-- Cinta como la de Word (a petición de Ezequiel): grupos con su nombre debajo. Lo nuevo de Word: portapapeles,
