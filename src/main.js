@@ -435,6 +435,7 @@ const DEFAULTS = {
   grabar: false, tpWpm: 130, pdfSize: 16, pdfMarks: true, markColor: "amarillo", ppm: PALABRAS_POR_MINUTO,
   panel: true, panelEditor: true, presToque: true, presComprobar: true, // panel lateral (lector / editor) y pasar página tocando al presentar
   presDesplazar: true, // al presentar, el texto sube solo mientras corre el cronómetro
+  presVoz: false, // al presentar, «Seguir mi voz» (prototipo; solo donde vozDisponible())
 };
 const FS_MIN = 14, FS_MAX = 80;
 let settings = { ...DEFAULTS };
@@ -1713,6 +1714,8 @@ const vozDisponible = () => !escritorio.activo && (enPruebas() || !!settings.lab
 
 function pintarVozChip(texto) {
   $("#reader-voz").setAttribute("aria-pressed", String(voz.activo));
+  $("#pres-voz").setAttribute("aria-pressed", String(voz.activo));
+  if (presentar.activo) presentar.pintarAuto();
   let c = $("#voz-chip");
   if (!texto && !voz.activo) { if (c) c.hidden = true; return; }
   if (!c) {
@@ -1736,7 +1739,7 @@ function pararVoz() {
 
 async function alternarVoz() {
   if (voz.activo) { pararVoz(); return; }
-  if (currentView !== "reader" || presentar.activo) return;
+  if (currentView !== "reader") return;
   voz.mod = voz.mod || (await import("./voz.js"));
   if (!(await voz.mod.descargada())) {
     const si = await confirmDialog({
@@ -3464,7 +3467,6 @@ const presentar = {
     prompter.cerrar();
     if (tarjetas.activo) tarjetas.cerrar();
     if (reader.mode !== "texto") reader.setMode("texto", { keepScroll: true });
-    pararVoz();
     this.activo = true;
     this.partes = reader.partesEnsayo();
     this.aviso = "";
@@ -3481,7 +3483,10 @@ const presentar = {
     this.hash = location.hash;
     if (!(history.state && history.state.atril === "presentar")) history.pushState({ atril: "presentar" }, "");
     keepAwake(true);
+    $("#pres-voz").hidden = !vozDisponible();
     this.autoEmpezar();
+    // «Seguir mi voz» también al presentar (a petición de Ezequiel), si está elegido en «Antes de presentar»
+    if (vozDisponible() && settings.presVoz && !voz.activo) alternarVoz();
     reader.paintPace();
     this.pintarReloj();
     clearInterval(this.reloj);
@@ -3522,6 +3527,10 @@ const presentar = {
     const auto = el("input", { type: "checkbox", role: "switch", id: "pc-auto" });
     auto.checked = settings.presDesplazar !== false;
     auto.addEventListener("change", () => { settings.presDesplazar = auto.checked; saveSettings(); });
+    const conVoz = vozDisponible();
+    const vozSw = el("input", { type: "checkbox", role: "switch", id: "pc-voz" });
+    vozSw.checked = !!settings.presVoz || voz.activo;
+    vozSw.addEventListener("change", () => { settings.presVoz = vozSw.checked; saveSettings(); if (!vozSw.checked && voz.activo) pararVoz(); });
     const siempre = el("input", { type: "checkbox", role: "switch", id: "pc-siempre" });
     siempre.checked = true;
     siempre.addEventListener("change", () => { settings.presComprobar = siempre.checked; saveSettings(); });
@@ -3537,6 +3546,9 @@ const presentar = {
           el("button", { class: "chip", text: "Cambiar", onclick: () => { close(); openAaSheet(); } }))),
         fila("play", "Empezar", botonesDesde),
         fila("scroll", "Desplazamiento", el("label", { class: "switch-row pc-switch" }, el("span", { text: "El texto sube solo con el cronómetro" }), auto)),
+        conVoz ? fila("mic", "Seguir mi voz (prueba)",
+          el("label", { class: "switch-row pc-switch" }, el("span", { text: "Resalta por dónde vas y mueve el texto mientras hablas" }), vozSw),
+          el("p", { class: "pc-txt", text: "Mientras te sigue, el desplazamiento automático espera. La primera vez descarga el reconocedor (unos 40 MB)." })) : null,
         fila("book", "Pantalla", el("label", { class: "switch-row pc-switch" }, el("span", { text: "Que no se apague" }), wake)),
         fila("lock", "Que no te saque de aquí",
           el("p", { class: "pc-txt", text: "Para pasar página, toca abajo; para salir, toca «Salir» arriba (o el centro de la pantalla) y mantén pulsado." }),
@@ -3673,7 +3685,8 @@ const presentar = {
     const a = this.auto, sc = reader.scrollEl;
     const dt = Math.min(100, t - a.ultimo) / 1000;
     a.ultimo = t;
-    const mover = timer.running && settings.presDesplazar !== false && !a.tocando && t > a.esperaHasta && $("#overlay").hidden;
+    // Si te sigue la voz, el texto lo mueve tu voz: el desplazamiento automático espera
+    const mover = timer.running && settings.presDesplazar !== false && !voz.activo && !a.tocando && t > a.esperaHasta && $("#overlay").hidden;
     if (mover) {
       if (t - a.medido > 1000) this.autoMedir();
       if (Math.abs(sc.scrollTop - a.pos) > 3) a.pos = sc.scrollTop; // lo ha movido la persona o el tamaño de letra
@@ -3686,7 +3699,8 @@ const presentar = {
     const on = settings.presDesplazar !== false;
     const b = $("#pres-auto");
     b.setAttribute("aria-pressed", String(on));
-    b.title = on ? "Desplazamiento automático encendido" : "Desplazamiento automático apagado";
+    b.title = voz.activo ? "Mientras te sigue la voz, el texto lo mueve tu voz" : on ? "Desplazamiento automático encendido" : "Desplazamiento automático apagado";
+    b.classList.toggle("cede", voz.activo);
     $("#pres-vel").hidden = !on;
     $("#pres-vel-txt").innerHTML = `${this.auto.wpm}<span class="pres-par-unit"> pal/min</span>`;
     $("#pres-vel-txt").title = `${this.auto.wpm} palabras por minuto`;
@@ -3808,6 +3822,11 @@ const presentar = {
     });
     $("#pres-cero").addEventListener("click", () => { if (this.activo) this.ponerACero(); });
     $("#pres-auto").addEventListener("click", () => this.alternarAuto());
+    $("#pres-voz").addEventListener("click", () => {
+      settings.presVoz = !voz.activo;
+      saveSettings();
+      alternarVoz();
+    });
     $("#pres-lento").addEventListener("click", () => this.velocidadAuto(-10));
     $("#pres-rapido").addEventListener("click", () => this.velocidadAuto(10));
     const letra = (d) => { setFontSize(settings.fontSize + d, { scrollEl: reader.scrollEl, contentEl: reader.contentEl }); saveSettings(); this.auto.medido = 0; };

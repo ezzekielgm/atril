@@ -122,7 +122,11 @@ ok("La segunda vez no vuelve a descargar ni a preguntar", !(await page.isVisible
 // Presentar lo para (de momento el prototipo es para ensayar)
 await page.evaluate(() => { localStorage.setItem("atril.consejoAcceso", "1"); window.__atril.presentar.entrar({ consejo: false }); });
 await page.waitForTimeout(200);
-ok("Al presentar se para (de momento es para ensayar)", !(await page.evaluate(() => window.__atril.voz.activo)));
+ok("Al presentar sigue escuchando (también sirve para dar el discurso)", await page.evaluate(() => window.__atril.voz.activo) && (await page.getAttribute("#pres-voz", "aria-pressed")) === "true");
+ok("Mientras te sigue la voz, el desplazamiento automático espera", await page.evaluate(() => document.querySelector("#pres-auto").classList.contains("cede")));
+await page.click("#pres-voz");
+await page.waitForTimeout(200);
+ok("El botón «Mi voz» de Presentar la apaga (y lo recuerda)", !(await page.evaluate(() => window.__atril.voz.activo)) && (await page.evaluate(() => window.__atril.settings().presVoz)) === false);
 await page.evaluate(() => window.__atril.presentar.salir({ quitarPaso: true }));
 
 // En la versión de siempre, sin el ajuste, no aparece

@@ -777,6 +777,10 @@ html.canal-pruebas .marca-pruebas { display: inline-block; margin-left: 10px; ve
 .pres-parte { grid-column: 1; grid-row: 2; }
 .pres-sigue { grid-column: 1; grid-row: 3; }
 .pres-ctrl { grid-column: 2; grid-row: 2 / span 2; align-self: center; }
+/* iPad en horizontal de hasta 1150 px: los interruptores, solo con icono, para que quepa el nombre de la parte */
+@media (max-width: 1150px) and (min-width: 1001px) {
+  .pres-auto-txt, .pres-par-unit { display: none; }
+}
 @media (max-width: 1000px) {
   .pres-ctrl { grid-column: 1 / -1; grid-row: 4; }
   .pres-par-unit { display: none; }
@@ -788,6 +792,9 @@ html.canal-pruebas .marca-pruebas { display: inline-block; margin-left: 10px; ve
 .pres-sw i { position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.3); transition: transform .15s; }
 .pres-auto[aria-pressed="true"] .pres-sw { background: #2e7d32; }
 .pres-auto[aria-pressed="true"] .pres-sw i { transform: translateX(16px); }
+.pres-auto[hidden] { display: none; }
+.pres-auto.cede { opacity: .5; } /* con «Seguir mi voz», el texto lo mueve la voz */
+html.presentando .voz-chip { left: auto; right: 16px; transform: none; bottom: calc(max(16px, env(safe-area-inset-bottom)) + 16px); font-size: 14px; opacity: .9; }
 .pres-par { display: inline-flex; align-items: center; height: 44px; border-radius: 22px; border: 1px solid var(--border); background: var(--bg); overflow: hidden; }
 .pres-par[hidden] { display: none; }
 .pres-par button { min-width: 44px; height: 44px; font-size: 18px; font-weight: 700; color: var(--accent); }
@@ -848,6 +855,7 @@ html.canal-pruebas .marca-pruebas { display: inline-block; margin-left: 10px; ve
   .pres-reloj + .pres-opciones { margin-left: auto; }
   .pres-auto-txt, .pres-letra, .pres-par-unit { display: none; }
   .pres-par { display: none !important; } /* en el móvil no cabe: solo encender y apagar */
+  .pres-ctrl { flex-wrap: wrap; }
   .pres-auto, .pres-par, .pres-par button { height: 36px; }
   .pres-par button { min-width: 38px; }
   .pres-opciones { height: 36px; padding: 0 12px; font-size: 15px; }

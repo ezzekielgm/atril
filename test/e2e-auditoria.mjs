@@ -50,6 +50,7 @@ const DISCURSO = `<h1>Prueba</h1><h2>Introducción (2 min)</h2>${parrafos(3)}<h2
   const hoja = await page.textContent(".sheet");
   ok("«Presentar» abre antes la comprobación", hoja.includes("Antes de presentar") && hoja.includes("Tiempo") && hoja.includes("Letra") && hoja.includes("Empezar") && hoja.includes("Que no se apague"));
   ok("…con el tiempo del discurso", (await page.inputValue(".sheet .num-input")) === "8");
+  ok("…con el desplazamiento automático (encendido) y sin «Seguir mi voz» en la versión de todos", (await page.isChecked("#pc-auto")) && !hoja.includes("Seguir mi voz"));
   ok("…y «Desde donde estoy» elegido si ya estabas leyendo", (await page.getAttribute(".pc-desde [data-desde='aqui']", "aria-pressed")) === "true");
   ok("«Presentar ahora» es el botón principal y tiene foco", await page.evaluate(() => document.activeElement && document.activeElement.id === "pc-ya"));
   await page.waitForTimeout(450);
@@ -63,6 +64,16 @@ const DISCURSO = `<h1>Prueba</h1><h2>Introducción (2 min)</h2>${parrafos(3)}<h2
   ok("«Desde el principio» empieza arriba", (await page.$eval("#reader-scroll", (s) => s.scrollTop)) < 5);
   ok("Sin el consejo de la primera vez encima (ya estaba en la comprobación)", !(await page.isVisible(".sheet")));
   await page.evaluate(() => window.__atril.presentar.salir({ quitarPaso: true }));
+  await page.waitForTimeout(300);
+  // Con «Seguir mi voz» disponible (pruebas o laboratorio) sale en la comprobación y en la barra de Presentar
+  await page.evaluate(() => { window.__atril.settings().labVoz = true; });
+  await page.click("#reader-presentar");
+  await page.waitForSelector("#pc-ya");
+  ok("Con la voz disponible, «Antes de presentar» ofrece «Seguir mi voz» (apagado de serie)", (await page.isVisible(".sheet >> text=Seguir mi voz (prueba)")) && !(await page.isChecked("#pc-voz")));
+  await page.click("#pc-ya");
+  await page.waitForSelector("#pres-bar:not([hidden])");
+  ok("…y en la barra de Presentar, el botón «Mi voz»", await page.isVisible("#pres-voz"));
+  await page.evaluate(() => { window.__atril.presentar.salir({ quitarPaso: true }); window.__atril.settings().labVoz = false; });
   await page.waitForTimeout(300);
   // Quitar la comprobación
   await page.click("#reader-presentar");
