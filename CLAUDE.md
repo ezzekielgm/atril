@@ -40,6 +40,7 @@ src/
   sw.js               service worker (plantilla: el build mete versión y lista de archivos)
   manifest.webmanifest
   icons/              iconos, banner del inicio y og.jpg (se generan con scripts/iconos.py desde scripts/arte/)
+  muestra/            muestra del diseño nuevo (bocetos de noviembre de 2026 en scripts/arte/nuevo/): página estática, solo en pruebas (…/atril/pruebas/muestra/), fuera de la precarga; imágenes con scripts/muestra-imagenes.py. Pendiente de que Ezequiel la apruebe
 build.mjs             construye dist/ con esbuild
 test/e2e.mjs          prueba de punta a punta con Playwright (Chromium emulando iPad táctil)
 test/e2e-funciones.mjs  pruebas de citas, esquema, tiempo objetivo y vista de móvil
@@ -167,6 +168,7 @@ dist/                 lo que se sube a internet (se genera; no editar a mano)
 - Hojas: en el móvil salen desde abajo; en el iPad, centradas. Menús (`actionSheet`) en lista agrupada (`.menu`).
 
 - **Contraste**: `test/contraste.test.mjs` lee los `--*` de cada tema y exige WCAG AA (4,5:1 texto; 3:1 títulos grandes), también el texto sobre los resaltados y el cronómetro (blanco sobre el verde #2e7d32 y el rojo fijo #b42318 de `.pres-timer.over`, igual en los tres temas). Si cambias un color, pásala.
+- **Diseño nuevo, en muestra** (15/11, bocetos de ChatGPT en `scripts/arte/nuevo/`: inicio, editor, banner e icono): fondo frío #eef1f7, tarjetas blancas, azul marino #12307f, inicio sin cabecera grande (nombre «Atril» con el icono, buscador, pestañas Recientes/Discursos/Notas con «+ Nuevo»; opción «Con banner»), editor con barra clara, pestaña activa en azul relleno y cinta por grupos con su nombre (Portapapeles, Fuente, Párrafo, Estilos) y «Esquema del discurso» a la izquierda; icono = atril blanco liso sobre azul. Se enseña en `src/muestra/` con los tres temas; **no aplicar a la app hasta que Ezequiel diga que sí**. Pegar/Copiar/Cortar, alinear y tamaño de letra del boceto del editor serían funciones nuevas.
 - **Bocetos pendientes**: faltan los de «Más» y «Letra» como hojas laterales, «Antes de presentar», «Ensayos», temas, vertical/móvil, Notas/Ajustes/bienvenida y la especificación final (prompts 3, 4, 6 y 8–12 del documento «Atril: qué incluye y brief de diseño»). De momento usan el mismo estilo; cuando lleguen, ajustarlos.
 
 ## Reglas

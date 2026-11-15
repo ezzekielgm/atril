@@ -56,6 +56,9 @@ if (CON_VOZ) {
   else console.warn("Aviso: falta voz/vosk-model-small-es-0.3.tar.gz; «Seguir mi voz» dirá que no está disponible.");
   fs.writeFileSync(path.join(OUT, "voz", "AVISO.txt"), "Reconocimiento de voz: Vosk (https://alphacephei.com/vosk), modelo vosk-model-small-es-0.3, y vosk-browser (https://github.com/ccoreilly/vosk-browser). Licencia Apache 2.0. Copyright 2019 Alpha Cephei Inc.\n");
 }
+// Muestra del diseño nuevo (src/muestra/): solo en pruebas, para verla en el iPad antes de aplicarla.
+// Fuera de la precarga del service worker, que tampoco la sustituye por index.html (sw.js).
+if (CANAL === "pruebas" || process.env.MUESTRA === "1") fs.cpSync(path.join(SRC, "muestra"), path.join(OUT, "muestra"), { recursive: true });
 fs.writeFileSync(path.join(OUT, "_headers"), "/sw.js\n  Cache-Control: no-cache\n/index.html\n  Cache-Control: no-cache\n");
 
 // 3. Versión = huella del contenido (cambia sola con cada cambio)
@@ -80,7 +83,7 @@ const idx = path.join(OUT, "index.html");
 fs.writeFileSync(idx, fs.readFileSync(idx, "utf8").replace('<html lang="es"', `<html lang="es" data-version="${version}"`));
 
 // 5. Service worker con la lista de archivos a guardar para usar sin conexión
-const assets = ["./", ...files.filter((f) => f !== "_headers" && !f.startsWith("voz/")).map((f) => "./" + f)];
+const assets = ["./", ...files.filter((f) => f !== "_headers" && !f.startsWith("voz/") && !f.startsWith("muestra/")).map((f) => "./" + f)];
 const sw = fs.readFileSync(path.join(SRC, "sw.js"), "utf8")
   .replace("__APP_VERSION__", version)
   .replace("__APP_CANAL__", CANAL)
