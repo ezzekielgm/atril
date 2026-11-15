@@ -1845,3 +1845,44 @@ html:not(.ancho) #reader-plegar { display: inline-flex; order: 4; width: 44px; h
   .ribbon-tabs .rt-acciones button { min-width: 34px; }
   .ribbon-tabs .rt-acciones .plegar { margin-left: 2px; }
 }
+
+/* =====================================================================
+   CINTA DEL EDITOR QUE SE DESLIZA (a petición de Ezequiel: «que se pueda deslizar de derecha a izquierda y
+   con todas las herramientas»): una sola fila de grupos, con su nombre debajo, que se mueve con el dedo.
+   Una sombra en el borde avisa de que hay más botones. Manda sobre las filas de antes (también en vertical).
+   ===================================================================== */
+#view-editor .toolbar.ribbon {
+  flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden; -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain;
+  scroll-behavior: smooth; touch-action: pan-x; align-items: stretch; row-gap: 0;
+  -webkit-mask-image: none; mask-image: none; padding-right: 12px;
+}
+#view-editor .toolbar.ribbon.mas-derecha { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 56px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 56px), transparent); }
+#view-editor .toolbar.ribbon.mas-izquierda { -webkit-mask-image: linear-gradient(to right, transparent, #000 40px); mask-image: linear-gradient(to right, transparent, #000 40px); }
+#view-editor .toolbar.ribbon.mas-derecha.mas-izquierda { -webkit-mask-image: linear-gradient(to right, transparent, #000 40px, #000 calc(100% - 56px), transparent); mask-image: linear-gradient(to right, transparent, #000 40px, #000 calc(100% - 56px), transparent); }
+@media (min-width: 701px) {
+  #view-editor .rgr, #view-editor .rgr-bot { display: flex; }
+  #view-editor .rgr { flex-direction: column; }
+  #view-editor .rgr-nom { display: block; }
+  #view-editor .toolbar .estilos { display: flex; }
+  #view-editor .toolbar button.sel-estilo { display: none; }
+  #view-editor .rgr-fuente, #view-editor .rgr-parrafo, #view-editor .rgr-estilos, #view-editor .rgr-portapapeles { order: 0; }
+  #view-editor .rgr-parrafo { border-left: 1px solid var(--border); padding-left: 8px; }
+  #view-editor .rgr:first-child { border-left: 0; padding-left: 0; }
+  #view-editor .toolbar button.con-nombre { height: 58px; min-width: 52px; }
+  #view-editor .toolbar button.con-nombre span:not([data-icon]) { display: inline; }
+  #view-editor .toolbar .solo-ancho { display: flex; }
+}
+#view-editor .toolbar button.grande { flex-direction: column; gap: 3px; height: 58px; min-width: 56px; padding: 0 8px; font-size: 12.5px; font-weight: 600; white-space: nowrap; }
+#view-editor .toolbar button.grande svg { width: 23px; height: 23px; }
+#view-editor .toolbar button.grande .ico-pausa { font-size: 21px; width: auto; }
+.toolbar button.letra-mas, .toolbar button.letra-menos { font-size: 18px; font-weight: 700; gap: 0; min-width: 40px; padding: 0 6px; }
+.toolbar button .flecha { font-size: 11px; margin-left: 1px; color: var(--accent); }
+.estilo.e-h4 .muestra { color: var(--heading); font-size: 14px; font-weight: 700; font-style: italic; }
+/* Interlineado de un párrafo (formato.js) */
+.doc-content .inter-1 { line-height: 1.25; } .doc-content .inter-115 { line-height: 1.45; }
+.doc-content .inter-15 { line-height: 1.85; } .doc-content .inter-2 { line-height: 2.3; } .doc-content .inter-3 { line-height: 3.2; }
+/* Marcas de párrafo (¶), solo en el editor */
+#editor.con-marcas p::after, #editor.con-marcas h1::after, #editor.con-marcas h2::after, #editor.con-marcas h3::after,
+#editor.con-marcas h4::after, #editor.con-marcas li::after, #editor.con-marcas blockquote::after { content: "¶"; color: var(--muted); opacity: .55; font-weight: 400; margin-left: .15em; }
+#editor.con-marcas br::after { content: "↵"; color: var(--muted); opacity: .55; }
+.doc-content a[href] { color: var(--accent); text-decoration: underline; text-underline-offset: 3px; }

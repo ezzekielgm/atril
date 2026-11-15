@@ -69,7 +69,8 @@ function bloquesDe(html) {
     const c = n.getAttribute("class") || "";
     const al = (c.match(/\bal-(centro|derecha|justificar)\b/) || [])[1] || null;
     const sang = Number((c.match(/\bsang-(\d)\b/) || [])[1] || 0);
-    return { al, parrafo: sang };
+    const inter = { "1": 1, "115": 1.15, "15": 1.5, "2": 2, "3": 3 }[(c.match(/\binter-(\d+)\b/) || [])[1]] || 0;
+    return { al, parrafo: sang, inter };
   };
   function recorrer(cont, cita = false) {
     for (const n of cont.childNodes) {
@@ -238,7 +239,8 @@ export async function buildPdf({ title = "Documento", html = "", size = 12, fami
     const factor = NIVEL[bl.tipo.toUpperCase()] || 1;
     const tam = size * factor;
     const esTitulo = factor > 1 || bl.tipo === "h4";
-    const alto = tam * (esTitulo ? 1.22 : 1.38);
+    // Interlineado de Word (1,15 es el de siempre del PDF)
+    const alto = tam * (esTitulo ? 1.22 : 1.38) * (bl.inter ? Math.max(0.9, bl.inter / 1.15) : 1);
     const sangria = (bl.sangria ? bl.sangria * size * 1.5 : 0) + (bl.cita ? size * 1.2 : 0) + (bl.parrafo ? bl.parrafo * size * 2 : 0);
     const ls = lineas(bl.runs, tam, ancho - sangria, esTitulo ? { b: true } : {});
     if (!ls.length || (ls.length === 1 && !ls[0].length && bl.tipo !== "p")) continue;

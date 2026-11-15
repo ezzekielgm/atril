@@ -251,6 +251,8 @@
     <div class="rgr rgr-fuente"><div class="rgr-bot">
       <button data-cmd="fuente" class="selector sel-fuente" aria-label="Tipo de letra" aria-expanded="false"><span id="sel-fuente">Letra</span><span data-icon="down"></span></button>
       <button data-cmd="tamano" class="selector sel-tamano" aria-label="Tamaño de letra" aria-expanded="false"><span id="sel-tamano">12</span><span data-icon="down"></span></button>
+      <button data-cmd="agrandar" class="txt letra-mas" aria-label="Agrandar la letra">A<span class="flecha">▴</span></button>
+      <button data-cmd="encoger" class="txt letra-menos" aria-label="Encoger la letra">A<span class="flecha">▾</span></button>
       <button data-cmd="bold" aria-label="Negrita"><b>N</b></button>
       <button data-cmd="italic" aria-label="Cursiva"><i>K</i></button>
       <button data-cmd="underline" aria-label="Subrayado"><u>S</u></button>
@@ -272,6 +274,9 @@
       <button data-cmd="centro" aria-label="Centrar" data-icon="alCentro"></button>
       <button data-cmd="derecha" aria-label="Alinear a la derecha" data-icon="alDer"></button>
       <button data-cmd="justificar" aria-label="Justificar" data-icon="justif"></button>
+      <span class="sep"></span>
+      <button data-cmd="interlineado" aria-label="Interlineado" aria-expanded="false" data-icon="interlineado"></button>
+      <button data-cmd="ordenar" aria-label="Ordenar de la A a la Z" data-icon="ordenar"></button>
     </div><span class="rgr-nom">Párrafo</span></div>
     <div class="rgr rgr-estilos"><div class="rgr-bot">
       <div class="estilos" role="group" aria-label="Estilos">
@@ -279,12 +284,15 @@
         <button data-cmd="h1" class="estilo e-h1" aria-label="Estilo Título 1"><span class="muestra">AaBbCc</span><span class="nom">Título 1</span></button>
         <button data-cmd="h2" class="estilo e-h2" aria-label="Estilo Título 2"><span class="muestra">AaBbCc</span><span class="nom">Título 2</span></button>
         <button data-cmd="h3" class="estilo e-h3" aria-label="Estilo Título 3"><span class="muestra">AaBbCc</span><span class="nom">Título 3</span></button>
+        <button data-cmd="h4" class="estilo e-h4" aria-label="Estilo Título 4"><span class="muestra">AaBbCc</span><span class="nom">Título 4</span></button>
         <button data-cmd="cita" class="estilo e-cita" aria-label="Estilo Cita"><span class="muestra">AaBbCc</span><span class="nom">Cita</span></button>
       </div>
       <button data-cmd="estilo" class="selector sel-estilo" aria-label="Estilo del párrafo" aria-expanded="false"><span id="sel-estilo">Normal</span><span data-icon="down"></span></button>
     </div><span class="rgr-nom">Estilos</span></div>
     <div class="rgr rgr-edicion solo-ancho"><div class="rgr-bot">
-      <button data-cmd="buscar" class="con-nombre" aria-label="Buscar y reemplazar"><span data-icon="search"></span><span>Buscar</span></button>
+      <button data-cmd="buscar" class="con-nombre" aria-label="Buscar"><span data-icon="search"></span><span>Buscar</span></button>
+      <button data-cmd="reemplazar" class="con-nombre" aria-label="Reemplazar"><span data-icon="replace"></span><span>Reemplazar</span></button>
+      <button data-cmd="todo" class="con-nombre" aria-label="Seleccionar todo"><span data-icon="seleccionar"></span><span>Seleccionar todo</span></button>
     </div><span class="rgr-nom">Edición</span></div>
   </div>
   <div class="toolbar ribbon" data-rpanel="insertar" hidden>
@@ -297,18 +305,28 @@
     <div class="rgr"><div class="rgr-bot">
       <button data-cmd="tabla" class="grande" aria-expanded="false"><span data-icon="tabla"></span><span>Tabla</span></button>
       <button data-cmd="imagen" class="grande"><span data-icon="imagen"></span><span>Imagen</span></button>
+      <button data-cmd="foto" class="grande"><span data-icon="camara"></span><span>Foto</span></button>
       <button data-cmd="dibujo" class="grande"><span data-icon="pluma"></span><span>Dibujo o a mano</span></button>
     </div><span class="rgr-nom">Ilustraciones</span></div>
     <div class="rgr"><div class="rgr-bot">
       <button data-cmd="linea" class="grande"><span data-icon="linea"></span><span>Línea</span></button>
       <button data-cmd="salto" class="grande"><span data-icon="salto"></span><span>Salto de página</span></button>
       <button data-cmd="fecha" class="grande"><span data-icon="calendar"></span><span>Fecha</span></button>
+      <button data-cmd="hora" class="grande"><span data-icon="clock"></span><span>Hora</span></button>
       <button data-cmd="simbolo" class="grande" aria-expanded="false"><span class="ico-pausa">Ω</span><span>Símbolo</span></button>
     </div><span class="rgr-nom">Texto</span></div>
+    <div class="rgr"><div class="rgr-bot">
+      <button data-cmd="vinculo" class="grande"><span data-icon="vinculo"></span><span>Vínculo</span></button>
+      <button data-cmd="sinVinculo" class="grande"><span data-icon="sinVinculo"></span><span>Quitar vínculo</span></button>
+    </div><span class="rgr-nom">Vínculos</span></div>
+    <div class="rgr"><div class="rgr-bot">
+      <button data-cmd="indice" class="grande"><span data-icon="indice"></span><span>Índice</span></button>
+    </div><span class="rgr-nom">Índice</span></div>
     <div class="rgr"><div class="rgr-bot">
       <button data-cmd="dictar" class="grande"><span data-icon="mic"></span><span>Dictar</span></button>
     </div><span class="rgr-nom">Voz</span></div>
     <input type="file" id="editor-imagen" accept="image/*" hidden>
+    <input type="file" id="editor-foto" accept="image/*" capture="environment" hidden>
   </div>
   <div class="toolbar ribbon" data-rpanel="revisar" hidden>
     <div class="rgr"><div class="rgr-bot">
@@ -327,10 +345,15 @@
     <div class="rgr"><div class="rgr-bot">
       <button data-cmd="leer" class="grande"><span data-icon="book"></span><span>Modo lectura</span></button>
       <button data-cmd="navegacion" class="grande" aria-pressed="false"><span data-icon="panel"></span><span>Panel de navegación</span></button>
+      <button data-cmd="concentracion" class="grande"><span data-icon="concentracion"></span><span>Concentración</span></button>
     </div><span class="rgr-nom">Vistas</span></div>
+    <div class="rgr"><div class="rgr-bot">
+      <button data-cmd="marcas" class="grande" aria-pressed="false"><span class="ico-pausa">¶</span><span>Marcas de párrafo</span></button>
+    </div><span class="rgr-nom">Mostrar</span></div>
     <div class="rgr"><div class="rgr-bot">
       <button data-cmd="menos" class="txt" aria-label="Letra más pequeña">A−</button>
       <button data-cmd="mas" class="txt" aria-label="Letra más grande">A+</button>
+      <button data-cmd="zoom100" class="txt" aria-label="Zoom al 100 %">100 %</button>
       <button data-cmd="aspecto" class="grande"><span data-icon="aa"></span><span>Letra y tema</span></button>
     </div><span class="rgr-nom">Zoom</span></div>
   </div>

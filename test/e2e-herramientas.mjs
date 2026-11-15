@@ -26,6 +26,9 @@ const ok = (name, cond, extra = "") => { results.push({ name, pass: !!cond }); c
   ok("Word: tamaño 18 y letra Georgia", xml.includes('<w:sz w:val="36"/>') && /w:ascii="Georgia"/.test(xml));
   ok("Word: subíndice", xml.includes('<w:vertAlign w:val="subscript"/>'));
   ok("Word: salto de página y justificado", xml.includes("<w:pageBreakBefore/>") && xml.includes('<w:jc w:val="both"/>'));
+  const zip2 = await JSZip.loadAsync(Buffer.from(await (await buildDocx("Inter", '<p class="inter-2">Doble</p><p><a href="https://www.jw.org">jw.org</a></p>')).arrayBuffer()));
+  const xml2 = await zip2.file("word/document.xml").async("string");
+  ok("Word: interlineado doble y vínculo", /<w:spacing[^>]*w:line="480"/.test(xml2) && xml2.includes("<w:hyperlink"), (xml2.match(/<w:spacing[^>]*>/) || [""])[0]);
   var docxBase64 = Buffer.from(await (await buildDocx("Formato", html)).arrayBuffer()).toString("base64");
 }
 
@@ -262,6 +265,83 @@ ok("…sin marcas raras en el texto", abierto && !/[-]/.test(abierto.html)
   ok("PDF: el salto de página empieza una página nueva", paginas === 2, `${paginas} páginas`);
   ok("PDF: centrado y a la derecha", sangria("Centrado") > 15 && sangria("Derecha") > sangria("Centrado") && sangria("Normal") < 5, `${sangria("Centrado")} / ${sangria("Derecha")} / ${sangria("Normal")}`);
   await c2.close();
+}
+
+// Más herramientas: la cinta se desliza de lado y tiene todo lo de un procesador de textos
+{
+  await page.evaluate(async () => {
+    await window.__atril.store.put("docs", { id: "w3", title: "Más", html: "<h2>Parte uno</h2><p>Zeta</p><p>alfa</p><p>Beta</p><h3>Apartado</h3><p>Texto normal</p>", created: Date.now(), updated: Date.now() });
+    location.hash = "#/editar/docs/w3";
+  });
+  await page.waitForSelector("#view-editor:not([hidden])");
+  await page.waitForTimeout(300);
+  await page.click('[data-rtab="inicio"]');
+  const cinta = await page.evaluate(() => { const t = document.querySelector("#toolbar"); return { desliza: t.scrollWidth > t.clientWidth, una: Math.max(...[...t.querySelectorAll(".rgr")].map((g) => g.getBoundingClientRect().top)) - Math.min(...[...t.querySelectorAll(".rgr")].map((g) => g.getBoundingClientRect().top)) < 2, sombra: t.classList.contains("mas-derecha") }; });
+  ok("La cinta va en una fila y se desliza de lado, con una sombra que avisa de que hay más", cinta.desliza && cinta.una && cinta.sombra, JSON.stringify(cinta));
+  await page.evaluate(() => { const t = document.querySelector("#toolbar"); t.style.scrollBehavior = "auto"; t.scrollLeft = t.scrollWidth; t.dispatchEvent(new Event("scroll")); });
+  ok("…al deslizarla se ven los últimos botones", await page.evaluate(() => { const b = document.querySelector('#toolbar [data-cmd="todo"]').getBoundingClientRect(); return b.right <= innerWidth && b.left >= 0; }));
+  const g2 = (n) => page.evaluate((n) => (window.__atril.editor.flush(), new Promise((r) => setTimeout(async () => r((await window.__atril.store.get("docs", "w3")).html), 50))), n);
+  const sel = (n, palabra) => elegir(n, palabra);
+  // Agrandar y encoger
+  await sel(1, "Zeta");
+  await boton("agrandar"); await boton("agrandar");
+  let h3 = await g2();
+  ok("Agrandar la letra dos pasos (12 → 14 → 18)", h3.includes('<span class="tam-18">Zeta</span>'), h3.slice(0, 120));
+  await sel(1, "Zeta");
+  await boton("encoger");
+  h3 = await g2();
+  ok("Encoger un paso (18 → 14)", h3.includes('<span class="tam-14">Zeta</span>'), h3.slice(0, 120));
+  // Interlineado
+  await sel(2, "alfa");
+  await boton("interlineado");
+  await opcion("Interlineado 2,0");
+  h3 = await g2();
+  ok("Interlineado doble", h3.includes('<p class="inter-2">alfa</p>'), h3);
+  // Ordenar de la A a la Z
+  await page.evaluate(() => { const ps = document.querySelectorAll("#editor p"); const r = document.createRange(); r.setStart(ps[0], 0); r.setEnd(ps[2], ps[2].childNodes.length); const s = getSelection(); s.removeAllRanges(); s.addRange(r); });
+  await boton("ordenar");
+  h3 = await g2();
+  ok("Ordenar de la A a la Z (sin mirar mayúsculas)", /alfa<\/p><p>Beta<\/p><p>.*Zeta/.test(h3), h3);
+  // Título 4 y seleccionar todo
+  await sel(5, "Texto");
+  await page.click('.estilos [data-cmd="h4"]');
+  h3 = await g2();
+  ok("Estilo Título 4", h3.includes("<h4>Texto normal</h4>"), h3.slice(-60));
+  await boton("todo");
+  ok("Seleccionar todo", (await page.evaluate(() => String(getSelection()).length)) > 30);
+  await boton("reemplazar");
+  await page.waitForTimeout(150);
+  ok("«Reemplazar» abre buscar y reemplazar con el cursor en «Reemplazar por»", (await page.isVisible("#replacebar")) && (await page.evaluate(() => document.activeElement && document.activeElement.id)) === "rep-por");
+  await page.click("#rep-close");
+  // Insertar: vínculo, hora e índice
+  await page.click('[data-rtab="insertar"]');
+  await sel(0, "Parte");
+  await boton("vinculo");
+  await page.fill(".sheet input", "jw.org");
+  await page.click(".sheet .action.primary");
+  h3 = await g2();
+  ok("Vínculo: se añade https:// y queda en el texto", h3.includes('<a href="https://jw.org"') && h3.includes(">Parte</a>"), h3.slice(0, 80));
+  await sel(0, "Parte");
+  await boton("sinVinculo");
+  h3 = await g2();
+  ok("Quitar vínculo", !h3.includes("<a "), h3.slice(0, 80));
+  await page.evaluate(() => { const p = document.querySelector("#editor p"); const r = document.createRange(); r.setStart(p, 0); r.collapse(true); const s = getSelection(); s.removeAllRanges(); s.addRange(r); document.querySelector("#editor").focus(); });
+  await boton("hora");
+  await boton("indice");
+  h3 = await g2();
+  ok("Hora e índice (las partes y, dentro, sus apartados)", /\d{2}:\d{2}/.test(h3) && /\d{2}:\d{2}[^<]*<\/p><p><strong>Índice<\/strong><\/p><ul><li>Parte uno<\/li><ul><li>Apartado<\/li><\/ul><\/ul>/.test(h3), h3.slice(0, 300));
+  ok("Insertar tiene Foto (con la cámara)", (await page.getAttribute("#editor-foto", "capture")) === "environment" && (await page.isVisible('[data-cmd="foto"]')));
+  // Vista: marcas de párrafo, concentración y 100 %
+  await page.click('[data-rtab="vista"]');
+  await boton("marcas");
+  ok("Marcas de párrafo (¶)", await page.evaluate(() => getComputedStyle(document.querySelector("#editor p"), "::after").content.includes("¶")));
+  await boton("marcas");
+  await boton("mas");
+  await boton("zoom100");
+  ok("Zoom al 100 %", (await page.textContent("#ed-zoom")) === "100 %");
+  await boton("concentracion");
+  ok("Concentración: se esconde la cinta", await page.evaluate(() => document.querySelector("#view-editor").classList.contains("cinta-plegada")));
+  await page.click('[data-rtab="inicio"]');
 }
 
 ok("Sin errores en la página", !errores.length, errores.join(" | "));

@@ -11,7 +11,7 @@ import { dividirEnTarjetas, nivelDeCorte, partesDelDiscurso, parteDeBloque, esti
 import { marcarCoincidencias, limpiarCoincidencias, plegarTexto, rangosCoincidencias } from "./buscar.js";
 import { puedeGrabar, crearGrabadora, extensionDe } from "./grabadora.js";
 import { escritorio } from "./escritorio.js";
-import { claseDeTamano, claseDeFuente, claseTamanoValida, claseFuenteValida, clasesDeBloque, TAMANOS, FUENTES, FUENTE_AUTO, MAX_SANGRIA, puntosDeClase, PT_NORMAL } from "./formato.js";
+import { claseDeTamano, claseDeFuente, claseTamanoValida, claseFuenteValida, clasesDeBloque, TAMANOS, FUENTES, FUENTE_AUTO, MAX_SANGRIA, puntosDeClase, PT_NORMAL, INTERLINEADOS } from "./formato.js";
 
 /* ============================================================
    Utilidades
@@ -166,6 +166,14 @@ const P = {
   paste: '<path d="M9 4H7.5A1.5 1.5 0 0 0 6 5.5v14A1.5 1.5 0 0 0 7.5 21h9a1.5 1.5 0 0 0 1.5-1.5v-14A1.5 1.5 0 0 0 16.5 4H15"/><rect x="9" y="2.5" width="6" height="3" rx="1"/><path d="M9.5 11h5M9.5 15h5"/>',
   pasteTexto: '<path d="M9 4H7.5A1.5 1.5 0 0 0 6 5.5v14A1.5 1.5 0 0 0 7.5 21h9a1.5 1.5 0 0 0 1.5-1.5v-14A1.5 1.5 0 0 0 16.5 4H15"/><rect x="9" y="2.5" width="6" height="3" rx="1"/><path d="M9 10h6M12 10v7"/>',
   docLineas: '<path d="M14 2.5H6.5a2 2 0 0 0-2 2v15a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V8z" stroke-width="1.6"/><path d="M14 2.5V8h5.5" stroke-width="1.6"/><path d="M8 12h8M8 15.5h8M8 19h5" stroke-width="1.6"/>',
+  interlineado: '<path d="M11 6h10M11 12h10M11 18h10"/><path d="M5 4v16"/><path d="M3 6.5L5 4l2 2.5M3 17.5L5 20l2-2.5"/>',
+  ordenar: '<path d="M4 6h9M4 12h7M4 18h5"/><path d="M18 4v16"/><path d="M15 17l3 3 3-3"/>',
+  camara: '<path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13.5" r="3.5"/>',
+  vinculo: '<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1.2 1.2"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1.2-1.2"/>',
+  sinVinculo: '<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1.2 1.2"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1.2-1.2"/><path d="M4 4l16 16"/>',
+  indice: '<path d="M4 5h4M4 12h4M4 19h4"/><path d="M11 5h9M13 12h7M13 19h7"/>',
+  seleccionar: '<rect x="4" y="4" width="16" height="16" rx="2" stroke-dasharray="3 2.5"/><path d="M8 9h8M8 13h8M8 17h5"/>',
+  concentracion: '<path d="M4 9V5a1 1 0 0 1 1-1h4M15 4h4a1 1 0 0 1 1 1v4M20 15v4a1 1 0 0 1-1 1h-4M9 20H5a1 1 0 0 1-1-1v-4"/>',
   capas: '<path d="M12 3l9 4.5-9 4.5-9-4.5z"/><path d="M3 12l9 4.5 9-4.5"/><path d="M3 16.5L12 21l9-4.5"/>',
   notaLapiz: '<path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h5"/><path d="M14 3l5 5v3"/><path d="M8 9h6M8 13h5M8 17h2"/><path d="M19.5 13.5l1.5 1.5-5.5 5.5H14v-1.5z"/>',
   tijeras: '<circle cx="6" cy="18" r="3"/><circle cx="18" cy="18" r="3"/><path d="M8 16L18 3M16 16L6 3"/>',
@@ -4392,13 +4400,27 @@ const editor = {
       fuente: () => this.opcionesFuente(),
       tamano: () => this.opcionesTamano(),
       mayus: () => this.opcionesMayusculas(),
-      estilo: () => this.abrirOpciones("estilo", "Estilo", [["p", "Normal"], ["h1", "Título 1"], ["h2", "Título 2"], ["h3", "Título 3"], ["cita", "Cita"]].map(([c, nombre]) => ({ label: nombre, run: () => this.exec(c) }))),
+      estilo: () => this.abrirOpciones("estilo", "Estilo", [["p", "Normal"], ["h1", "Título 1"], ["h2", "Título 2"], ["h3", "Título 3"], ["h4", "Título 4"], ["cita", "Cita"]].map(([c, nombre]) => ({ label: nombre, run: () => this.exec(c) }))),
       menosSangria: () => this.sangria(-1),
       masSangria: () => this.sangria(1),
       tabla: () => this.opcionesTabla(),
       imagen: () => this.elegirImagen(),
       simbolo: () => this.opcionesSimbolo(),
       ortografia: () => this.alternarOrtografia(),
+      agrandar: () => this.cambiarTamano(1),
+      encoger: () => this.cambiarTamano(-1),
+      interlineado: () => this.opcionesInterlineado(),
+      ordenar: () => this.ordenarAZ(),
+      reemplazar: () => { reemplazo.abrir(); setTimeout(() => { const i = $("#rep-por"); if (i) i.focus(); }, 60); },
+      todo: () => { this.area.focus(); document.execCommand("selectAll"); this.paintToolbar(); },
+      foto: () => { this.rangoImagen = this.rango() && this.rango().cloneRange(); const i = $("#editor-foto"); i.value = ""; i.click(); },
+      vinculo: () => this.ponerVinculo(),
+      sinVinculo: () => { this.area.focus(); document.execCommand("unlink"); this.markDirty(); },
+      hora: () => { this.area.focus(); document.execCommand("insertText", false, new Date().toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })); this.markDirty(); },
+      indice: () => this.insertarIndice(),
+      marcas: () => { settings.marcasParrafo = !settings.marcasParrafo; saveSettings(); this.pintarMarcas(); },
+      concentracion: () => { this.plegarCinta(true); if (this.lateral && this.lateral.abierto && !disenoPC.activo) this.lateral.alternar(); toast("Modo concentración: toca una pestaña para volver a ver la cinta."); },
+      zoom100: () => { setFontSize(DEFAULTS.fontSize, { scrollEl: this.scrollEl, contentEl: this.area }); saveSettings(); this.pintarZoom(); },
       voz: () => this.leerEnVoz(),
     };
     if (otras[cmd]) { otras[cmd](); return; }
@@ -4407,6 +4429,7 @@ const editor = {
     switch (cmd) {
       case "strike": d.execCommand("strikeThrough"); break;
       case "h3": d.execCommand("formatBlock", false, "<h3>"); break;
+      case "h4": d.execCommand("formatBlock", false, "<h4>"); break;
       case "undo": d.execCommand("undo"); break;
       case "redo": d.execCommand("redo"); break;
       case "bold": d.execCommand("bold"); break;
@@ -4869,6 +4892,93 @@ const editor = {
     this.abrirOpciones("simbolo", "Símbolo", SIMBOLOS.map((x) => ({ label: x, seguir: true, run: () => { document.execCommand("insertText", false, x); this.markDirty(); } })));
   },
 
+  /** Agrandar o encoger la letra de lo seleccionado un paso de la lista de tamaños (como A▴ y A▾ de Word). */
+  cambiarTamano(d) {
+    const i = TAMANOS.findIndex((t) => t.pt === this.tamanoActual());
+    const t = TAMANOS[Math.max(0, Math.min(TAMANOS.length - 1, (i < 0 ? 2 : i) + d))];
+    this.area.focus();
+    document.execCommand("styleWithCSS", false, false);
+    document.execCommand("fontSize", false, String(t.n));
+    this.markDirty();
+    this.paintToolbar();
+  },
+  opcionesInterlineado() {
+    const bloques = this.bloquesDeSeleccion().filter((b) => /^(P|H[1-4])$/.test(b.tagName));
+    const actual = bloques.length ? (INTERLINEADOS.find((i) => bloques[0].classList.contains(i.clase)) || null) : null;
+    const poner = (clase) => {
+      const antes = this.area.innerHTML;
+      for (const b of this.bloquesDeSeleccion().filter((x) => /^(P|H[1-4])$/.test(x.tagName))) {
+        INTERLINEADOS.forEach((i) => b.classList.remove(i.clase));
+        if (clase) b.classList.add(clase);
+        if (!b.classList.length) b.removeAttribute("class");
+      }
+      if (this.area.innerHTML !== antes) this.markDirty();
+    };
+    this.abrirOpciones("interlineado", "Interlineado", [
+      { label: "Normal", aria: "Interlineado normal (el de Atril)", activo: !actual, run: () => poner("") },
+      ...INTERLINEADOS.map((i) => ({ label: i.nombre, aria: `Interlineado ${i.nombre}`, activo: actual === i, run: () => poner(i.clase) })),
+    ]);
+  },
+  /** Ordena de la A a la Z los párrafos o elementos de lista seleccionados (con «Deshacer»). */
+  ordenarAZ() {
+    const bloques = this.bloquesDeSeleccion();
+    const padre = bloques.length ? bloques[0].parentElement : null;
+    const hermanos = bloques.filter((b) => b.parentElement === padre);
+    if (hermanos.length < 2) { toast("Selecciona al menos dos párrafos o elementos de una lista."); return; }
+    const antes = this.area.innerHTML;
+    const marca = document.createComment("ordenar");
+    hermanos[0].before(marca);
+    const ordenados = hermanos.slice().sort((a, b) => a.textContent.trim().localeCompare(b.textContent.trim(), "es", { sensitivity: "base", numeric: true }));
+    marca.after(...ordenados);
+    marca.remove();
+    this.markDirty();
+    toast("Ordenado de la A a la Z.", { action: "Deshacer", onAction: () => { this.ponerHtml(antes); this.markDirty(); } });
+  },
+  /** Vínculo a una página web o a un correo en lo seleccionado (o con la dirección como texto). */
+  async ponerVinculo() {
+    const r = this.rango() && this.rango().cloneRange();
+    const actual = (() => { let n = r && r.startContainer; if (n && n.nodeType === 3) n = n.parentElement; const a = n && n.closest ? n.closest("a[href]") : null; return a ? a.getAttribute("href") : ""; })();
+    const valor = await promptDialog({ title: "Vínculo", value: actual, ok: "Poner vínculo", placeholder: "https://… o correo@ejemplo.es" });
+    if (valor == null) return;
+    let url = String(valor).trim();
+    if (!url) return;
+    if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(url)) url = "mailto:" + url;
+    else if (!/^(https?:|mailto:)/i.test(url)) url = "https://" + url.replace(/^\/+/, "");
+    this.area.focus();
+    this.ponerRango(r);
+    if (r && !r.collapsed) document.execCommand("createLink", false, url);
+    else this.insertarHtml(`<a href="${escapeHtml(url)}">${escapeHtml(url.replace(/^mailto:/, ""))}</a>`);
+    this.markDirty();
+  },
+  /** Índice: los títulos del documento como lista (las partes y, dentro, sus apartados). */
+  insertarIndice() {
+    const tits = [...this.area.querySelectorAll("h1, h2, h3")].filter((h) => h.textContent.trim());
+    if (!tits.length) { toast("Aún no hay títulos. Usa los estilos Título 1, 2 o 3 y vuelve a probar."); return; }
+    const base = Math.min(...tits.map((h) => Number(h.tagName[1])));
+    let html = "<p><strong>Índice</strong></p><ul>", nivel = base, abiertos = 0;
+    for (const h of tits) {
+      const n = Number(h.tagName[1]);
+      while (nivel < n) { html += "<ul>"; nivel++; abiertos++; }
+      while (nivel > n && abiertos) { html += "</ul>"; nivel--; abiertos--; }
+      html += `<li>${escapeHtml(h.textContent.trim())}</li>`;
+    }
+    while (abiertos--) html += "</ul>";
+    // Después del párrafo del cursor (si se metiera en él, se uniría a su texto), con «Deshacer»
+    const antes = this.area.innerHTML;
+    const r = this.rango();
+    let b = r ? r.startContainer : null;
+    if (b && b.nodeType === 3) b = b.parentNode;
+    while (b && b.parentNode !== this.area) b = b.parentNode;
+    const t = document.createElement("template");
+    t.innerHTML = sanitize(html + "</ul>");
+    if (b) b.after(...t.content.childNodes); else this.area.append(...t.content.childNodes);
+    this.markDirty();
+    toast("Índice añadido.", { action: "Deshacer", onAction: () => { this.ponerHtml(antes); this.markDirty(); } });
+  },
+  pintarMarcas() {
+    this.area.classList.toggle("con-marcas", !!settings.marcasParrafo);
+    $('#view-editor [data-cmd="marcas"]').setAttribute("aria-pressed", String(!!settings.marcasParrafo));
+  },
   /* Revisar: ortografía (la del iPad) y leer en voz alta */
   alternarOrtografia() {
     settings.ortografia = settings.ortografia === false;
@@ -4915,6 +5025,7 @@ const editor = {
   cinta(nombre) {
     if (settings.cintaEditorPlegada) this.plegarCinta(false);
     $$(".ribbon-tabs [data-rtab]").forEach((t) => t.setAttribute("aria-selected", String(t.dataset.rtab === nombre)));
+    requestAnimationFrame(() => $$("#view-editor .toolbar.ribbon").forEach((t) => t.dispatchEvent(new Event("scroll"))));
     $$("#view-editor [data-rpanel]").forEach((p) => { p.hidden = p.dataset.rpanel !== nombre; });
     if (nombre !== "inicio") { this.togglePalette(false); this.togglePaletteLetra(false); }
     this.cerrarOpciones();
@@ -5284,7 +5395,7 @@ const editor = {
       bold: state("bold"), italic: state("italic"), underline: state("underline"),
       ul: state("insertUnorderedList"), ol: state("insertOrderedList"),
       strike: state("strikeThrough"),
-      h1: block === "h1", h2: block === "h2", h3: block === "h3", p: block === "p" || block === "div", highlight: !!this.selectionMark(),
+      h1: block === "h1", h2: block === "h2", h3: block === "h3", h4: block === "h4", p: block === "p" || block === "div", highlight: !!this.selectionMark(),
       letra: !!this.letraActual(),
       sub: state("subscript"), sup: state("superscript"),
       izquierda: !state("justifyCenter") && !state("justifyRight") && !state("justifyFull"),
@@ -5298,7 +5409,7 @@ const editor = {
     const f = FUENTES.find((x) => x.clase === this.fuenteActual());
     $("#sel-fuente").textContent = f ? f.nombre : "Letra";
     $("#sel-tamano").textContent = String(this.tamanoActual());
-    $("#sel-estilo").textContent = { h1: "Título 1", h2: "Título 2", h3: "Título 3", blockquote: "Cita" }[block] || "Normal";
+    $("#sel-estilo").textContent = { h1: "Título 1", h2: "Título 2", h3: "Título 3", h4: "Título 4", blockquote: "Cita" }[block] || "Normal";
     $('#view-editor [data-cmd="brocha"]').setAttribute("aria-pressed", String(!!this.formatoCopiado));
     this.pintarSeleccion();
   },
@@ -5351,6 +5462,11 @@ const editor = {
       else document.execCommand("insertText", false, text);
     });
     $("#editor-imagen").addEventListener("change", (e) => this.ponerImagen(e.target.files && e.target.files[0]));
+    $("#editor-foto").addEventListener("change", (e) => this.ponerImagen(e.target.files && e.target.files[0]));
+    this.pintarMarcas();
+    // La cinta se desliza de lado: una sombra en el borde dice que hay más botones
+    const pintarBordes = (t) => { t.classList.toggle("mas-derecha", t.scrollLeft + t.clientWidth < t.scrollWidth - 4); t.classList.toggle("mas-izquierda", t.scrollLeft > 4); };
+    $$("#view-editor .toolbar.ribbon").forEach((t) => { t.addEventListener("scroll", () => pintarBordes(t), { passive: true }); new ResizeObserver(() => pintarBordes(t)).observe(t); });
     // Minimizar la cinta (como en Word): quedan las pestañas; tocar una la vuelve a abrir
     const plegar = $("#cinta-plegar");
     plegar.addEventListener("pointerdown", (e) => e.preventDefault());

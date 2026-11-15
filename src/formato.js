@@ -24,6 +24,14 @@ export const FUENTES = [
 export const FUENTE_AUTO = "atril-auto";
 
 export const ALINEACIONES = { center: "al-centro", right: "al-derecha", justify: "al-justificar" };
+/** Interlineado de un párrafo, como en Word (1 = sencillo). `pantalla` = alto de línea en el lector y el editor. */
+export const INTERLINEADOS = [
+  { clase: "inter-1", nombre: "1,0", word: 1, pantalla: 1.25 },
+  { clase: "inter-115", nombre: "1,15", word: 1.15, pantalla: 1.45 },
+  { clase: "inter-15", nombre: "1,5", word: 1.5, pantalla: 1.85 },
+  { clase: "inter-2", nombre: "2,0", word: 2, pantalla: 2.3 },
+  { clase: "inter-3", nombre: "3,0", word: 3, pantalla: 3.2 },
+];
 export const MAX_SANGRIA = 4;
 
 const TAM_RE = /^tam-(8|10|14|18|24|36)$/;
@@ -69,7 +77,8 @@ export function clasesDeBloque(clase, textAlign) {
   if (ta) al = ALINEACIONES[ta] || ""; // el estilo manda (lo acaba de poner el editor); «left» quita la alineación
   const s = tokens.map((t) => /^sang-([1-9])$/.exec(t)).find(Boolean);
   const sang = s ? "sang-" + Math.min(MAX_SANGRIA, Number(s[1])) : "";
-  return [al, sang].filter(Boolean).join(" ");
+  const inter = tokens.find((t) => INTERLINEADOS.some((i) => i.clase === t)) || "";
+  return [al, sang, inter].filter(Boolean).join(" ");
 }
 
 /** Hoja de estilo para el Word (docx/html la entiende): tamaños en puntos, letras, alineación y sangría. */
@@ -79,5 +88,7 @@ export function cssParaWord() {
     ...FUENTES.map((f) => `span.${f.clase} { font-family: "${f.word}"; }`),
     ".al-centro { text-align: center; } .al-derecha { text-align: right; } .al-justificar { text-align: justify; }",
     ...Array.from({ length: MAX_SANGRIA }, (_, i) => `.sang-${i + 1} { margin-left: ${36 * (i + 1)}pt; }`),
+    // docx/html cuenta la línea en 1/200 y Word en 1/240: × 1,2 para que «2» sea doble de verdad
+    ...INTERLINEADOS.map((i) => `.${i.clase} { line-height: ${Math.round(i.word * 1.2 * 100) / 100}; }`),
   ].join(" ");
 }
