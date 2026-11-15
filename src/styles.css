@@ -263,6 +263,32 @@ button:focus:not(:focus-visible) { outline: none; }
 /* Pausa «‖» (solo se destaca al leer) */
 .doc-content .pausa { color: var(--accent); font-weight: 800; padding: 0 .12em; }
 .doc-content img { max-width: 100%; height: auto; border-radius: 6px; }
+/* Formato al estilo de Word (formato.js): tamaño y tipo de letra de un trozo, alineación y sangría de un párrafo.
+   El tamaño es relativo a la letra de lectura (12 pt = normal), así sigue el zoom. <font> es lo que pone el editor
+   antes de guardar. */
+.doc-content .tam-8, .doc-content font[size="1"] { font-size: .667em; }
+.doc-content .tam-10, .doc-content font[size="2"] { font-size: .833em; }
+.doc-content font[size="3"] { font-size: 1em; }
+.doc-content .tam-14, .doc-content font[size="4"] { font-size: 1.167em; }
+.doc-content .tam-18, .doc-content font[size="5"] { font-size: 1.5em; }
+.doc-content .tam-24, .doc-content font[size="6"] { font-size: 2em; line-height: 1.25; }
+.doc-content .tam-36, .doc-content font[size="7"] { font-size: 3em; line-height: 1.15; }
+.doc-content .f-calibri { font-family: "Carlito", Calibri, sans-serif; }
+.doc-content .f-literata { font-family: "Literata", Georgia, serif; }
+.doc-content .f-arial { font-family: Arial, Helvetica, sans-serif; }
+.doc-content .f-georgia { font-family: Georgia, serif; }
+.doc-content .f-verdana { font-family: Verdana, sans-serif; }
+.doc-content .f-times { font-family: "Times New Roman", Times, serif; }
+.doc-content .al-centro { text-align: center; }
+.doc-content .al-derecha { text-align: right; }
+.doc-content .al-justificar { text-align: justify; -webkit-hyphens: auto; hyphens: auto; }
+.doc-content .sang-1 { margin-left: 1.5em; } .doc-content .sang-2 { margin-left: 3em; }
+.doc-content .sang-3 { margin-left: 4.5em; } .doc-content .sang-4 { margin-left: 6em; }
+.doc-content sub, .doc-content sup { font-size: .7em; line-height: 0; }
+.doc-content hr { border: 0; border-top: 2px solid var(--border); margin: 1.2em 0; }
+.doc-content hr.salto { border-top: 2px dashed var(--border); position: relative; overflow: visible; margin: 1.6em 0; }
+.doc-content hr.salto::after { content: "Salto de página"; position: absolute; left: 50%; top: -.75em; transform: translateX(-50%); padding: 0 .6em; background: var(--bg); color: var(--muted); font: 600 13px var(--ui); }
+#view-editor .doc-content table td, #view-editor .doc-content table th { min-width: 3em; }
 .doc-content table { border-collapse: collapse; margin: 0 0 .8em; max-width: 100%; font-size: .85em; }
 .doc-content td, .doc-content th { border: 1px solid var(--border); padding: .3em .5em; vertical-align: top; }
 .doc-content a { color: var(--accent); }
@@ -1599,4 +1625,61 @@ html.ancho #reader-presentar { order: 4; } html.ancho #reader-edit { order: 5; }
   html:not(.ancho) .rgrupo { padding: 0 7px; }
   html:not(.ancho) .reader-tools .tool-grande { min-width: 76px; }
   html:not(.ancho) .reader-tools .tool-presentar { min-width: 100px; }
+}
+
+/* ============================================================
+   CINTA DEL EDITOR POR GRUPOS (a petición de Ezequiel: «todas las opciones de Word»): cada grupo con su nombre
+   debajo (Portapapeles, Fuente, Párrafo, Estilos…). En el iPad los grupos bajan a otra fila si no caben; en el
+   móvil la cinta se desliza de lado, sin nombres.
+   ============================================================ */
+.rgr { display: flex; flex-direction: column; align-items: stretch; flex: none; padding: 0 8px; border-left: 1px solid var(--border); }
+.rgr:first-child { border-left: 0; padding-left: 0; }
+.rgr-bot { display: flex; align-items: center; gap: 2px; flex: 1; }
+.rgr-nom { text-align: center; font-size: 12px; font-weight: 600; color: var(--muted); padding-top: 3px; white-space: nowrap; letter-spacing: .01em; }
+.rgr .sep { height: 28px; }
+@media (min-width: 701px) {
+  .toolbar.ribbon { flex-wrap: wrap; row-gap: 8px; align-items: stretch; overflow-x: visible; }
+}
+@media (max-width: 700px) {
+  .rgr, .rgr-bot { display: contents; }
+  .rgr-nom { display: none; }
+}
+.toolbar button.con-nombre { flex-direction: column; gap: 3px; height: 58px; min-width: 52px; padding: 0 6px; font-size: 12.5px; font-weight: 600; color: var(--text); }
+.toolbar button.con-nombre svg { width: 23px; height: 23px; color: var(--accent); }
+.toolbar button.selector { gap: 6px; padding: 0 8px 0 11px; height: 42px; border: 1px solid var(--border); background: var(--bg); font-size: 15px; font-weight: 600; justify-content: space-between; white-space: nowrap; }
+.toolbar button.sel-fuente { min-width: 124px; }
+.toolbar button.sel-tamano { min-width: 64px; margin-right: 4px; }
+.toolbar button.selector svg { width: 16px; height: 16px; color: var(--muted); }
+.toolbar button.txt sub, .toolbar button.txt sup { font-size: 11px; line-height: 0; }
+.toolbar button[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 25%, var(--accent-soft)); }
+.estilo.e-cita .muestra { font-style: italic; color: var(--muted); }
+.toolbar button.sel-estilo { display: none; min-width: 118px; }
+.ribbon-tabs .rt-acciones { margin-left: auto; display: flex; align-items: center; gap: 2px; flex: none; }
+.ribbon-tabs .rt-acciones button { min-width: 44px; min-height: 42px; padding: 0; display: inline-flex; align-items: center; justify-content: center; color: var(--text); border-radius: 10px; }
+.ribbon-tabs .rt-acciones button:active { background: var(--surface-2); }
+.ribbon-tabs .rt-acciones svg { width: 22px; height: 22px; }
+#palette-opciones .opc { flex: none; min-width: 44px; height: 44px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg); font-size: 16px; font-weight: 600; color: var(--text); }
+#palette-opciones .opc.active { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+#palette-opciones > button:last-child { width: 44px; height: 44px; display: inline-flex; align-items: center; justify-content: center; color: var(--muted); flex: none; }
+#palette-opciones > button:last-child svg { width: 22px; height: 22px; }
+html.ancho .toolbar.ribbon { flex-wrap: nowrap; }
+/* iPad en vertical: la cinta más baja (sin nombres de grupo; portapapeles solo con icono) para dejar sitio al texto y al teclado */
+@media (max-width: 1000px) and (min-width: 701px) {
+  .rgr-nom { display: none; }
+  .toolbar.ribbon { row-gap: 4px; }
+  .toolbar button.con-nombre { height: 44px; min-width: 42px; }
+  .toolbar button.con-nombre span:not([data-icon]) { display: none; }
+  .toolbar button.sel-fuente { min-width: 108px; }
+  .rgr { padding: 0 5px; }
+  /* Dos filas: Fuente arriba; Párrafo, Estilo (desplegable) y Portapapeles abajo */
+  .toolbar .estilos { display: none; }
+  .toolbar button.sel-estilo { display: inline-flex; }
+  .toolbar button { min-width: 40px; }
+  .rgr-fuente { order: 1; } .rgr-parrafo { order: 2; } .rgr-estilos { order: 3; } .rgr-portapapeles { order: 4; }
+  .rgr-parrafo { border-left: 0; padding-left: 0; }
+  .rgr-portapapeles { border-left: 1px solid var(--border); padding-left: 5px; }
+}
+@media (max-width: 480px) {
+  .ribbon-tabs button[role="tab"] { padding: 0 9px; font-size: 15px; }
+  .ribbon-tabs .rt-acciones button { min-width: 38px; }
 }

@@ -3,6 +3,7 @@ import { Document, Packer } from "docx";
 import { htmlToContent } from "docx/html";
 import { LETRAS } from "./colores.js";
 import { propiedadesAtril } from "./datos-word.js";
+import { cssParaWord } from "./formato.js";
 
 /** Estilo de Word de los textos bíblicos pegados debajo de las citas (al volver a abrirlo, Atril lo reconoce). */
 export const ESTILO_VERSICULO = { id: "TextoBiblico", nombre: "Texto bíblico" };
@@ -12,6 +13,8 @@ export const ESTILO_VERSICULO = { id: "TextoBiblico", nombre: "Texto bíblico" }
  * datos: lo de Atril que viaja dentro del Word (duración, ensayos, dónde lo has dado), o null
  */
 export async function buildDocx(title, html, { datos = null } = {}) {
+  // Salto de página: un párrafo vacío que empieza en la página siguiente (una <hr> sería una raya)
+  html = String(html || "").replace(/<hr class="salto">/g, '<p class="salto-word"></p>');
   const children = htmlToContent(html, {
     // Colores de resaltado de Word: amarillo, verde brillante, turquesa y rosa
     stylesheet:
@@ -20,7 +23,9 @@ export async function buildDocx(title, html, { datos = null } = {}) {
       // El versículo lleva su sangría en el estilo de Word, no como formato directo
       "blockquote.versiculo { margin: 0; } " +
       // Color de la letra
-      LETRAS.map((l) => `span.${l.clase} { color: ${l.hex}; }`).join(" "),
+      LETRAS.map((l) => `span.${l.clase} { color: ${l.hex}; }`).join(" ") + " " +
+      // Tamaño y tipo de letra, alineación y sangría (formato.js); el salto de página, antes de lo que sigue
+      cssParaWord() + " p.salto-word { page-break-before: always; }",
     styleMap: { "blockquote.versiculo": ESTILO_VERSICULO.id, "blockquote.versiculo p": ESTILO_VERSICULO.id },
     maxImageWidth: 600,
   });

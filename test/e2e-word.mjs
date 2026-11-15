@@ -41,14 +41,17 @@ ok("La barra de estado cuenta las palabras", /^\d+ palabras$/.test(await page.te
 await page.screenshot({ path: `${OUTDIR}/40-editor-word.png` });
 
 // Estilos de la galería
+// (en vertical, la galería es el desplegable «Estilo»)
 await elegir("#editor p:nth-of-type(1)", 3);
-await page.click('#toolbar [data-cmd="h2"]');
+await page.click('#toolbar [data-cmd="estilo"]');
+await page.click('#palette-opciones .opc[aria-label="Título 2"]');
 await elegir("#editor p:nth-of-type(1)", 3);
-await page.click('#toolbar [data-cmd="h3"]');
+await page.click('#toolbar [data-cmd="estilo"]');
+await page.click('#palette-opciones .opc[aria-label="Título 3"]');
 await page.waitForTimeout(1000);
 let h = await html();
 ok("Galería de estilos: Título 2 y Título 3", h.includes("<h2>Primer párrafo sobre la paciencia.</h2>") && h.includes("<h3>Segundo párrafo: la paciencia es un fruto.</h3>"), h.slice(0, 160));
-ok("El estilo activo se marca en la galería", await page.evaluate(() => document.querySelector('#toolbar [data-cmd="h3"]').classList.contains("active")));
+ok("El estilo activo se marca (en la galería y en el desplegable)", await page.evaluate(() => document.querySelector('#toolbar [data-cmd="h3"]').classList.contains("active")) && (await page.textContent("#sel-estilo")) === "Título 3");
 await elegir("#editor p", 0, 6);
 await page.click('#toolbar [data-cmd="strike"]');
 await page.waitForTimeout(1000);

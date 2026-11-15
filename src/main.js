@@ -11,6 +11,7 @@ import { dividirEnTarjetas, nivelDeCorte, partesDelDiscurso, parteDeBloque, esti
 import { marcarCoincidencias, limpiarCoincidencias, plegarTexto, rangosCoincidencias } from "./buscar.js";
 import { puedeGrabar, crearGrabadora, extensionDe } from "./grabadora.js";
 import { escritorio } from "./escritorio.js";
+import { claseDeTamano, claseDeFuente, claseTamanoValida, claseFuenteValida, clasesDeBloque, TAMANOS, FUENTES, FUENTE_AUTO, MAX_SANGRIA, puntosDeClase, PT_NORMAL } from "./formato.js";
 
 /* ============================================================
    Utilidades
@@ -163,6 +164,21 @@ const P = {
   panel: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/><path d="M5.5 8h1.5M5.5 11h1.5"/>',
   globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c2.6 2.6 3.8 5.6 3.8 9s-1.2 6.4-3.8 9c-2.6-2.6-3.8-5.6-3.8-9S9.4 5.6 12 3z"/>',
   paste: '<path d="M9 4H7.5A1.5 1.5 0 0 0 6 5.5v14A1.5 1.5 0 0 0 7.5 21h9a1.5 1.5 0 0 0 1.5-1.5v-14A1.5 1.5 0 0 0 16.5 4H15"/><rect x="9" y="2.5" width="6" height="3" rx="1"/><path d="M9.5 11h5M9.5 15h5"/>',
+  pasteTexto: '<path d="M9 4H7.5A1.5 1.5 0 0 0 6 5.5v14A1.5 1.5 0 0 0 7.5 21h9a1.5 1.5 0 0 0 1.5-1.5v-14A1.5 1.5 0 0 0 16.5 4H15"/><rect x="9" y="2.5" width="6" height="3" rx="1"/><path d="M9 10h6M12 10v7"/>',
+  tijeras: '<circle cx="6" cy="18" r="3"/><circle cx="18" cy="18" r="3"/><path d="M8 16L18 3M16 16L6 3"/>',
+  brocha: '<rect x="4" y="3" width="14" height="6" rx="1.5"/><path d="M18 6h2v5h-8v3"/><rect x="10.5" y="14" width="3" height="7" rx="1"/>',
+  sangriaMas: '<path d="M10 6h11M10 12h11M10 18h11"/><path d="M3 9l3 3-3 3"/>',
+  sangriaMenos: '<path d="M10 6h11M10 12h11M10 18h11"/><path d="M6 9l-3 3 3 3"/>',
+  alIzq: '<path d="M4 6h16M4 10h10M4 14h16M4 18h10"/>',
+  alCentro: '<path d="M4 6h16M7 10h10M4 14h16M7 18h10"/>',
+  alDer: '<path d="M4 6h16M10 10h10M4 14h16M10 18h10"/>',
+  justif: '<path d="M4 6h16M4 10h16M4 14h16M4 18h16"/>',
+  tabla: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M3 15h18M9 4v16M15 4v16"/>',
+  imagen: '<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-9 9"/>',
+  linea: '<path d="M3 12h18"/><path d="M6 7h12M6 17h12" opacity=".35"/>',
+  salto: '<path d="M6 3v5h12V3"/><path d="M6 21v-5h12v5"/><path d="M3 12h3M9 12h2M13 12h2M18 12h3"/>',
+  ortografia: '<path d="M4 16l4-11 4 11M5.5 12h5"/><path d="M13 16l3 3 6-7"/>',
+  altavoz: '<path d="M4 9v6h4l5 4V5L8 9z"/><path d="M16.5 9a4 4 0 0 1 0 6M19 6.5a7.5 7.5 0 0 1 0 11"/>',
 };
 const icon = (name) =>
   `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${P[name] || ""}</svg>`;
@@ -174,12 +190,12 @@ function paintIcons(root = document) {
    Limpieza de HTML (lista blanca)
    ============================================================ */
 const ALLOWED = {
-  P: [], H1: [], H2: [], H3: [], H4: [], STRONG: [], B: [], EM: [], I: [], U: [], S: [], STRIKE: [], DEL: [], MARK: [],
+  P: ["class"], H1: ["class"], H2: ["class"], H3: ["class"], H4: ["class"], HR: ["class"], STRONG: [], B: [], EM: [], I: [], U: [], S: [], STRIKE: [], DEL: [], MARK: [],
   BR: [], UL: [], OL: [], LI: [], TABLE: [], THEAD: [], TBODY: [], TR: [], TD: ["colspan", "rowspan"], TH: ["colspan", "rowspan"],
   BLOCKQUOTE: ["class"], IMG: ["src", "alt"], A: ["href"], SUB: [], SUP: [],
 };
 const DROP = new Set(["SCRIPT", "STYLE", "IFRAME", "OBJECT", "EMBED", "NOSCRIPT", "TEMPLATE", "SVG", "MATH", "LINK", "META", "TITLE", "HEAD", "FORM", "INPUT", "BUTTON", "SELECT", "TEXTAREA", "VIDEO", "AUDIO", "CANVAS"]);
-const BLOCKS = new Set(["P", "H1", "H2", "H3", "H4", "UL", "OL", "LI", "TABLE", "BLOCKQUOTE", "DIV", "TR", "TD", "TH", "THEAD", "TBODY", "FIGURE"]);
+const BLOCKS = new Set(["P", "H1", "H2", "H3", "H4", "UL", "OL", "LI", "TABLE", "BLOCKQUOTE", "DIV", "TR", "TD", "TH", "THEAD", "TBODY", "FIGURE", "HR"]);
 const LETRA_EN = /^(P|H[1-4]|LI|TD|TH|STRONG|B|EM|I|U|S|STRIKE|DEL|MARK|SUB|SUP)$/; // etiquetas cuyo color de letra se conserva
 
 function fondoDe(node) {
@@ -241,15 +257,27 @@ function cleanNode(node) {
         : fontColor ? claseDeLetra(fontColor) || "t-auto"
         : claseLetraValida(clase) || (clase === "t-auto" ? "t-auto" : "");
       if (tag === "SPAN" && letra && child.attributes.length === 1 && clase === letra) { cleanNode(child); continue; }
+      // Tamaño y tipo de letra (formato.js): <font size/face>, estilo o clase ya limpia
+      const tam = tag === "FONT" && child.getAttribute("size") ? claseDeTamano({ size: child.getAttribute("size") })
+        : st.fontSize ? claseDeTamano({ css: st.fontSize }) : claseTamanoValida(clase) || (clase === "tam-auto" ? "tam-auto" : "");
+      const fuente = tag === "FONT" && child.getAttribute("face") ? claseDeFuente(child.getAttribute("face"))
+        : st.fontFamily ? claseDeFuente(st.fontFamily) : claseFuenteValida(clase) || (clase === "f-auto" ? "f-auto" : "");
+      if (tag === "SPAN" && !letra && child.attributes.length === 1 && (clase === tam || clase === fuente) && clase) { cleanNode(child); continue; }
       const fw = st.fontWeight;
       const inner = document.createDocumentFragment();
       while (child.firstChild) inner.append(child.firstChild);
       let out = inner;
       const wrap = (t) => {
-        const w = t === "mark" ? markDe(child) : t === "letra" ? Object.assign(document.createElement("span"), { className: letra }) : document.createElement(t);
+        const w = t === "mark" ? markDe(child) : t === "letra" ? Object.assign(document.createElement("span"), { className: letra })
+          : t === "tam" ? Object.assign(document.createElement("span"), { className: tam })
+          : t === "fuente" ? Object.assign(document.createElement("span"), { className: fuente }) : document.createElement(t);
         w.append(out); out = w;
       };
       if (letra) wrap("letra");
+      if (tam) wrap("tam");
+      if (fuente) wrap("fuente");
+      if ((st.verticalAlign || "") === "sub") wrap("sub");
+      if ((st.verticalAlign || "") === "super") wrap("sup");
       if (fw === "bold" || Number(fw) >= 600) wrap("strong");
       if (st.fontStyle === "italic") wrap("em");
       if ((st.textDecoration || st.textDecorationLine || "").includes("underline")) wrap("u");
@@ -272,6 +300,8 @@ function cleanNode(node) {
         continue;
       }
       const p = document.createElement("p");
+      const al = clasesDeBloque("", child.style && child.style.textAlign);
+      if (al) p.className = al;
       while (child.firstChild) p.append(child.firstChild);
       child.replaceWith(p);
       if (!p.textContent.trim() && !p.querySelector("img,br")) p.innerHTML = "<br>";
@@ -294,9 +324,13 @@ function cleanNode(node) {
 
     // Atributos
     const keep = ALLOWED[tag];
+    // Párrafos y títulos: alineación y sangría (formato.js); el estilo «text-align» que pone el editor manda
+    const bloque = /^(P|H[1-4])$/.test(tag) ? clasesDeBloque(child.getAttribute("class"), child.style && child.style.textAlign) : null;
     const color = tag === "MARK" ? claseValida(child.getAttribute("class")) || (hasBackground(child) ? claseDeFondo(fondoDe(child)) : "") : "";
     for (const a of [...child.attributes]) if (!keep.includes(a.name.toLowerCase())) child.removeAttribute(a.name);
     if (color) child.className = color;
+    if (bloque != null) { if (bloque) child.className = bloque; else child.removeAttribute("class"); }
+    if (tag === "HR") { if (child.getAttribute("class") === "salto") child.className = "salto"; else child.removeAttribute("class"); }
     // Un versículo pegado debajo de una cita: <blockquote class="versiculo">; otras clases no
     if (tag === "BLOCKQUOTE" && child.getAttribute("class") !== "versiculo") child.removeAttribute("class");
     if (tag === "IMG") {
@@ -371,7 +405,18 @@ function sanitize(html) {
     while ((fuera = colorDeFuera(auto, out))) partirAlrededor(fuera, auto);
     auto.replaceWith(...auto.childNodes);
   }
-  out.querySelectorAll("mark,strong,em,u,s,b,i,span").forEach((m) => { if (!m.textContent && !m.querySelector("img")) m.remove(); });
+  // Tamaño y tipo de letra: el de dentro manda; «normal» (tam-auto, f-auto) parte el de fuera y se quita
+  for (const [valida, auto] of [[claseTamanoValida, "tam-auto"], [claseFuenteValida, "f-auto"]]) {
+    const deFuera = (n) => { for (let p = n.parentElement; p && p !== out; p = p.parentElement) if (p.tagName === "SPAN" && valida(p.getAttribute("class"))) return p; return null; };
+    const sel = `span.${auto}, ` + (auto === "tam-auto" ? "span[class^='tam-']" : "span[class^='f-']");
+    for (let vueltas = 0; vueltas < 500; vueltas++) {
+      const dentro = [...out.querySelectorAll(sel)].find((n) => deFuera(n));
+      if (!dentro) break;
+      partirAlrededor(deFuera(dentro), dentro);
+    }
+    out.querySelectorAll(`span.${auto}`).forEach((n) => n.replaceWith(...n.childNodes));
+  }
+  out.querySelectorAll("mark,strong,em,u,s,b,i,span,sub,sup").forEach((m) => { if (!m.textContent && !m.querySelector("img")) m.remove(); });
   const res = out.innerHTML.trim();
   return res || "<p><br></p>";
 }
@@ -1469,6 +1514,7 @@ const views = { home: $("#view-home"), reader: $("#view-reader"), editor: $("#vi
 let currentView = null;
 
 function showView(name) {
+  if (name !== "editor" && window.speechSynthesis && speechSynthesis.speaking) { speechSynthesis.cancel(); $('#view-editor [data-cmd="voz"]').setAttribute("aria-pressed", "false"); }
   for (const [k, v] of Object.entries(views)) v.hidden = k !== name;
   currentView = name;
   document.documentElement.dataset.vista = name;
@@ -4317,6 +4363,23 @@ const editor = {
       pausa: () => this.insertarPausa(),
       versiculo: () => this.textoBiblico(),
       versiones: () => this.abrirVersiones(),
+      // Herramientas de Word (formato.js)
+      pegar: () => this.pegar(),
+      pegarTexto: () => this.pegar({ soloTexto: true }),
+      cortar: () => this.cortarCopiar("cut"),
+      copiar: () => this.cortarCopiar("copy"),
+      brocha: () => this.brocha(),
+      fuente: () => this.opcionesFuente(),
+      tamano: () => this.opcionesTamano(),
+      mayus: () => this.opcionesMayusculas(),
+      estilo: () => this.abrirOpciones("estilo", "Estilo", [["p", "Normal"], ["h1", "Título 1"], ["h2", "Título 2"], ["h3", "Título 3"], ["cita", "Cita"]].map(([c, nombre]) => ({ label: nombre, run: () => this.exec(c) }))),
+      menosSangria: () => this.sangria(-1),
+      masSangria: () => this.sangria(1),
+      tabla: () => this.opcionesTabla(),
+      imagen: () => this.elegirImagen(),
+      simbolo: () => this.opcionesSimbolo(),
+      ortografia: () => this.alternarOrtografia(),
+      voz: () => this.leerEnVoz(),
     };
     if (otras[cmd]) { otras[cmd](); return; }
     this.area.focus();
@@ -4335,6 +4398,16 @@ const editor = {
       case "p": d.execCommand("formatBlock", false, "<p>"); break;
       case "ul": d.execCommand("insertUnorderedList"); break;
       case "ol": d.execCommand("insertOrderedList"); break;
+      case "sub": d.execCommand("subscript"); break;
+      case "sup": d.execCommand("superscript"); break;
+      case "izquierda": d.execCommand("justifyLeft"); break;
+      case "centro": d.execCommand("justifyCenter"); break;
+      case "derecha": d.execCommand("justifyRight"); break;
+      case "justificar": d.execCommand("justifyFull"); break;
+      case "cita": d.execCommand("formatBlock", false, "<blockquote>"); break;
+      case "linea": this.insertarHtml("<hr>"); break;
+      case "salto": this.insertarHtml('<hr class="salto">'); break;
+      case "fecha": d.execCommand("insertText", false, new Date().toLocaleDateString("es-ES", { day: "numeric", month: "long", year: "numeric" })); break;
       case "clear":
         d.execCommand("removeFormat");
         this.unwrapMarksInSelection();
@@ -4478,17 +4551,349 @@ const editor = {
   },
 
   /** Pestañas de la cinta: Inicio, Revisar y Vista. */
+  /* ---- Herramientas de Word (a petición de Ezequiel): portapapeles, letra, tamaño, mayúsculas, sangría,
+     tabla, imagen, símbolos, ortografía y leer en voz alta. El formato se guarda como clases (formato.js). ---- */
+  /** La selección, si está dentro del texto. */
+  rango() {
+    const s = window.getSelection();
+    if (!s || !s.rangeCount) return null;
+    const r = s.getRangeAt(0);
+    return this.area.contains(r.commonAncestorContainer) ? r : null;
+  },
+  ponerRango(r) {
+    if (!r) return;
+    const s = window.getSelection();
+    s.removeAllRanges();
+    s.addRange(r);
+  },
+  insertarHtml(html) {
+    this.area.focus();
+    document.execCommand("insertHTML", false, html);
+    this.area.querySelectorAll("figure.dibujo").forEach((f) => f.setAttribute("contenteditable", "false"));
+    this.markDirty();
+  },
+  /** Lo que se pega con formato: limpio, y si es un solo párrafo, sin el párrafo (así se une al de donde se pega). */
+  htmlParaPegar(html) {
+    const limpio = sanitize(html);
+    const m = /^<p>([\s\S]*)<\/p>$/.exec(limpio);
+    return m && !m[1].includes("<p") ? m[1] : limpio;
+  },
+  async pegar({ soloTexto = false } = {}) {
+    this.area.focus();
+    const r = this.rango() && this.rango().cloneRange();
+    let html = "", texto = "";
+    try {
+      if (!soloTexto && navigator.clipboard && navigator.clipboard.read) {
+        for (const it of await navigator.clipboard.read()) {
+          if (it.types.includes("text/html")) { html = await (await it.getType("text/html")).text(); break; }
+          if (it.types.includes("text/plain")) texto = await (await it.getType("text/plain")).text();
+        }
+      } else texto = await navigator.clipboard.readText();
+    } catch {
+      toast("El iPad no deja pegar desde este botón. Mantén el dedo en el texto y elige «Pegar».", { ms: 5000 });
+      return;
+    }
+    this.ponerRango(r);
+    if (html) this.insertarHtml(this.htmlParaPegar(html));
+    else if (texto) { document.execCommand("insertText", false, texto); this.markDirty(); }
+    else toast("No hay nada copiado.");
+  },
+  cortarCopiar(cmd) {
+    const r = this.rango();
+    if (!r || r.collapsed) { toast("Selecciona antes el texto."); return; }
+    let ok = false;
+    try { ok = document.execCommand(cmd); } catch {}
+    const nombre = cmd === "cut" ? "Cortar" : "Copiar";
+    if (!ok) toast(`El iPad no deja hacerlo desde aquí: mantén el dedo en el texto y elige «${nombre}».`, { ms: 5000 });
+    else { if (cmd === "cut") this.markDirty(); toast(cmd === "cut" ? "Cortado. Ya puedes pegarlo." : "Copiado. Ya puedes pegarlo.", { ms: 1600 }); }
+  },
+
+  /** Opciones de un botón de la cinta en la barra de debajo (como las paletas: no quitan la selección). */
+  abrirOpciones(cmd, titulo, opciones) {
+    const p = $("#palette-opciones");
+    if (!p.hidden && p.dataset.cmd === cmd) { this.cerrarOpciones(); return; }
+    this.togglePalette(false);
+    this.togglePaletteLetra(false);
+    this.cerrarOpciones();
+    p.dataset.cmd = cmd;
+    const boton = (o) => {
+      const b = el("button", { class: "txt opc" + (o.activo ? " active" : ""), html: o.html || escapeHtml(o.label), "aria-label": o.aria || o.label });
+      b.tabIndex = -1;
+      b.addEventListener("pointerdown", (e) => e.preventDefault());
+      b.addEventListener("mousedown", (e) => e.preventDefault());
+      b.addEventListener("click", () => { o.run(); if (!o.seguir) this.cerrarOpciones(); this.paintToolbar(); });
+      return b;
+    };
+    const cerrar = el("button", { "aria-label": "Cerrar", html: icon("close") });
+    cerrar.tabIndex = -1;
+    cerrar.addEventListener("pointerdown", (e) => e.preventDefault());
+    cerrar.addEventListener("click", () => this.cerrarOpciones());
+    p.replaceChildren(el("span", { class: "palette-label", text: titulo }), ...opciones.map(boton), el("span", { class: "spacer" }), cerrar);
+    p.hidden = false;
+    const b = $(`#view-editor [data-cmd="${cmd}"]`);
+    if (b) b.setAttribute("aria-expanded", "true");
+  },
+  cerrarOpciones() {
+    const p = $("#palette-opciones");
+    if (!p || p.hidden) return;
+    const b = $(`#view-editor [data-cmd="${p.dataset.cmd}"]`);
+    if (b) b.setAttribute("aria-expanded", "false");
+    p.hidden = true;
+    p.replaceChildren();
+  },
+
+  /** Tipo de letra donde está el cursor: la clase (f-georgia…) o null (la del documento). */
+  fuenteActual() {
+    const s = window.getSelection();
+    let n = s && s.rangeCount ? s.anchorNode : null;
+    if (n && n.nodeType === 3) n = n.parentElement;
+    for (; n && n !== this.area && this.area.contains(n); n = n.parentElement) {
+      const c = n.tagName === "FONT" && n.getAttribute("face") ? claseDeFuente(n.getAttribute("face")) : claseFuenteValida(n.getAttribute("class")) || (n.style && n.style.fontFamily ? claseDeFuente(n.style.fontFamily) : "");
+      if (c) return c === "f-auto" ? null : c;
+    }
+    return null;
+  },
+  /** Tamaño donde está el cursor, en puntos (12 = normal). */
+  tamanoActual() {
+    const s = window.getSelection();
+    let n = s && s.rangeCount ? s.anchorNode : null;
+    if (n && n.nodeType === 3) n = n.parentElement;
+    for (; n && n !== this.area && this.area.contains(n); n = n.parentElement) {
+      const c = n.tagName === "FONT" && n.getAttribute("size") ? claseDeTamano({ size: n.getAttribute("size") }) : claseTamanoValida(n.getAttribute("class"));
+      if (c) return c === "tam-auto" ? PT_NORMAL : puntosDeClase(c);
+    }
+    return PT_NORMAL;
+  },
+  opcionesFuente() {
+    const actual = this.fuenteActual();
+    const aplicar = (cara) => { this.area.focus(); document.execCommand("styleWithCSS", false, false); document.execCommand("fontName", false, cara); this.markDirty(); };
+    this.abrirOpciones("fuente", "Letra", [
+      { label: "La del documento", activo: !actual, run: () => aplicar(FUENTE_AUTO) },
+      ...FUENTES.map((f) => ({ label: f.nombre, html: `<span style='font-family:${f.css.replace(/'/g, "")}'>${escapeHtml(f.nombre)}</span>`, activo: actual === f.clase,
+        run: () => aplicar(f.clase === "f-calibri" ? "Carlito" : f.clase === "f-literata" ? "Literata" : f.nombre) })),
+    ]);
+  },
+  opcionesTamano() {
+    const actual = this.tamanoActual();
+    this.abrirOpciones("tamano", "Tamaño", TAMANOS.map((t) => ({
+      label: String(t.pt), aria: `${t.pt} puntos${t.normal ? " (normal)" : ""}`, activo: t.pt === actual,
+      run: () => { this.area.focus(); document.execCommand("styleWithCSS", false, false); document.execCommand("fontSize", false, String(t.n)); this.markDirty(); },
+    })));
+  },
+  opcionesMayusculas() {
+    this.abrirOpciones("mayus", "Mayúsculas", [
+      { label: "MAYÚSCULAS", run: () => this.cambiarMayusculas("mayus") },
+      { label: "minúsculas", run: () => this.cambiarMayusculas("minus") },
+      { label: "Tipo oración.", run: () => this.cambiarMayusculas("oracion") },
+      { label: "Cada Palabra", run: () => this.cambiarMayusculas("palabras") },
+    ]);
+  },
+  /** Cambia mayúsculas y minúsculas del texto seleccionado sin tocar su formato (con «Deshacer» en el aviso). */
+  cambiarMayusculas(modo) {
+    const r = this.rango();
+    if (!r || r.collapsed) { toast("Selecciona antes el texto."); return; }
+    const antes = this.area.innerHTML;
+    const raiz = r.commonAncestorContainer.nodeType === 3 ? r.commonAncestorContainer.parentNode : r.commonAncestorContainer;
+    const trozos = [];
+    const w = document.createTreeWalker(raiz, NodeFilter.SHOW_TEXT);
+    for (let t = w.nextNode(); t; t = w.nextNode()) {
+      if (!r.intersectsNode(t)) continue;
+      trozos.push([t, t === r.startContainer ? r.startOffset : 0, t === r.endContainer ? r.endOffset : t.data.length]);
+    }
+    if (!trozos.length) return;
+    const todo = trozos.map(([t, a, b]) => t.data.slice(a, b)).join("");
+    const min = todo.toLocaleLowerCase("es");
+    let nuevo = modo === "mayus" ? todo.toLocaleUpperCase("es") : modo === "minus" ? min
+      : modo === "oracion" ? min.replace(/(^\s*|[.!?…]\s+|[¿¡]\s*)(\p{L})/gu, (m, a, l) => a + l.toLocaleUpperCase("es"))
+      : min.replace(/(^|[\s«"“(¿¡\-—])(\p{L})/gu, (m, a, l) => a + l.toLocaleUpperCase("es"));
+    if (nuevo.length !== todo.length) nuevo = todo; // (no pasa en español; por si acaso, no se descoloca nada)
+    let k = 0;
+    for (const [t, a, b] of trozos) { const n = b - a; t.data = t.data.slice(0, a) + nuevo.slice(k, k + n) + t.data.slice(b); k += n; }
+    const nr = document.createRange();
+    nr.setStart(trozos[0][0], trozos[0][1]);
+    const u = trozos[trozos.length - 1];
+    nr.setEnd(u[0], u[2]);
+    this.ponerRango(nr);
+    this.markDirty();
+    toast("Cambiado.", { action: "Deshacer", onAction: () => { this.ponerHtml(antes); this.markDirty(); } });
+  },
+  /** Los párrafos (y elementos de lista) que toca la selección. */
+  bloquesDeSeleccion() {
+    const r = this.rango();
+    if (!r) return [];
+    const todos = [...this.area.querySelectorAll("p, h1, h2, h3, h4, li, blockquote")].filter((b) => r.intersectsNode(b));
+    return todos.filter((b) => !todos.some((o) => o !== b && b.contains(o)));
+  },
+  /** Sangría como en Word: en las listas, un nivel más o menos; en los párrafos, de 1 a 4 escalones. */
+  sangria(d) {
+    const bloques = this.bloquesDeSeleccion();
+    if (!bloques.length) return;
+    if (bloques.every((b) => b.tagName === "LI")) { this.area.focus(); document.execCommand(d > 0 ? "indent" : "outdent"); this.markDirty(); return; }
+    const antes = this.area.innerHTML;
+    for (const b of bloques) {
+      if (!/^(P|H[1-4])$/.test(b.tagName)) continue;
+      const actual = Number((/\bsang-(\d)\b/.exec(b.className) || [])[1] || 0);
+      const n = Math.max(0, Math.min(MAX_SANGRIA, actual + d));
+      [...b.classList].filter((c) => c.startsWith("sang-")).forEach((c) => b.classList.remove(c));
+      if (n) b.classList.add("sang-" + n);
+      if (!b.classList.length) b.removeAttribute("class");
+    }
+    if (this.area.innerHTML !== antes) this.markDirty();
+  },
+
+  /* Copiar formato (la brocha de Word): se guarda el formato de donde está el cursor y se aplica a lo siguiente que se seleccione */
+  formatoDe() {
+    // Con el cursor quieto, el formato es el de la letra que tiene a la derecha (al principio de una palabra
+    // en negrita, el navegador diría «sin negrita»): se mira con esa letra seleccionada y se vuelve a dejar
+    const s = window.getSelection();
+    const quieto = s && s.rangeCount && s.isCollapsed ? s.getRangeAt(0).cloneRange() : null;
+    if (quieto) { try { s.modify("extend", "forward", "character"); } catch {} }
+    try { return this.formatoDeSeleccion(); } finally { if (quieto) this.ponerRango(quieto); }
+  },
+  formatoDeSeleccion() {
+    const st = (c) => { try { return document.queryCommandState(c); } catch { return false; } };
+    const m = this.selectionMark();
+    const marca = m ? (m.tagName === "MARK" ? (claseValida(m.getAttribute("class")) || "c-amarillo") : claseDeFondo(fondoDe(m)) || "c-amarillo") : null;
+    return {
+      bold: st("bold"), italic: st("italic"), underline: st("underline"), strikeThrough: st("strikeThrough"),
+      subscript: st("subscript"), superscript: st("superscript"),
+      marca: marca ? marca.replace(/^c-/, "") : null, letra: this.letraActual(), tam: this.tamanoActual(), fuente: this.fuenteActual(),
+    };
+  },
+  brocha() {
+    if (this.formatoCopiado) { this.formatoCopiado = null; this.paintToolbar(); return; }
+    this.formatoCopiado = this.formatoDe();
+    this.paintToolbar();
+    toast("Ahora selecciona el texto al que quieres dar ese formato.", { ms: 4000 });
+  },
+  aplicarFormatoCopiado() {
+    const f = this.formatoCopiado;
+    const r = this.rango();
+    if (!f || !r || r.collapsed) return;
+    this.formatoCopiado = null;
+    const d = document;
+    const st = (c) => { try { return d.queryCommandState(c); } catch { return false; } };
+    for (const c of ["bold", "italic", "underline", "strikeThrough", "subscript", "superscript"]) if (st(c) !== f[c]) d.execCommand(c);
+    d.execCommand("styleWithCSS", false, false);
+    d.execCommand("fontSize", false, String((TAMANOS.find((t) => t.pt === f.tam) || TAMANOS.find((t) => t.normal)).n));
+    const fu = FUENTES.find((x) => x.clase === f.fuente);
+    d.execCommand("fontName", false, fu ? (fu.clase === "f-calibri" ? "Carlito" : fu.clase === "f-literata" ? "Literata" : fu.nombre) : FUENTE_AUTO);
+    this.aplicarLetra(f.letra || "quitar");
+    this.aplicarColor(f.marca || "quitar");
+    this.markDirty();
+    this.paintToolbar();
+    toast("Formato copiado.", { ms: 1500 });
+  },
+
+  /* Tablas */
+  celdaActual() {
+    const s = window.getSelection();
+    let n = s && s.rangeCount ? s.anchorNode : null;
+    if (n && n.nodeType === 3) n = n.parentElement;
+    const c = n && n.closest ? n.closest("td, th") : null;
+    return c && this.area.contains(c) ? c : null;
+  },
+  opcionesTabla() {
+    const celda = this.celdaActual();
+    if (!celda) {
+      this.abrirOpciones("tabla", "Insertar tabla", [[2, 2], [2, 3], [3, 3], [3, 4], [4, 4], [4, 6]].map(([c, f]) => ({
+        label: `${c} × ${f}`, aria: `${c} columnas y ${f} filas`,
+        run: () => this.insertarHtml(`<table><tbody>${("<tr>" + "<td><br></td>".repeat(c) + "</tr>").repeat(f)}</tbody></table><p><br></p>`),
+      })));
+      return;
+    }
+    const cambio = (fn) => () => {
+      const antes = this.area.innerHTML;
+      const c = this.celdaActual() || celda;
+      fn(c, c.parentElement, c.closest("table"));
+      this.markDirty();
+      toast("Tabla cambiada.", { action: "Deshacer", onAction: () => { this.ponerHtml(antes); this.markDirty(); } });
+    };
+    const col = (c) => [...c.parentElement.children].indexOf(c);
+    this.abrirOpciones("tabla", "Tabla", [
+      { label: "Fila debajo", run: cambio((c, tr) => { const n = tr.cloneNode(true); n.querySelectorAll("td, th").forEach((x) => { x.innerHTML = "<br>"; }); tr.after(n); }) },
+      { label: "Columna a la derecha", run: cambio((c, tr, t) => { const i = col(c); t.querySelectorAll("tr").forEach((fila) => { const ref = fila.children[i]; const n = document.createElement(ref ? ref.tagName.toLowerCase() : "td"); n.innerHTML = "<br>"; if (ref) ref.after(n); else fila.append(n); }); }) },
+      { label: "Quitar fila", run: cambio((c, tr, t) => { if (t.querySelectorAll("tr").length > 1) tr.remove(); else t.remove(); }) },
+      { label: "Quitar columna", run: cambio((c, tr, t) => { const i = col(c); const filas = t.querySelectorAll("tr"); if (tr.children.length <= 1) { t.remove(); return; } filas.forEach((fila) => fila.children[i] && fila.children[i].remove()); }) },
+      { label: "Quitar tabla", run: cambio((c, tr, t) => t.remove()) },
+    ]);
+  },
+
+  /* Imagen (de Fotos o Archivos): se reduce a 1600 px y se guarda dentro del documento */
+  elegirImagen() {
+    this.rangoImagen = this.rango() && this.rango().cloneRange();
+    const input = $("#editor-imagen");
+    input.value = "";
+    input.click();
+  },
+  async ponerImagen(file) {
+    if (!file) return;
+    try {
+      const url = URL.createObjectURL(file);
+      const img = await new Promise((ok, mal) => { const i = new Image(); i.onload = () => ok(i); i.onerror = mal; i.src = url; });
+      const esc = Math.min(1, 1600 / Math.max(img.naturalWidth, img.naturalHeight));
+      const c = document.createElement("canvas");
+      c.width = Math.round(img.naturalWidth * esc); c.height = Math.round(img.naturalHeight * esc);
+      const g = c.getContext("2d");
+      g.fillStyle = "#fff"; g.fillRect(0, 0, c.width, c.height);
+      g.drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url);
+      this.area.focus();
+      this.ponerRango(this.rangoImagen);
+      this.insertarHtml(`<img src="${c.toDataURL("image/jpeg", 0.85)}" alt="">`);
+    } catch (e) { console.error(e); toast("No se pudo poner la imagen."); }
+  },
+
+  opcionesSimbolo() {
+    const SIMBOLOS = ["«", "»", "“", "”", "—", "–", "…", "‖", "•", "→", "←", "✓", "✗", "★", "€", "°", "½", "¼", "©", "§", "¶", "±", "×", "÷"];
+    this.abrirOpciones("simbolo", "Símbolo", SIMBOLOS.map((x) => ({ label: x, seguir: true, run: () => { document.execCommand("insertText", false, x); this.markDirty(); } })));
+  },
+
+  /* Revisar: ortografía (la del iPad) y leer en voz alta */
+  alternarOrtografia() {
+    settings.ortografia = settings.ortografia === false;
+    saveSettings();
+    this.pintarOrtografia();
+    toast(settings.ortografia ? "Ortografía activada: las palabras mal escritas salen subrayadas." : "Ortografía desactivada.");
+  },
+  pintarOrtografia() {
+    const on = settings.ortografia !== false;
+    this.area.spellcheck = on;
+    $('#view-editor [data-cmd="ortografia"]').setAttribute("aria-pressed", String(on));
+  },
+  leerEnVoz() {
+    const ss = window.speechSynthesis;
+    const b = $('#view-editor [data-cmd="voz"]');
+    if (!ss || !window.SpeechSynthesisUtterance) { toast("Este aparato no puede leer en voz alta."); return; }
+    if (ss.speaking) { ss.cancel(); b.setAttribute("aria-pressed", "false"); return; }
+    const r = this.rango();
+    let texto = "";
+    if (r && !r.collapsed) texto = r.toString();
+    else if (r) { const hasta = document.createRange(); hasta.setStart(r.startContainer, r.startOffset); hasta.setEnd(this.area, this.area.childNodes.length); texto = hasta.toString(); }
+    if (!texto.trim()) texto = this.area.innerText || "";
+    if (!texto.trim()) { toast("No hay texto que leer."); return; }
+    const u = new SpeechSynthesisUtterance(texto.replace(/‖/g, ""));
+    u.lang = "es-ES";
+    const voz = ss.getVoices().find((v) => /^es[-_]ES/i.test(v.lang)) || ss.getVoices().find((v) => /^es/i.test(v.lang));
+    if (voz) u.voice = voz;
+    u.onend = u.onerror = () => b.setAttribute("aria-pressed", "false");
+    ss.speak(u);
+    b.setAttribute("aria-pressed", "true");
+    toast(r && !r.collapsed ? "Leyendo lo seleccionado. Vuelve a tocar para parar." : "Leyendo desde el cursor. Vuelve a tocar para parar.", { ms: 3000 });
+  },
+
   cinta(nombre) {
     $$(".ribbon-tabs [data-rtab]").forEach((t) => t.setAttribute("aria-selected", String(t.dataset.rtab === nombre)));
     $$("#view-editor [data-rpanel]").forEach((p) => { p.hidden = p.dataset.rpanel !== nombre; });
     if (nombre !== "inicio") { this.togglePalette(false); this.togglePaletteLetra(false); }
+    this.cerrarOpciones();
   },
 
   /* ---- Color de la letra (como el botón «A» de Word) ---- */
   togglePaletteLetra(force) {
     const p = $("#palette-letra");
     const show = force ?? p.hidden;
-    if (show) { this.togglePalette(false); this.pintarLeyenda(); }
+    if (show) { this.togglePalette(false); this.cerrarOpciones(); this.pintarLeyenda(); }
     p.hidden = !show;
     $('#toolbar button[data-cmd="letra"]').setAttribute("aria-expanded", String(show));
     if (show) this.paintPaletteLetra();
@@ -4762,7 +5167,7 @@ const editor = {
   togglePalette(force) {
     const p = $("#palette");
     const show = force ?? p.hidden;
-    if (show) { this.togglePaletteLetra(false); this.pintarLeyenda(); }
+    if (show) { this.togglePaletteLetra(false); this.cerrarOpciones(); this.pintarLeyenda(); }
     p.hidden = !show;
     $('#toolbar button[data-cmd="highlight"]').setAttribute("aria-expanded", String(show));
     if (show) this.paintPalette();
@@ -4850,11 +5255,20 @@ const editor = {
       strike: state("strikeThrough"),
       h1: block === "h1", h2: block === "h2", h3: block === "h3", p: block === "p" || block === "div", highlight: !!this.selectionMark(),
       letra: !!this.letraActual(),
+      sub: state("subscript"), sup: state("superscript"),
+      izquierda: !state("justifyCenter") && !state("justifyRight") && !state("justifyFull"),
+      centro: state("justifyCenter"), derecha: state("justifyRight"), justificar: state("justifyFull"),
+      cita: block === "blockquote", brocha: !!this.formatoCopiado,
     };
     $$("#toolbar button[data-cmd]").forEach((b) => b.classList.toggle("active", !!map[b.dataset.cmd]));
     if (!$("#palette").hidden) this.paintPalette();
     if (!$("#palette-letra").hidden) this.paintPaletteLetra();
     $("#barra-letra").className = "barra-letra l-" + (this.letraActual() || settings.letraColor || "rojo");
+    const f = FUENTES.find((x) => x.clase === this.fuenteActual());
+    $("#sel-fuente").textContent = f ? f.nombre : "Letra";
+    $("#sel-tamano").textContent = String(this.tamanoActual());
+    $("#sel-estilo").textContent = { h1: "Título 1", h2: "Título 2", h3: "Título 3", blockquote: "Cita" }[block] || "Normal";
+    $('#view-editor [data-cmd="brocha"]').setAttribute("aria-pressed", String(!!this.formatoCopiado));
     this.pintarSeleccion();
   },
 
@@ -4896,15 +5310,23 @@ const editor = {
     this.titleInput.addEventListener("input", () => this.markDirty());
     this.titleInput.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); this.area.focus(); } });
     this.area.addEventListener("paste", (e) => {
-      // Pega como texto limpio (evita estilos raros de webs o del correo)
-      const text = e.clipboardData && e.clipboardData.getData("text/plain");
-      if (text == null) return;
+      // Pega con su formato, como Word, pero limpio (sanitize); sin formato, con «Solo texto» de la cinta
+      const dt = e.clipboardData;
+      if (!dt) return;
+      const html = dt.getData("text/html"), text = dt.getData("text/plain");
+      if (!html && text == null) return;
       e.preventDefault();
-      document.execCommand("insertText", false, text);
+      if (html) this.insertarHtml(this.htmlParaPegar(html));
+      else document.execCommand("insertText", false, text);
     });
+    $("#editor-imagen").addEventListener("change", (e) => this.ponerImagen(e.target.files && e.target.files[0]));
+    // Copiar formato: al soltar una selección, se aplica
+    const brochaLuego = debounce(() => { if (this.formatoCopiado && currentView === "editor") this.aplicarFormatoCopiado(); }, 700);
+    document.addEventListener("selectionchange", () => { if (this.formatoCopiado) { const r = this.rango(); if (r && !r.collapsed) brochaLuego(); } });
+    this.pintarOrtografia();
     document.addEventListener("selectionchange", () => { if (currentView === "editor") this.paintToolbar(); });
     // Mantener la selección al tocar la barra de herramientas
-    $$("#view-editor .ribbon button[data-cmd]").forEach((b) => {
+    $$("#view-editor .ribbon button[data-cmd], #view-editor .rt-acciones button[data-cmd]").forEach((b) => {
       b.tabIndex = -1;
       b.addEventListener("pointerdown", (e) => e.preventDefault());
       b.addEventListener("mousedown", (e) => e.preventDefault());

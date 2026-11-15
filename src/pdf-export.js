@@ -44,7 +44,10 @@ function bloquesDe(html) {
       if (t === "U") e.u = true;
       if (t === "S" || t === "DEL" || t === "STRIKE") e.s = true;
       if (t === "MARK") e.mark = colorDe(n);
-      if (t === "SPAN") { const c = (n.getAttribute("class") || "").match(/\bt-(rojo|azul|verde|naranja)\b/); if (c) e.letra = c[1]; }
+      if (t === "SPAN") {
+        const c = (n.getAttribute("class") || "").match(/\bt-(rojo|azul|verde|naranja)\b/); if (c) e.letra = c[1];
+        const z = (n.getAttribute("class") || "").match(/\btam-(\d+)\b/); if (z) e.tam = Number(z[1]) / 12; // tamaño de Word (12 = normal)
+      }
       if (/^(P|H[1-4]|LI|BLOCKQUOTE|DIV)$/.test(t)) { b.runs.push({ texto: " ", estilo }); }
       enLinea(n, e, b, saltarListas);
     }
@@ -61,13 +64,21 @@ function bloquesDe(html) {
     }
   }
 
+  // Alineación y sangría de un párrafo (formato.js)
+  const formato = (n) => {
+    const c = n.getAttribute("class") || "";
+    const al = (c.match(/\bal-(centro|derecha|justificar)\b/) || [])[1] || null;
+    const sang = Number((c.match(/\bsang-(\d)\b/) || [])[1] || 0);
+    return { al, parrafo: sang };
+  };
   function recorrer(cont, cita = false) {
     for (const n of cont.childNodes) {
       if (n.nodeType === 3) { if (n.textContent.trim()) { const b = nuevo("p", { cita }); b.runs.push({ texto: n.textContent, estilo: {} }); } continue; }
       if (n.nodeType !== 1) continue;
       const t = n.tagName;
-      if (/^H[1-4]$/.test(t)) enLinea(n, { b: true }, nuevo(t.toLowerCase(), { cita }));
-      else if (t === "P" || t === "DIV") enLinea(n, {}, nuevo("p", { cita }));
+      if (/^H[1-4]$/.test(t)) enLinea(n, { b: true }, nuevo(t.toLowerCase(), { cita, ...formato(n) }));
+      else if (t === "P" || t === "DIV") enLinea(n, {}, nuevo("p", { cita, ...formato(n) }));
+      else if (t === "HR") bloques.push({ tipo: n.getAttribute("class") === "salto" ? "salto" : "hr" });
       else if (t === "UL" || t === "OL") lista(n, 1, cita);
       else if (t === "BLOCKQUOTE") {
         if ([...n.children].some((c) => /^(P|UL|OL|H[1-4])$/.test(c.tagName))) recorrer(n, true);
@@ -141,7 +152,8 @@ export async function buildPdf({ title = "Documento", html = "", size = 12, fami
       const texto = limpiar(run.texto.replace(/\s+/g, " "));
       for (const parte of texto.split(/( )/)) if (parte) piezas.push({ texto: parte, estilo: { ...estiloBase, ...run.estilo }, espacio: parte === " " });
     }
-    const medir = (p) => fuente(p.estilo).widthOfTextAtSize(p.texto, tam);
+    const tamDe = (e) => tam * (e.tam || 1);
+    const medir = (p) => fuente(p.estilo).widthOfTextAtSize(p.texto, tamDe(p.estilo));
     const res = [];
     let linea = [], x = 0, palabra = [], espacio = null;
     const cerrarLinea = () => { while (linea.length && linea[linea.length - 1].espacio) linea.pop(); res.push(linea); linea = []; x = 0; };
@@ -158,12 +170,12 @@ export async function buildPdf({ title = "Documento", html = "", size = 12, fami
           let trozo = "";
           for (const ch of p.texto) {
             const prueba = trozo + ch;
-            if (x + fuente(p.estilo).widthOfTextAtSize(prueba, tam) > max && trozo) {
-              linea.push({ texto: trozo, estilo: p.estilo, x, w: fuente(p.estilo).widthOfTextAtSize(trozo, tam) });
+            if (x + fuente(p.estilo).widthOfTextAtSize(prueba, tamDe(p.estilo)) > max && trozo) {
+              linea.push({ texto: trozo, estilo: p.estilo, x, w: fuente(p.estilo).widthOfTextAtSize(trozo, tamDe(p.estilo)) });
               cerrarLinea(); trozo = ch;
             } else trozo = prueba;
           }
-          pw = fuente(p.estilo).widthOfTextAtSize(trozo, tam);
+          pw = fuente(p.estilo).widthOfTextAtSize(trozo, tamDe(p.estilo));
           linea.push({ texto: trozo, estilo: p.estilo, x, w: pw }); x += pw;
           continue;
         }
@@ -181,8 +193,8 @@ export async function buildPdf({ title = "Documento", html = "", size = 12, fami
     return res.filter((l, k) => l.length || k < res.length - 1);
   }
 
-  function pintarLinea(linea, x0, tam, alto, color) {
-    const base = y - (alto + tam * 0.62) / 2;
+  function pintarLinea(linea, x0, tam, alto, color, tamLinea = tam) {
+    const base = y - (alto + tamLinea * 0.62) / 2;
     for (const it of linea) {
       if (highlights && it.estilo.mark) {
         pagina.drawRectangle({ x: x0 + it.x - 0.5, y: base - tam * 0.24, width: it.w + 1, height: tam * 1.12, color: COLOR_MARK[it.estilo.mark] || COLOR_MARK.amarillo });
@@ -190,7 +202,7 @@ export async function buildPdf({ title = "Documento", html = "", size = 12, fami
     }
     for (const it of linea) {
       if (!it.texto.trim()) continue;
-      pagina.drawText(it.texto, { x: x0 + it.x, y: base, size: tam, font: fuente(it.estilo), color: COLOR_LETRA[it.estilo.letra] || color });
+      pagina.drawText(it.texto, { x: x0 + it.x, y: base, size: tam * (it.estilo.tam || 1), font: fuente(it.estilo), color: COLOR_LETRA[it.estilo.letra] || color });
     }
     for (const it of linea) {
       if (it.estilo.u) pagina.drawLine({ start: { x: x0 + it.x, y: base - tam * 0.12 }, end: { x: x0 + it.x + it.w, y: base - tam * 0.12 }, thickness: Math.max(0.5, tam / 18), color: COLOR_LETRA[it.estilo.letra] || color });
@@ -201,6 +213,14 @@ export async function buildPdf({ title = "Documento", html = "", size = 12, fami
   const bloques = bloquesDe(html);
   for (let k = 0; k < bloques.length; k++) {
     const bl = bloques[k];
+    if (bl.tipo === "salto") { if (y < H - MARGEN - 1) nuevaPagina(); continue; }
+    if (bl.tipo === "hr") {
+      if (!cabe(size * 1.4)) nuevaPagina();
+      y -= size * 0.7;
+      pagina.drawLine({ start: { x: MARGEN, y }, end: { x: MARGEN + ancho, y }, thickness: 0.8, color: rgb(0.75, 0.75, 0.75) });
+      y -= size * 0.7;
+      continue;
+    }
     if (bl.tipo === "img") {
       try {
         const m = bl.src.match(/^data:image\/(png|jpe?g);base64,/i);
@@ -219,7 +239,7 @@ export async function buildPdf({ title = "Documento", html = "", size = 12, fami
     const tam = size * factor;
     const esTitulo = factor > 1 || bl.tipo === "h4";
     const alto = tam * (esTitulo ? 1.22 : 1.38);
-    const sangria = (bl.sangria ? bl.sangria * size * 1.5 : 0) + (bl.cita ? size * 1.2 : 0);
+    const sangria = (bl.sangria ? bl.sangria * size * 1.5 : 0) + (bl.cita ? size * 1.2 : 0) + (bl.parrafo ? bl.parrafo * size * 2 : 0);
     const ls = lineas(bl.runs, tam, ancho - sangria, esTitulo ? { b: true } : {});
     if (!ls.length || (ls.length === 1 && !ls[0].length && bl.tipo !== "p")) continue;
     if (ls.length === 1 && !ls[0].length) { y -= size * 0.7; continue; } // párrafo vacío
@@ -229,15 +249,25 @@ export async function buildPdf({ title = "Documento", html = "", size = 12, fami
     if (!cabe(necesita)) nuevaPagina();
     const color = bl.cita ? GRIS : NEGRO;
     ls.forEach((linea, n) => {
-      if (!cabe(alto)) nuevaPagina();
+      // Una línea con letra más grande es más alta
+      const m = Math.max(1, ...linea.map((it) => (it.estilo && it.estilo.tam) || 1));
+      const altoL = alto * m;
+      if (!cabe(altoL)) nuevaPagina();
+      // Alineación: centrar, a la derecha o justificar (menos la última línea del párrafo)
+      const libre = ancho - sangria - (linea.length ? linea[linea.length - 1].x + linea[linea.length - 1].w : 0);
+      if (bl.al === "centro" || bl.al === "derecha") { const d = bl.al === "centro" ? libre / 2 : libre; linea = linea.map((it) => ({ ...it, x: it.x + d })); }
+      else if (bl.al === "justificar" && n < ls.length - 1) {
+        const huecos = linea.filter((it) => it.espacio).length;
+        if (huecos) { let k = 0; linea = linea.map((it) => { const x = it.x + (libre / huecos) * k; if (it.espacio) k++; return { ...it, x }; }); }
+      }
       if (n === 0 && bl.vineta) {
         const f = fuente({});
         const vw = f.widthOfTextAtSize(bl.vineta, size);
         pagina.drawText(bl.vineta, { x: MARGEN + sangria - vw - size * 0.45, y: y - (alto + tam * 0.62) / 2, size, font: f, color });
       }
       if (bl.cita) pagina.drawRectangle({ x: MARGEN + size * 0.3, y: y - alto, width: 2, height: alto, color: rgb(0.8, 0.8, 0.8) });
-      pintarLinea(linea, MARGEN + sangria, tam, alto, color);
-      y -= alto;
+      pintarLinea(linea, MARGEN + sangria, tam, altoL, color, tam * m);
+      y -= altoL;
     });
     y -= bl.tipo === "li" || bl.fila ? size * 0.2 : esTitulo ? tam * 0.25 : size * 0.6;
   }

@@ -13,6 +13,8 @@ export const NOVEDADES = [
       ["scroll", "Presentar: al poner en marcha el cronómetro, el texto sube solo a tu ritmo. Arriba tienes un interruptor para apagarlo, «−» y «+» para la velocidad y «A−» y «A+» para la letra."],
       ["outline", "En el iPad, la barra del lector es más grande y va por grupos, como en Word: Presentar, Practicar (Desplazar, Ensayos, Tarjetas), Leer (Esquema, Letra, Buscar) y Documento (Editar, Nuevo, Compartir, Más)."],
       ["clock", "Junto al cronómetro, la duración del discurso: tócala para cambiarla."],
+      ["edit", "Editor como Word: Pegar, Cortar, Copiar y Copiar formato; tipo y tamaño de letra, subíndice, superíndice y mayúsculas; sangría y alinear (izquierda, centro, derecha, justificar); estilo Cita."],
+      ["template", "Insertar: tabla, imagen, línea, salto de página, fecha y símbolos. Revisar: ortografía y leer en voz alta. Todo sale en el Word, y al abrir un Word se conservan la alineación y la sangría."],
     ],
   },
   {
