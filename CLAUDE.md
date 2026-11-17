@@ -10,6 +10,16 @@ Se instala desde Safari con *Compartir → Añadir a pantalla de inicio*, funcio
 
 Responde en español. Interfaz y textos de la app, en español de España.
 
+## Cómo explicarle las cosas a Ezequiel (lo pidió el 17/11/2026)
+
+Ezequiel no se acuerda de cada conversación ni tiene delante todo lo que tú tienes: «los humanos olvidamos». Explícaselo como a alguien que acaba de llegar, no como a alguien que lleva toda la tarde contigo. No tiene que averiguar de qué le hablas.
+
+1. **Frases naturales y completas.** Nada de frases apretadas que mezclan tres ideas y obligan a adivinar.
+2. **Si nombras algo de antes** (una tarea, una persona, un archivo, una herramienta, un plan), dile en media frase qué es.
+3. **Si propones algo, separa las partes:** qué se va a hacer, quién lo hace (tú o él) y por qué.
+4. **Sin jerga ni nombres internos** sin explicar.
+5. **Antes de enviar, reléelo como si él no supiera nada.** Si tendría que averiguar de qué le hablas, reescríbelo.
+
 ## Estructura
 
 ```
