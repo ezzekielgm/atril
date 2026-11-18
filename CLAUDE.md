@@ -28,6 +28,13 @@ Ezequiel no se acuerda de cada conversación ni tiene delante todo lo que tú ti
 4. **Si solo miras una parte, díselo al principio**; que no lo tenga que descubrir él.
 5. **Sin halagos ni relleno, y sin darle la razón por sistema.** Si se equivoca, o te equivocaste tú antes, díselo sin rodeos.
 
+## Mirar cómo lo consiguen otros (lo pidió el 18/11/2026)
+
+1. **Antes de una pieza grande, o cuando algo falla dos veces,** para y busca cómo lo están consiguiendo otras personas con IA (blogs, foros, YouTube, novedades de Anthropic), en español y en inglés, aunque eso cambie las herramientas o el planteamiento.
+2. **Lo que se dio por fijo al empezar se revisa, no se hereda.** Si encuentras algo que choca con lo decidido, díselo con la alternativa; decide él.
+3. **Dile pronto lo que a Claude le cuesta** (ver algo en movimiento, el tacto de un juego, la coherencia de dibujos de otra IA) y cómo lo vas a compensar.
+4. **Cuando busques, di qué no has podido mirar** (por ejemplo, vídeos de YouTube desde la nube).
+
 ## Estructura
 
 ```
